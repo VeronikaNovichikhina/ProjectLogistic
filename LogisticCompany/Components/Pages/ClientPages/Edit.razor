@@ -1,9 +1,9 @@
 ﻿@page "/clients/edit/{clientId:int}"
-@using LogisticCompany.Application.DTOs.Clients
-@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using Microsoft.EntityFrameworkCore
 @using Presentation.Shared
 @inherits ClientBaseComponent
-@inject IClientService ClientService
 @rendermode InteractiveServer
 
 <div class="page-bg min-vh-100 py-5">
@@ -289,76 +289,141 @@
     [Parameter] public int ClientId { get; set; }
     private ClientDto? Client { get; set; }
 
+    [Inject] private AppDbContext Db { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadClient();
     }
+
     private bool ValidatePassport()
     {
-        if (!Client.IndividualClient.PassportDateOfIssue.HasValue)
+        if (Client?.IndividualClient?.PassportDateOfIssue == null)
             return false;
 
         if (Client.IndividualClient.IsPassportExpired)
-        {
-
             return false;
-        }
 
         return true;
     }
+
     private async Task LoadClient()
     {
-        var result = await ClientService.GetClientByIdAsync(ClientId);
-        if (result.IsSuccess)
+        try
         {
-            Client = result.Value;
+            var clientEntity = await Db.Clients
+                .Include(c => c.IndividualClients)
+                .Include(c => c.CompanyClients)
+                .FirstOrDefaultAsync(c => c.ClientsId == ClientId);
+
+            if (clientEntity == null)
+            {
+                ErrorMessage = "Клиент не найден";
+                return;
+            }
+
+            var individual = clientEntity.IndividualClients.FirstOrDefault();
+            var company = clientEntity.CompanyClients.FirstOrDefault();
+
+            Client = new ClientDto
+            {
+                ClientsId = clientEntity.ClientsId,
+                Phone = clientEntity.Phone,
+                Email = clientEntity.Email,
+                ClientTypeId = clientEntity.ClientTypeId,
+
+                IndividualClient = individual != null
+                    ? new IndividualClientDto
+                    {
+                        FirstName = individual.FirstName,
+                        LastName = individual.LastName,
+                        PatronymicName = individual.PatronymicName,
+                        PassportNumber = individual.PassportNumber,
+                        PassportDateOfIssue = individual.PassportDateOfIssue
+                            ?.ToDateTime(TimeOnly.MinValue)
+                    }
+                    : null,
+
+                CompanyClient = company != null
+                    ? new CompanyClientDto
+                    {
+                        CompanyName = company.CompanyName,
+                        Inn = company.Inn
+                    }
+                    : null
+            };
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
+
 
     private async Task UpdateClient()
     {
-        var updateClientDto = new UpdateClientDto
+        try
         {
-            Phone = Client!.Phone,
-            Email = Client.Email
-        };
-        var result = await ClientService.UpdateClientAsync(ClientId, updateClientDto);
-        if (result.IsSuccess)
-        {
+            var clientEntity = await Db.Clients
+                .Include(c => c.IndividualClients)
+                .Include(c => c.CompanyClients)
+                .FirstOrDefaultAsync(c => c.ClientsId == ClientId);
+
+            if (clientEntity == null)
+            {
+                ErrorMessage = "Клиент не найден";
+                return;
+            }
+
+            clientEntity.Phone = Client!.Phone;
+            clientEntity.Email = Client.Email;
+
             if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
             {
-                var updateIndividualDto = new UpdateIndividualClientDto
-                    {
-                        LastName = Client.IndividualClient.LastName,
-                        FirstName = Client.IndividualClient.FirstName,
-                        PatronymicName = Client.IndividualClient.PatronymicName,
-                        PassportNumber = Client.IndividualClient.PassportNumber
-                    };
+                var individual = clientEntity.IndividualClients.FirstOrDefault();
 
-                await ClientService.UpdateIndividualClientAsync(ClientId, updateIndividualDto);
-            }
-            else if( Client.ClientTypeId == 2 && Client.CompanyClient != null)
-            {
-                var updateCompanyDto = new UpdateCompanyClientDto
+                if (individual == null)
                 {
-                    CompanyName = Client.CompanyClient.CompanyName,
-                    Inn = Client.CompanyClient.Inn
-                };
-                await ClientService.UpdateCompanyClientAsync(ClientId, updateCompanyDto);
-			}
-			SuccessMessage = "Данные клиента успешно обновлены.";
-            NavigateTo($"/clients/details/{ClientId}");
+                    individual = new IndividualClient();
+                    clientEntity.IndividualClients.Add(individual);
+                }
+
+                individual.FirstName = Client.IndividualClient.FirstName;
+                individual.LastName = Client.IndividualClient.LastName;
+                individual.PatronymicName = Client.IndividualClient.PatronymicName;
+                individual.PassportNumber = Client.IndividualClient.PassportNumber;
+                individual.PassportDateOfIssue =
+                    Client.IndividualClient.PassportDateOfIssue.HasValue
+                        ? DateOnly.FromDateTime(Client.IndividualClient.PassportDateOfIssue.Value)
+                        : null;
+            }
+            else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
+            {
+                var company = clientEntity.CompanyClients.FirstOrDefault();
+
+                if (company == null)
+                {
+                    company = new CompanyClient();
+                    clientEntity.CompanyClients.Add(company);
+                }
+
+                company.CompanyName = Client.CompanyClient.CompanyName;
+                company.Inn = Client.CompanyClient.Inn;
+            }
+
+            await Db.SaveChangesAsync();
+
+            SuccessMessage = "Данные клиента успешно обновлены.";
+            Navigation.NavigateTo($"/clients/details/{ClientId}");
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
-       
     }
+
+
 }
 
 <style>

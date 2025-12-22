@@ -1,10 +1,8 @@
-﻿
-@page "/clients/create-company/{ClientId:int}"
-@using LogisticCompany.Application.DTOs.Clients
-@using LogisticCompany.Application.Interfaces
+﻿@page "/clients/create-company/{ClientId:int}"
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
 @using Presentation.Shared
 @inherits ClientBaseComponent
-@inject IClientService ClientService
 @rendermode InteractiveServer
 
 <div class="page-bg min-vh-100 py-5">
@@ -178,25 +176,35 @@
     [Parameter] public int ClientId { get; set; }
     private CompanyClientDto companyDto = new();
 
+    [Inject] private AppDbContext Db { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
     protected override async Task OnInitializedAsync()
     {
-        // Можно добавить проверку что клиент существует и его тип = 2
         await Task.CompletedTask;
     }
-
     private async Task SaveCompany()
     {
-        var result = await ClientService.CreateCompanyClientAsync(ClientId, companyDto);
+        try
+        {
+            var companyClient = new CompanyClient
+            {
+                ClientsId = ClientId,
+                CompanyName = companyDto.CompanyName,
+                Inn = companyDto.Inn
+            };
 
-        if (result.IsSuccess)
-        {
-            NavigateTo("/orders/create");
+            Db.CompanyClients.Add(companyClient);
+            await Db.SaveChangesAsync();
+
+            Navigation.NavigateTo("/orders/create");
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
+
 }
 
 

@@ -1,4 +1,4 @@
-﻿namespace LogisticCompany.Infrastructure.Service
+﻿namespace LogisticCompany.Services
 {
     using System.Globalization;
     using System.Text.Json;

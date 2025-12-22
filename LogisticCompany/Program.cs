@@ -1,14 +1,7 @@
-﻿
-using Application.Services;
-using Infrastructure.Data;
-using Infrastructure.Data.Repositories;
-using LogisticCompany.Application.Interfaces;
-using LogisticCompany.Components;
+﻿using LogisticCompany.Components;
 using LogisticCompany.Components.LoginRegister;
 using LogisticCompany.Db;
-using LogisticCompany.Domain.Repositories;
-using LogisticCompany.Infrastructure.Data.Repositories;
-using LogisticCompany.Infrastructure.Service;
+using LogisticCompany.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -41,16 +34,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
-// Репозитории
-builder.Services.AddScoped<IClientRepository, ClientRepository>();
-builder.Services.AddScoped<IClientTypeRepository, ClientTypeRepository>();
-builder.Services.AddScoped<IIndividualClientRepository, IndividualClientRepository>();
-builder.Services.AddScoped<ICompanyClientRepository, CompanyClientRepository>();
-
-// Unit of Work
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-// Application Services
-builder.Services.AddScoped<IClientService, ClientService>();
 
 builder.Services.AddScoped<OpenStreetMapService>();
 

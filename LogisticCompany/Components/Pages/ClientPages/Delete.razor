@@ -1,13 +1,11 @@
-﻿
-@rendermode InteractiveServer
-
+﻿@rendermode InteractiveServer
 @inject IJSRuntime JS
 @page "/clients/delete/{clientId:int}"
-@using LogisticCompany.Application.DTOs.Clients
-@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using Microsoft.EntityFrameworkCore
 @using Presentation.Shared
 @inherits ClientBaseComponent
-@inject IClientService ClientService
 
 <div class="page-bg min-vh-100 py-5">
     <div class="container">
@@ -200,6 +198,9 @@
     private ClientDto? Client { get; set; }
     private bool isConfirmed = false;
 
+    [Inject] private AppDbContext Db { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadClient();
@@ -207,30 +208,57 @@
 
     private async Task LoadClient()
     {
-        var result = await ClientService.GetClientByIdAsync(ClientId);
-        if (result.IsSuccess)
+        try
         {
-            Client = result.Value;
+            var clientEntity = await Db.Clients
+                .FirstOrDefaultAsync(c => c.ClientsId == ClientId);
+
+            if (clientEntity != null)
+            {
+                Client = new ClientDto
+                {
+                    ClientsId = clientEntity.ClientsId,
+                    Phone = clientEntity.Phone,
+                    Email = clientEntity.Email,
+                    ClientTypeId = clientEntity.ClientTypeId
+                };
+            }
+            else
+            {
+                ErrorMessage = "Клиент не найден";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
 
     private async Task DeleteClient()
     {
-        var result = await ClientService.DeleteClientAsync(ClientId);
+        try
+        {
+            var clientEntity = await Db.Clients
+                .FirstOrDefaultAsync(c => c.ClientsId == ClientId);
 
-        if (result.IsSuccess)
-        {
-            NavigateTo("/clients");
+            if (clientEntity != null)
+            {
+                Db.Clients.Remove(clientEntity);
+                await Db.SaveChangesAsync();
+
+                Navigation.NavigateTo("/clients");
+            }
+            else
+            {
+                ErrorMessage = "Клиент не найден";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
+
 }
 
 <style>

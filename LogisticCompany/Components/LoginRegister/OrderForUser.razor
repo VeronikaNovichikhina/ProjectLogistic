@@ -1,17 +1,17 @@
 ﻿@page "/create-order"
 @rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations;
+@using LogisticCompany.DTO;
 @using LogisticCompany.Db;
 @using LogisticCompany.Domain.Entities.Location;
 @using LogisticCompany.Domain.Entities.Orders;
 @using LogisticCompany.Domain.Entities.Tracking;
-@using LogisticCompany.DTO;
-@using LogisticCompany.Infrastructure.Service;
+@using LogisticCompany.Services
 @using Microsoft.AspNetCore.Components;
 @using Microsoft.AspNetCore.Components.Authorization;
 @using Microsoft.AspNetCore.Components.Forms;
 @using Microsoft.EntityFrameworkCore;
 @using Microsoft.JSInterop;
-@using System.ComponentModel.DataAnnotations;
 
 
 <div class="page-bg min-vh-100 py-5">

@@ -1,4 +1,4 @@
-﻿namespace LogisticCompany.Application.DTOs.Clients
+﻿namespace LogisticCompany.DTO
 {
     public class ClientDto
     {
@@ -10,6 +10,5 @@
         public IndividualClientDto? IndividualClient { get; set; }
         public CompanyClientDto? CompanyClient { get; set; }
         public int? UserId { get; set; }
-
     }
 }

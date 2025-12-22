@@ -1,11 +1,10 @@
-﻿@page "/clients/create-individual/{clientId:int}"
-@using LogisticCompany.Application.DTOs.Clients
-@using LogisticCompany.Application.Interfaces
+﻿@page "/clients/create-individual/{ClientId:int}"
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
 @using Presentation.Shared
 @inherits ClientBaseComponent
-@inject IClientService ClientService
-
 @rendermode InteractiveServer
+
 <div class="page-bg min-vh-100 py-5">
     <div class="container">
         <div class="row justify-content-center">
@@ -208,40 +207,56 @@
 </div>
 
 @code {
-    [SupplyParameterFromQuery]
-	[Parameter] public int clientId { get; set; } 
+    [Parameter] public int ClientId { get; set; }
     private IndividualClientDto individualDto = new();
+
+    [Inject] private AppDbContext Db { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
         await Task.CompletedTask;
     }
+
     private bool ValidatePassport()
     {
         if (!individualDto.PassportDateOfIssue.HasValue)
             return false;
 
         if (individualDto.IsPassportExpired)
-        {
-           
-            return false; 
-        }
+            return false;
 
         return true;
     }
+
     private async Task SaveIndividual()
     {
-        var result = await ClientService.CreateIndividualClientAsync(clientId, individualDto);
+        try
+        {
+            var individualClient = new IndividualClient
+            {
+                ClientsId = ClientId,
+                FirstName = individualDto.FirstName,
+                LastName = individualDto.LastName,
+                PatronymicName = individualDto.PatronymicName,
+                PassportNumber = individualDto.PassportNumber,
+                PassportDateOfIssue = individualDto.PassportDateOfIssue.HasValue
+        ? DateOnly.FromDateTime(individualDto.PassportDateOfIssue.Value)
+        : null
 
-        if (result.IsSuccess)
-        {
-            NavigateTo("/orders/create");
+            };
+
+            Db.IndividualClients.Add(individualClient);
+            await Db.SaveChangesAsync();
+
+            Navigation.NavigateTo("/orders/create");
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
+
 }
 
 

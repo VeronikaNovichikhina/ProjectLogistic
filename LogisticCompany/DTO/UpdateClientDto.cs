@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace LogisticCompany.Application.DTOs.Clients
+namespace LogisticCompany.DTO
 {
     public class UpdateClientDto
     {

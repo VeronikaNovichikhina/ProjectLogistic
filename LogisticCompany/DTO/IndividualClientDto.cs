@@ -1,12 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace LogisticCompany.Application.DTOs.Clients
+﻿namespace LogisticCompany.DTO
 {
     public class IndividualClientDto
     {
         public int IndividualClientId { get; set; }
 
-       
+
         public string FirstName { get; set; } = string.Empty;
 
         public string LastName { get; set; } = string.Empty;

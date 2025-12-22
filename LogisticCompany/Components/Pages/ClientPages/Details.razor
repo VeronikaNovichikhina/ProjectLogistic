@@ -1,10 +1,9 @@
 ﻿@page "/clients/details/{clientId:int}"
-@using LogisticCompany.Application.DTOs.Clients
-@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using Microsoft.EntityFrameworkCore
 @using Presentation.Shared
-
 @inherits ClientBaseComponent
-@inject IClientService ClientService
 @rendermode InteractiveServer
 
 <div class="page-bg min-vh-100 py-5">
@@ -225,6 +224,9 @@
     [Parameter] public int clientId { get; set; }
     private ClientDto? Client { get; set; }
 
+    [Inject] private AppDbContext Db { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadClient();
@@ -232,27 +234,66 @@
 
     private async Task LoadClient()
     {
-        var result = await ClientService.GetClientByIdAsync(clientId);
-        if (result.IsSuccess)
+        try
         {
-            Client = result.Value;
+            var clientEntity = await Db.Clients
+                .FirstOrDefaultAsync(c => c.ClientsId == clientId);
+
+            if (clientEntity != null)
+            {
+                Client = new ClientDto
+                {
+                    ClientsId = clientEntity.ClientsId,
+                    Phone = clientEntity.Phone,
+                    Email = clientEntity.Email,
+                    ClientTypeId = clientEntity.ClientTypeId
+                };
+            }
+            else
+            {
+                ErrorMessage = "Клиент не найден";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
 
     private void EditClient(int clientId)
     {
-        NavigateTo($"/clients/edit/{clientId}");
+        Navigation.NavigateTo($"/clients/edit/{clientId}");
     }
 
-    private void DeleteClient(int clientId)
+    private async Task DeleteClient(int clientId)
     {
-        NavigateTo($"/clients/delete/{clientId}");
+        try
+        {
+            var clientEntity = await Db.Clients
+                .FirstOrDefaultAsync(c => c.ClientsId == clientId);
+
+            if (clientEntity != null)
+            {
+                Db.Clients.Remove(clientEntity);
+                await Db.SaveChangesAsync();
+
+                Navigation.NavigateTo("/clients");
+            }
+            else
+            {
+                ErrorMessage = "Клиент не найден";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
     }
+
+
 }
+
+
 <style>
     .page-bg {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

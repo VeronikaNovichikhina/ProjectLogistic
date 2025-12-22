@@ -1,9 +1,9 @@
 ﻿@page "/clients/create"
-@using LogisticCompany.Application.DTOs.Clients
-@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using Microsoft.EntityFrameworkCore
 @using Presentation.Shared
 @inherits ClientBaseComponent
-@inject IClientService ClientService
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -126,17 +126,20 @@
 
 @code {
     private CreateClientDto createDto = new();
-    private List<ClientTypeDto> clientTypes = new();
+    private List<ClientType> clientTypes = new();
     private ElementReference phoneInput;
+
+    [Inject] private AppDbContext Db { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-
-           await JS.InvokeVoidAsync("applyPhoneMask", phoneInput);
+            await JS.InvokeVoidAsync("applyPhoneMask", phoneInput);
         }
     }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadClientTypes();
@@ -144,37 +147,45 @@
 
     private async Task LoadClientTypes()
     {
-        var result = await ClientService.GetClientTypesAsync();
-        if (result.IsSuccess)
+        try
         {
-            clientTypes = result.Value;
+            clientTypes = await Db.ClientTypes.ToListAsync();
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
 
     private async Task CreateClient()
     {
-        var result = await ClientService.CreateClientAsync(createDto);
-
-        if (result.IsSuccess)
+        try
         {
-            if (createDto.ClientTypeId == 1)
+            var client = new Client
             {
-                NavigateTo($"/clients/create-individual/{result.Value.ClientsId}");
+                Phone = createDto.Phone,
+                Email = createDto.Email,
+                ClientTypeId = createDto.ClientTypeId
+            };
+
+            Db.Clients.Add(client);
+            await Db.SaveChangesAsync();
+
+            if (client.ClientTypeId == 1)
+            {
+                Navigation.NavigateTo($"/clients/create-individual/{client.ClientsId}");
             }
-            else if (createDto.ClientTypeId == 2)
+            else if (client.ClientTypeId == 2)
             {
-                NavigateTo($"/clients/create-company/{result.Value.ClientsId}");
+                Navigation.NavigateTo($"/clients/create-company/{client.ClientsId}");
             }
         }
-        else
+        catch (Exception ex)
         {
-            ErrorMessage = result.Error;
+            ErrorMessage = ex.Message;
         }
     }
+
 }
 
 

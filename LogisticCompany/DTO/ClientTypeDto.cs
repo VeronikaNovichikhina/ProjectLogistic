@@ -1,4 +1,4 @@
-﻿namespace LogisticCompany.Application.DTOs.Clients
+﻿namespace LogisticCompany.DTO
 {
     public class ClientTypeDto
     {
