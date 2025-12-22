@@ -1,0 +1,317 @@
+﻿@page "/clients/details/{clientId:int}"
+@using LogisticCompany.Application.DTOs.Clients
+@using LogisticCompany.Application.Interfaces
+@using Presentation.Shared
+
+@inherits ClientBaseComponent
+@inject IClientService ClientService
+@rendermode InteractiveServer
+
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        @if (Loading)
+        {
+            <!-- Loading State -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center py-5">
+                    <div class="spinner-border text-success mb-3" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <h5 class="text-muted">Загрузка данных клиента...</h5>
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger">@ErrorMessage</div>
+        }
+        else if (Client == null)
+        {
+            <div class="alert alert-warning">Клиент не найден</div>
+        }
+        else
+        {
+            <!-- Header Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-circle bg-success me-3">
+                                    @if (Client.ClientTypeId == 1)
+                                    {
+                                        <i class="fas fa-user text-white"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-building text-white"></i>
+                                    }
+                                </div>
+                                <div>
+                                    <h1 class="h3 fw-bold text-dark mb-1">
+                                        @if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
+                                        {
+                                            @($"{Client.IndividualClient.LastName} {Client.IndividualClient.FirstName} {Client.IndividualClient.PatronymicName}")
+                                        }
+                                        else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
+                                        {
+                                            @Client.CompanyClient.CompanyName
+                                        }
+                                    </h1>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge @(Client.ClientTypeId == 1 ? "bg-primary" : "bg-warning") me-3">
+                                            @Client.ClientTypeName
+                                        </span>
+                                        @if (Client.UserId != null)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle me-1"></i>Доступ к системе
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-clock me-1"></i>Без доступа
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-outline-secondary me-2" @onclick="GoBack">
+                                <i class="fas fa-arrow-left me-2"></i>Назад
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Основная информация -->
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-circle-sm bg-info me-3">
+                                    <i class="fas fa-info-circle text-white"></i>
+                                </div>
+                                <h5 class="fw-bold text-dark mb-0">Основная информация</h5>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="detail-item mb-3">
+                                <small class="text-muted d-block">Тип клиента</small>
+                                <div class="d-flex align-items-center">
+                                    @if (Client.ClientTypeId == 1)
+                                    {
+                                        <i class="fas fa-user text-primary me-2"></i>
+                                        <strong>Физическое лицо</strong>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-building text-warning me-2"></i>
+                                        <strong>Юридическое лицо</strong>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
+                            {
+                                <div class="detail-item mb-3">
+                                    <small class="text-muted d-block">Фамилия</small>
+                                    <strong>@Client.IndividualClient.LastName</strong>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <small class="text-muted d-block">Имя</small>
+                                    <strong>@Client.IndividualClient.FirstName</strong>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <small class="text-muted d-block">Отчество</small>
+                                    <strong>@Client.IndividualClient.PatronymicName</strong>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <small class="text-muted d-block">Паспорт</small>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-id-card text-muted me-2"></i>
+                                        <strong>@Client.IndividualClient.PassportNumber</strong>
+                                    </div>
+                                </div>
+                            }
+                            else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
+                            {
+                                <div class="detail-item mb-3">
+                                    <small class="text-muted d-block">Название компании</small>
+                                    <strong>@Client.CompanyClient.CompanyName</strong>
+                                </div>
+                                <div class="detail-item mb-3">
+                                    <small class="text-muted d-block">ИИН/БИН</small>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-hashtag text-muted me-2"></i>
+                                        <strong>@Client.CompanyClient.Inn</strong>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Контактная информация -->
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-circle-sm bg-success me-3">
+                                    <i class="fas fa-address-book text-white"></i>
+                                </div>
+                                <h5 class="fw-bold text-dark mb-0">Контактная информация</h5>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="detail-item mb-3">
+                                <small class="text-muted d-block">Телефон</small>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-phone text-success me-2"></i>
+                                    <strong>@Client.Phone</strong>
+                                </div>
+                            </div>
+
+                            <div class="detail-item mb-3">
+                                <small class="text-muted d-block">Email</small>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-envelope text-primary me-2"></i>
+                                    <strong>@Client.Email</strong>
+                                </div>
+                            </div>
+
+                            <div class="detail-item mb-3">
+                                <small class="text-muted d-block">Статус в системе</small>
+                                <div class="d-flex align-items-center">
+                                    @if (Client.UserId != null)
+                                    {
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        <strong class="text-success">Учетная запись активна</strong>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-clock text-secondary me-2"></i>
+                                        <strong class="text-secondary">Учетная запись не создана</strong>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body text-center">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-warning me-2" @onclick="() => EditClient(Client.ClientsId)">
+                            <i class="fas fa-edit me-2"></i>Редактировать
+                        </button>
+                        <button class="btn btn-danger" @onclick="() => DeleteClient(Client.ClientsId)">
+                            <i class="fas fa-trash me-2"></i>Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int clientId { get; set; }
+    private ClientDto? Client { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClient();
+    }
+
+    private async Task LoadClient()
+    {
+        var result = await ClientService.GetClientByIdAsync(clientId);
+        if (result.IsSuccess)
+        {
+            Client = result.Value;
+        }
+        else
+        {
+            ErrorMessage = result.Error;
+        }
+    }
+
+    private void EditClient(int clientId)
+    {
+        NavigateTo($"/clients/edit/{clientId}");
+    }
+
+    private void DeleteClient(int clientId)
+    {
+        NavigateTo($"/clients/delete/{clientId}");
+    }
+}
+<style>
+    .page-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .icon-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .icon-circle-sm {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .detail-item {
+        border-bottom: 1px solid #e9ecef;
+        padding: 1rem 0;
+    }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+    .stat-card {
+        padding: 1.5rem;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        transition: transform 0.3s ease;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .btn-group .btn {
+        border-radius: 8px;
+        margin: 0 5px;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .card-header {
+        border-bottom: 1px solid #e9ecef;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    }
+
+</style>

@@ -1,0 +1,400 @@
+﻿@page "/orders/payment-edit/{OrdersId::int}"
+@using LogisticCompany.Db
+@using LogisticCompany.Domain.Entities.Tracking
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbContextFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+                <!-- Заголовок -->
+                <div class="text-center mb-5">
+                    <h1 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-edit me-3"></i>Редактирование заказа перед оплатой
+                    </h1>
+                    <p class="text-muted">Проверьте и при необходимости обновите информацию о заказе</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(alertMessage))
+                {
+                    <div class="alert @(isAlertSuccess ? "alert-success" : "alert-danger") mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="fas @(isAlertSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+                            <span>@alertMessage</span>
+                            <button class="btn-close ms-auto" @onclick="ClearAlert"></button>
+                        </div>
+                    </div>
+                }
+                @if (order == null)
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center py-5">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <h5 class="text-muted">Загрузка данных заказа...</h5>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <EditForm Model="orderEditModel" OnValidSubmit="SaveAndProcessPayment" FormName="paymentEdit">
+                        <DataAnnotationsValidator />
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-warning text-dark py-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle me-3 fs-5"></i>
+                                    <h5 class="mb-0 fw-bold">Внимание: редактирование заказа</h5>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    После сохранения изменений заказ будет переведен в статус "Ожидает оплаты" и вы будете перенаправлены на страницу оплаты.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Информация о получателе -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-info text-white py-3">
+                                <h5 class="mb-0 fw-bold">
+                                    <i class="fas fa-user-tag me-2"></i>Данные получателя
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Фамилия *</label>
+                                        <InputText @bind-Value="orderEditModel.LastRecepientName" class="form-control" />
+                                        <ValidationMessage For="() => orderEditModel.LastRecepientName" class="text-danger small" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Имя *</label>
+                                        <InputText @bind-Value="orderEditModel.FirstRecepientName" class="form-control" />
+                                        <ValidationMessage For="() => orderEditModel.FirstRecepientName" class="text-danger small" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Отчество</label>
+                                        <InputText @bind-Value="orderEditModel.MiddleRecepientName" class="form-control" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark">Телефон *</label>
+                                        <InputText @bind-Value="orderEditModel.PhoneRecepient" class="form-control" />
+                                        <ValidationMessage For="() => orderEditModel.PhoneRecepient" class="text-danger small" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Информация о посылке -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-warning text-dark py-3">
+                                <h5 class="mb-0 fw-bold">
+                                    <i class="fas fa-box me-2"></i>Информация о посылке
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-dark">Описание посылки</label>
+                                    <InputTextArea @bind-Value="orderEditModel.DescriptionParcel" class="form-control" rows="3" />
+                                </div>
+
+                                @if (order.TemplateId == null)
+                                {
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Длина (см)</label>
+                                            <InputNumber @bind-Value="orderEditModel.LengthCm" class="form-control" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Ширина (см)</label>
+                                            <InputNumber @bind-Value="orderEditModel.WidthCm" class="form-control" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Высота (см)</label>
+                                            <InputNumber @bind-Value="orderEditModel.HeightCm" class="form-control" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Вес (кг)</label>
+                                            <InputNumber @bind-Value="orderEditModel.Weight" class="form-control" />
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Используется шаблон посылки: <strong>@order.Template?.TemplateName</strong>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Адрес доставки -->
+                        @if (order.DeliveryTypeId == 1)
+                        {
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-primary text-white py-3">
+                                    <h5 class="mb-0 fw-bold">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Адрес доставки
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Адрес курьерской доставки *</label>
+                                        <InputText @bind-Value="orderEditModel.CourierDestAddress" class="form-control" />
+                                        <ValidationMessage For="() => orderEditModel.CourierDestAddress" class="text-danger small" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Сводка изменений -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-light py-3">
+                                <h5 class="mb-0 fw-bold text-dark">
+                                    <i class="fas fa-clipboard-list me-2"></i>Сводка заказа
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="fw-semibold">Маршрут:</h6>
+                                        <p class="mb-2">
+                                            <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                            @order.OriginTown?.TownName → @order.DestinationTown?.TownName
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="fw-semibold">Тип доставки:</h6>
+                                        <p class="mb-2">@order.DeliveryType?.NameDeliveryType</p>
+                                    </div>
+                                </div>
+                                @if (order.Payments.Any())
+                                {
+                                    var payment = order.Payments.First();
+                                    <div class="alert alert-success mt-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">Сумма к оплате:</h6>
+                                                <span class="h4 fw-bold text-success">@payment.Amount.ToString()</span>
+                                            </div>
+                                            <i class="fas fa-credit-card fa-2x text-success"></i>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Кнопки действий -->
+                        <div class="d-flex gap-3 justify-content-center">
+                            <button type="button" class="btn btn-outline-secondary btn-lg px-5" @onclick="CancelEdit">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg px-5" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span>
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        Сохранение...
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>
+                                        <i class="fas fa-save me-2"></i>
+                                        Сохранить и перейти к оплате
+                                    </span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+<!-- В разметке, после формы -->
+@if (isAlertSuccess && shouldNavigateToPayment)
+{
+    <div class="card border-success mt-4">
+        <div class="card-body text-center">
+            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+            <h5 class="text-success">Данные успешно сохранены!</h5>
+            <p class="text-muted">Заказ переведен в статус 'Ожидает оплаты'</p>
+            <button class="btn btn-success btn-lg" @onclick="NavigateToPayment">
+                <i class="fas fa-credit-card me-2"></i>Перейти к оплате
+            </button>
+        </div>
+    </div>
+}
+@code {
+    [Parameter] public int OrdersId { get; set; }
+
+    private Order? order;
+    private OrderEditModel orderEditModel = new();
+    private bool isSaving = false;
+    private string alertMessage = "";
+    private bool isAlertSuccess = false;
+    private bool shouldNavigateToPayment = false;
+
+    public class OrderEditModel
+    {
+
+        public string LastRecepientName { get; set; } = string.Empty;
+
+
+        public string FirstRecepientName { get; set; } = string.Empty;
+
+        public string? MiddleRecepientName { get; set; }
+
+        public string PhoneRecepient { get; set; } = string.Empty;
+
+        public string DescriptionParcel { get; set; } = string.Empty;
+        public decimal? LengthCm { get; set; }
+        public decimal? WidthCm { get; set; }
+        public decimal? HeightCm { get; set; }
+        public decimal? Weight { get; set; }
+        public string? CourierDestAddress { get; set; }
+    }
+    private void NavigateToPayment()
+    {
+        Navigation.NavigateTo($"/orders/payment/{OrdersId}");
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrderData();
+    }
+
+    private async Task LoadOrderData()
+    {
+        using var context = await DbContextFactory.CreateDbContextAsync();
+
+        order = await context.Orders
+            .Include(o => o.OriginTown)
+            .Include(o => o.DestinationTown)
+            .Include(o => o.DeliveryType)
+            .Include(o => o.Template)
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.OrdersId == OrdersId);
+
+        if (order != null)
+        {
+            orderEditModel = new OrderEditModel
+            {
+                LastRecepientName = order.LastRecepientName,
+                FirstRecepientName = order.FirstRecepientName,
+                MiddleRecepientName = order.MiddleRecepientName,
+                PhoneRecepient = order.PhoneRecepient,
+                DescriptionParcel = order.DescriptionParcel,
+                LengthCm = order.LengthCm,
+                WidthCm = order.WidthCm,
+                HeightCm = order.HeightCm,
+                Weight = order.Weight,
+                CourierDestAddress = order.CourierDestAddress
+            };
+        }
+    }
+    private void ClearAlert()
+    {
+        alertMessage = "";
+        StateHasChanged();
+    }
+    private async Task SaveAndProcessPayment()
+    {
+        isSaving = true;
+        alertMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Убираем транзакцию и делаем простой подход
+            try
+            {
+                // 1. Обновляем данные заказа
+                var orderToUpdate = await context.Orders
+                    .FirstOrDefaultAsync(o => o.OrdersId == OrdersId);
+
+                if (orderToUpdate == null)
+                {
+                    alertMessage = "Заказ не найден!";
+                    isAlertSuccess = false;
+                    return;
+                }
+
+                orderToUpdate.LastRecepientName = orderEditModel.LastRecepientName;
+                orderToUpdate.FirstRecepientName = orderEditModel.FirstRecepientName;
+                orderToUpdate.MiddleRecepientName = orderEditModel.MiddleRecepientName;
+                orderToUpdate.PhoneRecepient = orderEditModel.PhoneRecepient;
+                orderToUpdate.DescriptionParcel = orderEditModel.DescriptionParcel;
+
+                if (orderToUpdate.TemplateId == null)
+                {
+                    orderToUpdate.LengthCm = orderEditModel.LengthCm;
+                    orderToUpdate.WidthCm = orderEditModel.WidthCm;
+                    orderToUpdate.HeightCm = orderEditModel.HeightCm;
+                    orderToUpdate.Weight = orderEditModel.Weight;
+                }
+
+                if (orderToUpdate.DeliveryTypeId == 1)
+                {
+                    orderToUpdate.CourierDestAddress = orderEditModel.CourierDestAddress;
+                }
+
+
+                // 2. Создаем запись в трекинге с новым статусом
+                var tracking = new Tracking
+                {
+                    OrdersId = OrdersId,
+                    LocationTrackings = orderToUpdate.OriginTown?.TownName ?? "Офис компании",
+                    UpdateDate = DateTime.Now,
+                    StatusId = 2, // Статус "Ожидает оплаты"
+                    BranchesId = orderToUpdate.PickupBranchesId
+                };
+
+                await context.Trackings.AddAsync(tracking);
+                await context.SaveChangesAsync();
+
+                alertMessage = "Данные успешно сохранены! Заказ переведен в статус 'Ожидает оплаты'.";
+                isAlertSuccess = true;
+                StateHasChanged();
+
+                shouldNavigateToPayment = true;
+                StateHasChanged();
+            }
+            catch (DbUpdateException dbEx)
+            {
+                alertMessage = $"Ошибка базы данных при сохранении: {dbEx.InnerException?.Message ?? dbEx.Message}";
+                isAlertSuccess = false;
+            }
+            catch (Exception ex)
+            {
+                alertMessage = $"Ошибка при сохранении: {ex.Message}";
+                isAlertSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Ошибка подключения к базе данных: {ex.Message}";
+            isAlertSuccess = false;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        Navigation.NavigateTo($"/orders/details/{OrdersId}");
+    }
+}

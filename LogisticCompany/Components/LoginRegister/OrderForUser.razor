@@ -1,0 +1,1148 @@
+﻿@page "/create-order"
+@rendermode InteractiveServer
+@using LogisticCompany.Db;
+@using LogisticCompany.Domain.Entities.Location;
+@using LogisticCompany.Domain.Entities.Orders;
+@using LogisticCompany.Domain.Entities.Tracking;
+@using LogisticCompany.DTO;
+@using LogisticCompany.Infrastructure.Service;
+@using Microsoft.AspNetCore.Components;
+@using Microsoft.AspNetCore.Components.Authorization;
+@using Microsoft.AspNetCore.Components.Forms;
+@using Microsoft.EntityFrameworkCore;
+@using Microsoft.JSInterop;
+@using System.ComponentModel.DataAnnotations;
+
+
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+                <!-- Заголовок -->
+                <div class="text-center mb-5">
+                    <h1 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-shipping-fast me-3"></i>Создание заказа
+                    </h1>
+                    <p class="text-muted">Заполните информацию о вашей посылке для доставки</p>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            @foreach (var stepInfo in steps)
+                            {
+                                <div class="text-center flex-fill">
+                                    <div class="step-indicator @(step >= stepInfo.Number ? "active" : "") 
+                                              @(step == stepInfo.Number ? "current" : "")">
+                                        <div class="step-circle">
+                                            @if (step > stepInfo.Number)
+                                            {
+                                                <i class="fas fa-check"></i>
+                                            }
+                                            else
+                                            {
+                                                @stepInfo.Number
+                                            }
+                                        </div>
+                                        <div class="step-label mt-2">@stepInfo.Label</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if(step > 1)
+                {
+                    <div class="mb-3">
+                        <button class="btn btn-outline-secondary" @onclick="GoBack">
+                            <i class="fas fa-arrow-left me-2"></i>Назад
+                        </button>
+                    </div>
+                }
+
+                <EditForm Model="@order" FormName="createOrderUser">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <!-- Step 1: Данные пользователя -->
+                    @if (step == 1)
+                    {
+                        <div class="row">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-success text-white py-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-user me-3 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">Мои данные</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    @if (HasClientData)
+                                    {
+                                        <div class="alert alert-success mb-4">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-check-circle me-3 fs-5"></i>
+                                                <div>
+                                                    <h6 class="alert-heading mb-1">Данные загружены</h6>
+                                                    <p class="mb-0">Ваши данные успешно загружены из личного кабинета</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Email</label>
+                                                <InputText class="form-control" @bind-Value="currentClient.Email" Disabled="true" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Телефон</label>
+                                                <InputText class="form-control" @bind-Value="currentClient.Phone" Disabled="true" />
+                                            </div>
+                                            
+                                            @if (currentClient.ClientTypeId == 1 && currentClient.IndividualClients?.Any() == true)
+                                            {
+                                                var indiv = currentClient.IndividualClients.First();
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Фамилия</label>
+                                                    <InputText class="form-control" @bind-Value="indiv.LastName" Disabled="true" />
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Имя</label>
+                                                    <InputText class="form-control" @bind-Value="indiv.FirstName" Disabled="true" />
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Отчество</label>
+                                                    <InputText class="form-control" @bind-Value="indiv.PatronymicName" Disabled="true" />
+                                                </div>
+                                            }
+                                            else if (currentClient.ClientTypeId == 2 && currentClient.CompanyClients?.Any() == true)
+                                            {
+                                                var comp = currentClient.CompanyClients.First();
+                                                <div class="col-md-12">
+                                                    <label class="form-label fw-semibold text-dark">Название компании</label>
+                                                    <InputText class="form-control" @bind-Value="comp.CompanyName" Disabled="true" />
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <div class="mt-4 pt-3 border-top">
+                                            <div class="row">
+                                                <div class="col-md-8">
+                                                    <div class="alert alert-info mb-0">
+                                                        <small>
+                                                            <i class="fas fa-info-circle me-2"></i>
+                                                            Для изменения данных перейдите в <NavLink href="/account" class="alert-link">личный кабинет</NavLink>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 text-end">
+                                                    <button type="button" class="btn btn-success btn-lg px-5" @onclick="() => NextStep(1)">
+                                                        Продолжить <i class="fas fa-arrow-right ms-2"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-exclamation-triangle me-3 fs-5"></i>
+                                                <div>
+                                                    <h6 class="alert-heading mb-1">Необходимо заполнить данные</h6>
+                                                    <p class="mb-0">Для создания заказа необходимо заполнить ваши данные в личном кабинете</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-center mt-4 py-3">
+                                            <NavLink href="/account" class="btn btn-primary btn-lg px-5">
+                                                <i class="fas fa-user-edit me-2"></i>Перейти в личный кабинет
+                                            </NavLink>
+                                            <div class="mt-3">
+                                                <small class="text-muted">
+                                                    После заполнения данных вернитесь на эту страницу для создания заказа
+                                                </small>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Step 2: Получатель -->
+                    @if (step == 2)
+                    {
+                        <div class="row">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-info text-white py-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-user-tag me-3 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">Данные получателя</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info mb-4">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Укажите данные человека, который будет получать посылку
+                                    </div>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Фамилия *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-user text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="order.LastRecepientName" class="form-control" 
+                                                          placeholder="Иванов" />
+                                            </div>
+                                            <ValidationMessage For="() => order.LastRecepientName" class="text-danger small mt-1" />
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Имя *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-user text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="order.FirstRecepientName" class="form-control" 
+                                                          placeholder="Иван" />
+                                            </div>
+                                            <ValidationMessage For="() => order.FirstRecepientName" class="text-danger small mt-1" />
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Отчество</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-user text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="order.MiddleRecepientName" class="form-control" 
+                                                          placeholder="Иванович" />
+                                            </div>
+                                            <ValidationMessage For="() => order.MiddleRecepientName" class="text-danger small mt-1" />
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <label class="form-label fw-semibold text-dark">Телефон *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-phone text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="order.PhoneRecepient" class="form-control" 
+                                                      placeholder="+7 (XXX) XXX-XX-XX" />
+                                        </div>
+                                        <ValidationMessage For="() => order.PhoneRecepient" class="text-danger small mt-1" />
+                                    </div>
+
+                                    <div class="mt-4 pt-3 border-top">
+                                        <button class="btn btn-info btn-lg w-100" 
+                                                @onclick="() => NextStep(2)"
+                                                disabled="@(string.IsNullOrWhiteSpace(order.FirstRecepientName?.Trim()) ||
+                                                           string.IsNullOrWhiteSpace(order.LastRecepientName?.Trim()) ||
+                                                           string.IsNullOrWhiteSpace(order.PhoneRecepient?.Trim()))">
+                                            Продолжить <i class="fas fa-arrow-right ms-2"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Step 3: Посылка -->
+                    @if (step == 3)
+                    {
+                        <div class="row">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-warning text-dark py-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-box me-3 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">Информация о посылке</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold text-dark mb-3">Тип посылки *</label>
+                                        <InputRadioGroup @bind-Value="selectedTypeParcel">
+                                            <div class="btn-group w-100" role="group">
+                                                <label class="btn @(selectedTypeParcel == 1 ? "btn-warning text-dark" : "btn-outline-warning")">
+                                                    <InputRadio Value="1" />
+                                                    <i class="fas fa-cube me-2"></i>Стандартные размеры
+                                                </label>
+                                                <label class="btn @(selectedTypeParcel == 2 ? "btn-warning text-dark" : "btn-outline-warning")">
+                                                    <InputRadio Value="2" />
+                                                    <i class="fas fa-ruler-combined me-2"></i>Нестандартные размеры
+                                                </label>
+                                            </div>
+                                        </InputRadioGroup>
+                                    </div>
+
+                                    @if (selectedTypeParcel == 1)
+                                    {
+                                        <div class="mb-4">
+                                            <label class="form-label fw-semibold text-dark">Шаблон посылки</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-box-open text-muted"></i>
+                                                </span>
+                                                <InputSelect @bind-Value="order.ParcelTemplateId" class="form-select">
+                                                    <option value="0" disabled selected>Выберите шаблон посылки</option>
+                                                    @if (parcelTemplates != null)
+                                                    {
+                                                        @foreach (var template in parcelTemplates)
+                                                        {
+                                                            <option value="@template.TemplateId">
+                                                                @template.TemplateName — @template.LengthCm×@template.WidthCm×@template.HeightCm см, до @template.MaxWeight кг
+                                                            </option>
+                                                        }
+                                                    }
+                                                </InputSelect>
+                                            </div>
+                                            <ValidationMessage For="() => order.ParcelTemplateId" class="text-danger small mt-1" />
+                                        </div>
+                                    }
+                                    else if (selectedTypeParcel == 2)
+                                    {
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Длина (см) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-ruler-vertical text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.LengthCm" class="form-control" 
+                                                                placeholder="0" />
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Ширина (см) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-ruler-horizontal text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.WidthCm" class="form-control" 
+                                                                placeholder="0" />
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Высота (см) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-arrows-alt-v text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.HeightCm" class="form-control" 
+                                                                placeholder="0" />
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Вес (кг) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-weight-hanging text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.Weight" class="form-control" 
+                                                                placeholder="0" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="mt-4">
+                                        <label class="form-label fw-semibold text-dark">Описание посылки</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-file-alt text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="order.DescriptionParcel" class="form-control" 
+                                                      placeholder="Опишите содержимое посылки..." />
+                                        </div>
+                                        <ValidationMessage For="() => order.DescriptionParcel" class="text-danger small mt-1" />
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button class="btn btn-warning text-dark w-100" 
+                                                @onclick="() => NextStep(3)"
+                                                disabled="@(!IsParcelValid())">
+                                            Продолжить <i class="fas fa-arrow-right ms-2"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Step 4: Доставка -->
+                    @if (step == 4)
+                    {
+                        <div class="col">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-primary text-white py-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-shipping-fast me-3 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">Информация о доставке</h5>
+                                    </div>
+                                </div>
+                               
+                                <div class="card-body">
+                                    <div class="row">
+                                        <!-- Отправление -->
+                                        <div class="row">
+                                            <div class="card border-0 bg-light h-100">
+                                                <div class="card-header bg-white border-0">
+                                                    <h6 class="mb-0 fw-bold text-primary">
+                                                        <i class="fas fa-location-arrow me-2"></i>Место отправления
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-dark">Страна отправления</label>
+                                                        <InputSelect @bind-Value="order.OriginCountryId" class="form-select">
+                                                            <option value="0" disabled>Выберите страну</option>
+                                                            @if (countries != null)
+                                                            {
+                                                                @foreach (var ct in countries)
+                                                                {
+                                                                    <option value="@ct.CountryId">@ct.CountryName</option>
+                                                                }
+                                                            }
+                                                        </InputSelect>
+                                                        <ValidationMessage For="() => order.OriginCountryId" class="text-danger small mt-1" />
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-dark">Город отправления</label>
+                                                        <InputSelect @bind-Value="order.OriginTownId" class="form-select">
+                                                            <option value="0" disabled>Выберите город</option>
+                                                            @if (towns != null)
+                                                            {
+                                                                foreach (var town in FilteredTowns)
+                                                                {
+                                                                    <option value="@town.TownId">@town.TownName</option>
+                                                                }
+                                                            }
+                                                        </InputSelect>
+                                                        <ValidationMessage For="() => order.OriginTownId" class="text-danger small mt-1" />
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-dark">Филиал забора</label>
+                                                        <InputSelect @bind-Value="order.PickupBranchesId" class="form-select">
+                                                            <option value="0" disabled>Выберите филиал</option>
+                                                            @if (branches != null)
+                                                            {
+                                                                foreach (var branch in FilteredBranches)
+                                                                {
+                                                                    <option value="@branch.BranchesId">@branch.NameBranches</option>
+                                                                }
+                                                            }
+                                                        </InputSelect>
+                                                        <ValidationMessage For="() => order.PickupBranchesId" class="text-danger small mt-1" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Тип доставки и транспорт -->
+                                        <div class="row ">
+                                            <div class="card border-0 bg-light">
+                                                <div class="card-header bg-white border-0">
+                                                    <h6 class="mb-0 fw-bold text-primary">
+                                                        <i class="fas fa-cogs me-2"></i>Настройки доставки
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <label class="form-label fw-semibold text-dark">Тип доставки</label>
+                                                        <InputSelect @bind-Value="order.DeliveryTypeId" class="form-select">
+                                                            <option value="0" disabled>Выберите тип доставки</option>
+                                                            @if (deliveryTypes != null)
+                                                            {
+                                                                @foreach (var dl in deliveryTypes)
+                                                                {
+                                                                    <option value="@dl.DeliveryTypeId">@dl.NameDeliveryType</option>
+                                                                }
+                                                            }
+                                                        </InputSelect>
+                                                        <ValidationMessage For="() => order.DeliveryTypeId" class="text-danger small mt-1" />
+                                                    </div>
+                                                    <div class="row">
+                                                        <label class="form-label fw-semibold text-dark">Тип транспорта</label>
+                                                        <InputSelect @bind-Value="order.TransportTypeId" class="form-select">
+                                                            <option value="0" disabled>Выберите транспорт</option>
+                                                            @if (transportTypes != null)
+                                                            {
+                                                                @foreach (var transportType in transportTypes)
+                                                                {
+                                                                    <option value="@transportType.TransportTypeId">@transportType.NameTransportType</option>
+                                                                }
+                                                            }
+                                                        </InputSelect>
+                                                        <ValidationMessage For="() => order.TransportTypeId" class="text-danger small mt-1" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Назначение -->
+                                        <div class="row">
+                                            <div class="card border-0 bg-light h-100">
+                                                <div class="card-header bg-white border-0">
+                                                    <h6 class="mb-0 fw-bold text-primary">
+                                                        <i class="fas fa-map-marker-alt me-2"></i>Место назначения
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-dark">Страна назначения</label>
+                                                        <InputSelect @bind-Value="order.DestinationCountryId" class="form-select">
+                                                            <option value="0" disabled>Выберите страну</option>
+                                                            @if (countries != null)
+                                                            {
+                                                                @foreach (var ct in countries)
+                                                                {
+                                                                    <option value="@ct.CountryId">@ct.CountryName</option>
+                                                                }
+                                                            }
+                                                        </InputSelect>
+                                                        <ValidationMessage For="() => order.DestinationCountryId" class="text-danger small mt-1" />
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-dark">Город назначения</label>
+                                                        <InputSelect @bind-Value="order.DestinationTownId" class="form-select">
+                                                            <option value="0" disabled>Выберите город</option>
+                                                            @if (towns != null)
+                                                            {
+                                                                @foreach (var town in FilteredTownsDes)
+                                                                {
+                                                                    <option value="@town.TownId">@town.TownName</option>
+                                                                }
+                                                            }
+                                                        </InputSelect>
+                                                        <ValidationMessage For="() => order.DestinationTownId" class="text-danger small mt-1" />
+                                                    </div>
+
+                                                    @if (order.DeliveryTypeId == 2)
+                                                    {
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold text-dark">Филиал назначения</label>
+                                                            <InputSelect @bind-Value="order.DestinationBranchesId" class="form-select">
+                                                                <option value="0" disabled>Выберите филиал</option>
+                                                                @if (branches != null)
+                                                                {
+                                                                    @foreach (var branch in FilteredBranchesDes)
+                                                                    {
+                                                                        <option value="@branch.BranchesId">@branch.NameBranches</option>
+                                                                    }
+                                                                }
+                                                            </InputSelect>
+                                                            <ValidationMessage For="() => order.DestinationBranchesId" class="text-danger small mt-1" />
+                                                        </div>
+                                                    }
+
+                                                    @if (order.DeliveryTypeId == 1)
+                                                    {
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold text-dark">Адрес доставки</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text bg-light">
+                                                                    <i class="fas fa-home text-muted"></i>
+                                                                </span>
+                                                                <InputText @bind-Value="order.CourierDestAddress" class="form-control" 
+                                                                           placeholder="Введите полный адрес доставки" />
+                                                            </div>
+                                                            <ValidationMessage For="() => order.CourierDestAddress" class="text-danger small mt-1" />
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        @if (order.OriginTownId > 0 && order.DestinationTownId > 0)
+                                        {
+                                            <div class="row">
+                                                <div class="card border-0 shadow-sm">
+                                                    <div class="card-header bg-info text-white">
+                                                        <h6 class="mb-0">
+                                                            <i class="fas fa-calculator me-2"></i>Расчет стоимости доставки
+                                                        </h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <!-- Индикатор загрузки -->
+                                                        @if (calculatedPrice == -1)
+                                                        {
+                                                            <div class="text-center py-3">
+                                                                <div class="spinner-border text-info mb-2" role="status">
+                                                                    <span class="visually-hidden">Загрузка...</span>
+                                                                </div>
+                                                                <div class="text-muted">Рассчитываем стоимость...</div>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="row text-center">
+                                                                <div class="col-md-4 mb-3">
+                                                                    <div class="border rounded p-3 bg-light">
+                                                                        <small class="text-muted d-block">Расстояние</small>
+                                                                        <span class="h5 text-primary">@distance.ToString("F1") км</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-4 mb-3">
+                                                                    <div class="border rounded p-3 bg-light">
+                                                                        <small class="text-muted d-block">Тариф</small>
+                                                                        <span class="h6 text-success">
+                                                                            @(deliveryTariffs.FirstOrDefault(t => t.DeliveryTypeId == order.DeliveryTypeId)?.BasePrice.ToString("F2") ?? "0.00")
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-4 mb-3">
+                                                                    <div class="border rounded p-3 bg-success text-white">
+                                                                        <small class="d-block">Итого</small>
+                                                                        <span class="h5">@calculatedPrice.ToString("F2")</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        }
+
+                                                        <!-- Кнопка расчета -->
+                                                        <div class="text-center mt-3">
+                                                            <button type="button" class="btn @(calculatedPrice > 0 ? "btn-outline-info" : "btn-info")"
+                                                                    @onclick="CalculatePrice"
+                                                                    disabled="@(order.OriginTownId == 0 || order.DestinationTownId == 0)">
+                                                                <i class="fas @(calculatedPrice > 0 ? "fa-sync-alt" : "fa-calculator") me-2"></i>
+                                                                @(calculatedPrice > 0 ? "Пересчитать стоимость" : "Рассчитать стоимость")
+                                                            </button>
+
+                                                            @if (calculatedPrice > 0)
+                                                            {
+                                                                <div class="mt-2">
+                                                                    <small class="text-muted">
+                                                                        <i class="fas fa-info-circle me-1"></i>
+                                                                        Сумма автоматически подставится в раздел оплаты
+                                                                    </small>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    
+                                    <div class="mt-4 text-center">
+                                        <button class="btn btn-primary px-5"
+                                                @onclick="() => NextStep(4)"
+                                                disabled="@(order.OriginCountryId == 0 || order.OriginTownId == 0 || order.PickupBranchesId == 0 ||
+                                                           order.DestinationCountryId == 0 || order.DestinationTownId == 0 ||
+                                                           (order.DeliveryTypeId == 2 && order.DestinationBranchesId == 0) ||
+                                                           (order.DeliveryTypeId == 1 && string.IsNullOrWhiteSpace(order.CourierDestAddress)))">
+                                            Продолжить <i class="fas fa-arrow-right ms-2"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Step 5: Оплата -->
+                    @if (step == 5)
+                    {
+                        <div class="row">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-purple text-white py-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-credit-card me-3 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">Оплата заказа</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Сообщение об оплате в офисе -->
+                                    <div class="alert alert-info mb-4">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-building me-3 fs-4"></i>
+                                            <div>
+                                                <h6 class="alert-heading mb-2">Оплата производится в офисе</h6>
+                                                <p class="mb-0">После создания заказа вам необходимо посетить наш офис для оплаты и оформления документов.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold text-dark">Сумма к оплате</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-dollar-sign text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="order.Amount" class="form-control"
+                                                       placeholder="0.00"
+                                                       readonly="@(calculatedPrice > 0)" Disabled="true" />
+                                        </div>
+                                        @if (calculatedPrice > 0)
+                                        {
+                                            <small class="text-success">
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                Сумма рассчитана автоматически
+                                            </small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">
+                                                Нажмите "Рассчитать стоимость" в предыдущем шаге
+                                            </small>
+                                        }
+                                    </div>
+
+                                    <!-- Информация о заказе -->
+                                    <div class="card border-0 bg-light mt-4">
+                                        <div class="card-body">
+                                            <h6 class="fw-bold text-dark mb-3">Сводка заказа:</h6>
+                                            <div class="row small">
+                                                <div class="col-md-6">
+                                                    <strong>Откуда:</strong><br>
+                                                    @{
+                                                        var originCountry = countries.FirstOrDefault(c => c.CountryId == order.OriginCountryId)?.CountryName ?? "-";
+                                                        var originTown = towns.FirstOrDefault(t => t.TownId == order.OriginTownId)?.TownName ?? "-";
+                                                        var originBranch = branches.FirstOrDefault(b => b.BranchesId == order.PickupBranchesId)?.NameBranches ?? "-";
+                                                    }
+                                                    @originCountry, @originTown<br>
+                                                    Филиал: @originBranch
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Куда:</strong><br>
+                                                    @{
+                                                        var destCountry = countries.FirstOrDefault(c => c.CountryId == order.DestinationCountryId)?.CountryName ?? "-";
+                                                        var destTown = towns.FirstOrDefault(t => t.TownId == order.DestinationTownId)?.TownName ?? "-";
+                                                    }
+                                                    @destCountry, @destTown<br>
+                                                    @if (order.DeliveryTypeId == 2)
+                                                    {
+                                                        var destBranch = branches.FirstOrDefault(b => b.BranchesId == order.DestinationBranchesId)?.NameBranches ?? "-";
+                                                        <text>Филиал: @destBranch</text>
+                                                    }
+                                                    else
+                                                    {
+                                                        <text>Адрес: @order.CourierDestAddress</text>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="row small mt-3">
+                                                <div class="col-md-6">
+                                                    <strong>Получатель:</strong><br>
+                                                    @order.LastRecepientName @order.FirstRecepientName @order.MiddleRecepientName<br>
+                                                    Телефон: @order.PhoneRecepient
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Посылка:</strong><br>
+                                                    @if (selectedTypeParcel == 1 && order.ParcelTemplateId > 0)
+                                                    {
+                                                        var template = parcelTemplates.FirstOrDefault(t => t.TemplateId == order.ParcelTemplateId);
+                                                        <text>@template?.TemplateName</text>
+                                                    }
+                                                    else
+                                                    {
+                                                        <text>@order.LengthCm×@order.WidthCm×@order.HeightCm см, @order.Weight кг</text>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Инструкция по оплате -->
+                                    <div class="card border-warning mt-4">
+                                        <div class="card-header bg-warning text-dark">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-info-circle me-2"></i>Инструкция по оплате
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <ol class="mb-0">
+                                                <li>Создайте заказ, нажав кнопку "Создать заказ"</li>
+                                                <li>Посетите наш офис с документами, удостоверяющими личность</li>
+                                                <li>Оплатите заказ в кассе</li>
+                                                <li>Получите квитанцию и трек-номер для отслеживания</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-4">
+                                        <button type="submit" class="btn btn-success flex-fill" @onclick="SaveOrder">
+                                            <i class="fas fa-check-circle me-2"></i>Создать заказ
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code{
+    [SupplyParameterFromForm]
+    protected OrdersDTO order { get; set; } = new();
+
+    [Inject] protected IJSRuntime JS { get; set; }
+    [Inject] protected IDbContextFactory<AppDbContext> DbContextFactory { get; set; }
+    [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; }
+    [Inject] protected NavigationManager NavigationManager { get; set; }
+    [Inject] protected IHttpClientFactory HttpClientFactory { get; set; }
+    [Inject]
+    protected AppDbContext context { get; set; }
+    protected List<Town> towns = new();
+    protected List<Branch> branches = new();
+    protected List<DeliveryType> deliveryTypes = new();
+    protected List<TransportType> transportTypes = new();
+    protected List<PaymentMethod> paymentMethods = new();
+    protected List<Country> countries = new();
+    protected List<ParcelTemplate> parcelTemplates = new();
+
+    protected decimal calculatedPrice = 0;
+    protected decimal distance = 0;
+    protected List<DeliveryTariff> deliveryTariffs = new();
+    protected OpenStreetMapService _mapService;
+
+    protected int selectedTypeParcel = 1;
+    protected int step = 1;
+
+    protected Client currentClient = new();
+    protected bool HasClientData => currentClient != null &&
+        (!string.IsNullOrEmpty(currentClient.Phone) ||
+         (currentClient.IndividualClients?.Any() == true &&
+          !string.IsNullOrEmpty(currentClient.IndividualClients.First().FirstName)) ||
+         (currentClient.CompanyClients?.Any() == true &&
+          !string.IsNullOrEmpty(currentClient.CompanyClients.First().CompanyName)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = await DbContextFactory.CreateDbContextAsync();
+
+        // Загружаем данные текущего пользователя
+        await LoadCurrentUserData();
+
+        towns = await db.Towns.ToListAsync();
+        branches = await db.Branches.ToListAsync();
+        deliveryTypes = await db.DeliveryTypes.ToListAsync();
+        transportTypes = await db.TransportTypes.ToListAsync();
+        paymentMethods = await db.PaymentMethods.ToListAsync();
+        countries = await db.Countries.ToListAsync();
+        parcelTemplates = await db.ParcelTemplates.ToListAsync();
+
+        // ЗАГРУЗКА ТАРИФОВ
+        deliveryTariffs = await db.DeliveryTariffs.Where(t => t.IsActive).ToListAsync();
+
+        // ИНИЦИАЛИЗАЦИЯ СЕРВИСА
+        _mapService = new OpenStreetMapService(HttpClientFactory.CreateClient());
+    }
+
+    protected async Task LoadCurrentUserData()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity.IsAuthenticated)
+            {
+                using var db = await DbContextFactory.CreateDbContextAsync();
+
+                // Загружаем данные клиента по email
+                currentClient = await db.Clients
+                    .Include(c => c.IndividualClients)
+                    .Include(c => c.CompanyClients)
+                    .FirstOrDefaultAsync(c => c.Email.ToLower() == user.Identity.Name.ToLower());
+
+                if (currentClient != null)
+                {
+                    // Автоматически устанавливаем клиента для заказа
+                    order.ClientsId = currentClient.ClientsId;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка загрузки данных пользователя: {ex.Message}");
+        }
+    }
+
+    protected void NextStep(int s)
+    {
+        if (s == step)
+        {
+            step++;
+            StateHasChanged();
+        }
+        switch (s)
+        {
+            case 1 when HasClientData:
+                step = 2;
+                break;
+            case 2 when (!string.IsNullOrWhiteSpace(order.FirstRecepientName?.Trim()) &&
+             !string.IsNullOrWhiteSpace(order.LastRecepientName?.Trim()) &&
+             !string.IsNullOrWhiteSpace(order.PhoneRecepient?.Trim())):
+                step = 3;
+                break;
+            case 3 when IsParcelValid():
+                step = 4;
+                break;
+            case 4 when order.OriginCountryId != 0
+     && order.OriginTownId != 0
+     && order.PickupBranchesId != 0
+     && order.DestinationCountryId != 0
+     && order.DestinationTownId != 0
+     && ((order.DeliveryTypeId == 2 && order.DestinationBranchesId != 0)
+         || (order.DeliveryTypeId == 1 && !string.IsNullOrWhiteSpace(order.CourierDestAddress))):
+                step = 5;
+                break;
+            case 5 when !string.IsNullOrWhiteSpace(order.Amount):
+                step = 5;
+                break;
+        }
+
+    }
+
+    protected bool IsOrderValid()
+    {
+        // Убрана проверка PaymentMethodId
+        return HasClientData &&
+               !string.IsNullOrWhiteSpace(order.FirstRecepientName) &&
+               !string.IsNullOrWhiteSpace(order.LastRecepientName) &&
+               !string.IsNullOrWhiteSpace(order.PhoneRecepient) &&
+               IsParcelValid() &&
+               order.OriginTownId != 0 &&
+               order.PickupBranchesId != 0 &&
+               order.DestinationTownId != 0 &&
+               order.DeliveryTypeId != 0 &&
+               order.TransportTypeId != 0 &&
+               !string.IsNullOrWhiteSpace(order.Amount) &&
+               ((order.DeliveryTypeId == 2 && order.DestinationBranchesId != 0) ||
+                (order.DeliveryTypeId == 1 && !string.IsNullOrWhiteSpace(order.CourierDestAddress)));
+    }
+
+    protected async Task SaveOrder()
+    {
+        try
+        {
+            if (!IsOrderValid())
+            {
+                await JS.InvokeVoidAsync("alert", "Пожалуйста, заполните все обязательные поля");
+                return;
+            }
+
+            using var db = DbContextFactory.CreateDbContext();
+
+            var or = new Order
+            {
+                ClientsId = order.ClientsId,
+                CourierDestAddress = order.CourierDestAddress,
+                FirstRecepientName = order.FirstRecepientName,
+                MiddleRecepientName = order.MiddleRecepientName,
+                LastRecepientName = order.LastRecepientName,
+                PhoneRecepient = order.PhoneRecepient,
+                TemplateId = order.ParcelTemplateId,
+                DescriptionParcel = order.DescriptionParcel,
+                OriginTownId = order.OriginTownId,
+                DestinationTownId = order.DestinationTownId,
+                PickupBranchesId = order.PickupBranchesId,
+                DestinationBranchId = order.DestinationBranchesId,
+                DeliveryTypeId = order.DeliveryTypeId,
+                TransportTypeId = order.TransportTypeId,
+                CreatedDate = DateTime.Now,
+                LengthCm = selectedTypeParcel == 2 ? order.LengthCm ?? 0 : 0,
+                WidthCm = selectedTypeParcel == 2 ? order.WidthCm ?? 0 : 0,
+                HeightCm = selectedTypeParcel == 2 ? order.HeightCm ?? 0 : 0,
+                Weight = selectedTypeParcel == 2 ? order.Weight ?? 0 : 0,
+
+            };
+
+            if (selectedTypeParcel == 1 && order.ParcelTemplateId > 0)
+            {
+                or.TemplateId = order.ParcelTemplateId;
+                var template = parcelTemplates.FirstOrDefault(t => t.TemplateId == order.ParcelTemplateId);
+                if (template != null)
+                {
+                    or.LengthCm = template.LengthCm ?? 0;
+                    or.WidthCm = template.WidthCm ?? 0;
+                    or.HeightCm = template.HeightCm ?? 0;
+                    or.Weight = template.MaxWeight ?? 0;
+                }
+            }
+
+            db.Orders.Add(or);
+            await db.SaveChangesAsync();
+
+            var payment = new Payment
+            {
+                OrdersId = or.OrdersId,
+                PaymentMethodId = 4,
+                PaymentDate = null,
+                Amount = calculatedPrice > 0 ? calculatedPrice.ToString("F2") : order.Amount
+            };
+
+            db.Payments.Add(payment);
+            await db.SaveChangesAsync();
+
+            var tracking = new Tracking
+            {
+                OrdersId = or.OrdersId,
+                LocationTrackings = "",
+                UpdateDate = DateTime.Now,
+                StatusId = 1,
+                BranchesId = or.PickupBranchesId
+            };
+
+            db.Trackings.Add(tracking);
+
+            await db.SaveChangesAsync();
+
+            NavigationManager.NavigateTo($"/profile");
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка сохранения заказа: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", "Произошла ошибка при сохранении заказа. Пожалуйста, попробуйте снова.");
+        }
+    }
+
+    protected async Task CalculatePrice()
+    {
+        try
+        {
+            calculatedPrice = -1;
+
+            var fromTown = towns.FirstOrDefault(t => t.TownId == order.OriginTownId);
+            var toTown = towns.FirstOrDefault(t => t.TownId == order.DestinationTownId);
+
+            if (fromTown == null || toTown == null)
+            {
+                calculatedPrice = 0;
+                return;
+            }
+
+            // Получаем расстояние с учетом типа транспорта
+            distance = await _mapService.GetDistanceAsync(
+                fromTown.TownName,
+                toTown.TownName,
+                order.TransportTypeId);
+
+            // Получаем вес
+            decimal weight = GetWeight();
+
+            // Получаем тариф с учетом типа транспорта
+            var tariff = GetTariff(order.DeliveryTypeId, order.TransportTypeId);
+
+            if (tariff == null)
+            {
+                calculatedPrice = 0;
+                return;
+            }
+
+            calculatedPrice = tariff.BasePrice +
+                             (distance * tariff.PricePerKm) +
+                             (weight * tariff.PricePerKg);
+
+            order.Amount = calculatedPrice.ToString("F2");
+            order.CalculatedPrice = calculatedPrice;
+            order.Distance = distance;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка расчета: {ex.Message}");
+            calculatedPrice = 0;
+        }
+    }
+    private DeliveryTariff GetTariff(int deliveryTypeId, int transportTypeId)
+    {
+        // Определяем является ли транспорт авиа
+        bool isAirTransport = IsAirTransport(transportTypeId);
+
+        // Ищем подходящий тариф
+        var tariff = deliveryTariffs.FirstOrDefault(t =>
+            t.DeliveryTypeId == deliveryTypeId &&
+            IsAirTariff(t) == isAirTransport);
+
+        // Если не нашли специфичный тариф, берем первый подходящий по DeliveryTypeId
+        return tariff ?? deliveryTariffs.FirstOrDefault(t => t.DeliveryTypeId == deliveryTypeId);
+    }
+
+    private bool IsAirTransport(int transportTypeId)
+    {
+        return transportTypeId == 2;
+    }
+
+    private bool IsAirTariff(DeliveryTariff tariff)
+    {
+
+        return tariff.PricePerKm > 50 || tariff.BasePrice > 2000;
+    }
+
+
+    protected void GoBack()
+    {
+        if (step > 1)
+        {
+            step--;
+            StateHasChanged();
+        }
+    }
+
+    protected bool IsParcelValid()
+    {
+        if (selectedTypeParcel == 1)
+            return order.ParcelTemplateId != 0;
+        else
+            return order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0 && order.Weight > 0;
+    }
+
+    protected IEnumerable<Town> FilteredTowns =>
+        towns?.Where(t => t.CountryId == order.OriginCountryId) ?? Enumerable.Empty<Town>();
+
+    protected IEnumerable<Branch> FilteredBranches =>
+        branches?.Where(b => b.TownId == order.OriginTownId) ?? Enumerable.Empty<Branch>();
+
+    protected IEnumerable<Town> FilteredTownsDes =>
+       towns?.Where(t => t.CountryId == order.DestinationCountryId) ?? Enumerable.Empty<Town>();
+
+    protected IEnumerable<Branch> FilteredBranchesDes =>
+        branches?.Where(b => b.TownId == order.DestinationTownId) ?? Enumerable.Empty<Branch>();
+
+    protected decimal GetWeight()
+    {
+        if (selectedTypeParcel == 1)
+        {
+            var template = parcelTemplates.FirstOrDefault(t => t.TemplateId == order.ParcelTemplateId);
+            return template?.MaxWeight ?? 0;
+        }
+        else
+        {
+            return order.Weight ?? 0;
+        }
+    }
+
+
+    protected List<StepInfo> steps = new()
+    {
+        new StepInfo(1, "Данные"),
+        new StepInfo(2, "Получатель"),
+        new StepInfo(3, "Посылка"),
+        new StepInfo(4, "Доставка"),
+        new StepInfo(5, "Оплата")
+    };
+
+    public class StepInfo
+    {
+        public int Number { get; set; }
+        public string Label { get; set; }
+
+        public StepInfo(int number, string label)
+        {
+            Number = number;
+            Label = label;
+        }
+    }
+}

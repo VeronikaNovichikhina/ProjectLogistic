@@ -1,0 +1,45 @@
+﻿
+@if (Status != null)
+{
+    <span class="badge @GetStatusClass()">
+        <i class="@GetStatusIcon() me-1"></i>
+        @Status.StatusName
+    </span>
+}
+
+@code {
+    [Parameter]
+    public StatusDelivery? Status { get; set; }
+
+    private string GetStatusClass()
+    {
+        if (Status == null) return "bg-secondary";
+
+        return Status.StatusName.ToLower() switch
+        {
+            "создан" => "bg-primary",
+            "принят" => "bg-success",
+            "в обработке" => "bg-warning text-dark",
+            "в пути" => "bg-info",
+            "доставлен" => "bg-success",
+            "отменен" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusIcon()
+    {
+        if (Status == null) return "fas fa-info-circle";
+
+        return Status.StatusName.ToLower() switch
+        {
+            "создан" => "fas fa-file-alt",
+            "принят" => "fas fa-check-circle",
+            "в обработке" => "fas fa-cog",
+            "в пути" => "fas fa-shipping-fast",
+            "доставлен" => "fas fa-check-double",
+            "отменен" => "fas fa-times-circle",
+            _ => "fas fa-info-circle"
+        };
+    }
+}

@@ -1,0 +1,1889 @@
+﻿@page "/profile"
+@using System.ComponentModel.DataAnnotations
+@using LogisticCompany.Db
+@using LogisticCompany.Domain.Entities.Employee
+@using LogisticCompany.Domain.Entities.Location
+@using LogisticCompany.Domain.Entities.Orders
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+
+<div class="account-container min-vh-100">
+    @if (showPasswordChangeDialog)
+    {
+        <div class="modal-backdrop fade show"></div>
+        <div class="modal fade show d-block" tabindex="-1" style="z-index: 1060;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-warning text-dark">
+                        <div class="d-flex align-items-center w-100">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-shield-alt fa-lg"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="modal-title fw-bold mb-0">Требуется смена пароля</h5>
+                                <small class="opacity-75">В целях безопасности необходимо установить новый пароль</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info border-0 mb-4">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-info-circle me-3 fs-5 text-info"></i>
+                                <div>
+                                    <h6 class="alert-heading mb-1">Вы вошли с временным паролем</h6>
+                                    <p class="mb-0">Для обеспечения безопасности вашего аккаунта необходимо установить постоянный пароль.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="security-features mb-4">
+                            <h6 class="fw-semibold text-dark mb-3">Требования к паролю:</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <small>Минимум 8 символов</small>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <small>Как минимум одна цифра</small>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <small>Как минимум одна заглавная буква</small>
+                                </li>
+                                <li>
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <small>Как минимум один специальный символ</small>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <div class="d-flex justify-content-between w-100 align-items-center">
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-warning" @onclick="DismissPasswordChange">
+                                        <i class="fas fa-times me-2"></i>Больше не показывать
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    }
+    <div class="container-fluid h-100 p-0">
+        <div class="row g-0 h-100">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 sidebar">
+                <div class="d-flex flex-column h-100">
+                    <!-- Header -->
+                    <div class="sidebar-header p-4">
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3">
+                                <div class="avatar-circle @(isManager ? "bg-gradient-primary" : "bg-gradient-success")">
+                                    <i class="fas @(isManager  ? "fa-user-tie" : "fa-user") text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold text-white mb-1">
+                                    @(isManager ? "Кабинет сотрудника" : "Личный кабинет")
+                                </h5>
+                                <small class="text-white-50 opacity-75">@(isManager ? currentUser?.Email : client.Email)</small>
+                                @if (isManager && adminEmployee != null)
+                                {
+                                    <small class="text-warning fw-semibold d-block mt-1">
+                                        <i class="fas fa-star me-1"></i>@adminEmployee.FirstName @adminEmployee.LastName
+                                    </small>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="sidebar-nav flex-grow-1 p-3">
+                        <ul class="nav flex-column" id="menuTabs" role="tablist">
+                            <li class="nav-item mb-2" role="presentation">
+                                <button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main" type="button" role="tab">
+                                    <div class="nav-link-content">
+                                        <i class="fas fa-home me-3"></i>
+                                        <span>Главная</span>
+                                    </div>
+                                </button>
+                            </li>
+                            <li class="nav-item mb-2" role="presentation">
+                                <button class="nav-link id="data-tab" data-bs-toggle="tab" data-bs-target="#data" type="button" role="tab">
+                                    <div class="nav-link-content">
+                                        <i class="fas fa-user-edit me-3"></i>
+                                        <span>Личные данные</span>
+                                    </div>
+                                </button>
+                            </li>
+                            @if (!isManager)
+                            {
+                                <li class="nav-item mb-2" role="presentation">
+                                    <button class="nav-link " id="packages-tab" data-bs-toggle="tab" data-bs-target="#packages" type="button" role="tab">
+                                        <div class="nav-link-content">
+                                            <i class="fas fa-box me-3"></i>
+                                            <span>Мои посылки</span>
+                                            @if (orders?.Any() == true)
+                                            {
+                                                <span class="badge bg-success ms-auto">@orders.Count</span>
+                                            }
+                                        </div>
+                                    </button>
+                                </li>
+                            }
+                            <li class="nav-item mb-2" role="presentation">
+                                <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                                    <div class="nav-link-content">
+                                        <i class="fas fa-cog me-3"></i>
+                                        <span>Настройки</span>
+                                    </div>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Logout -->
+                    <div class="sidebar-footer p-3">
+                        <button class="btn btn-logout w-100" @onclick="Logout">
+                            <i class="fas fa-sign-out-alt me-2"></i>Выйти
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <div class="tab-content ">
+                   
+                    <!-- Главная -->
+                    <div class="tab-pane fade show active h-100" id="main" role="tabpanel">
+                        <div class="p-4 h-100">
+                            <div class="row g-4">
+                                <!-- Welcome Card -->
+                                <div class="col-12">
+                                    <div class="card border-0 shadow-lg welcome-card">
+                                        <div class="card-body p-4">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-8">
+                                                    <h2 class="fw-bold text-white mb-2">Добро пожаловать!</h2>
+                                                    <p class="text-white opacity-75 mb-0">
+                                                        Рады видеть вас в личном кабинете Logistic Company.
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-4 text-end">
+                                                    <div class="welcome-icon">
+                                                        <i class="fas fa-hand-wave"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="col-12">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-header bg-transparent border-0 pb-0">
+                                            <h5 class="fw-bold text-dark mb-3">
+                                                <i class="fas fa-bolt me-2 text-warning"></i>Быстрые действия
+                                            </h5>
+                                        </div>
+										@if (!isManager)
+                                        {
+                                            <div class="card-body pt-0">
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <NavLink class="btn btn-action w-100 p-4" href="/create-order">
+                                                            <div class="action-icon mb-3">
+                                                                <i class="fas fa-plus-circle"></i>
+                                                            </div>
+                                                            <h6 class="fw-bold mb-1">Создать заказ</h6>
+                                                            <small class="text-muted">Новая отправка</small>
+                                                        </NavLink>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <button class="btn btn-action w-100 p-4">
+                                                            <div class="action-icon mb-3">
+                                                                <i class="fas fa-question-circle"></i>
+                                                            </div>
+                                                            <h6 class="fw-bold mb-1">Помощь</h6>
+                                                            <small class="text-muted">Поддержка 24/7</small>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="card-body pt-0">
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <NavLink href="/admin-home" class="btn btn-action w-100 p-4">
+                                                            <div class="action-icon mb-3">
+                                                                <i class="fas fa-plus-circle"></i>
+                                                            </div>
+                                                            <h6 class="fw-bold mb-1">Перейти к управлению</h6>
+                                                        </NavLink>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Личные данные -->
+                    <div class="tab-pane fade  h-100" id="data" role="tabpanel">
+                        <div class="p-4 h-100 d-flex flex-column">
+                            <EditForm Model="@(isManager? adminEmployee : client)" OnValidSubmit="@(isManager? SaveEmployee : SaveClient)" FormName="profile" class="flex-grow-1">
+                                <DataAnnotationsValidator />
+                                <!-- Сообщение о результате сохранения -->
+                                @if (!string.IsNullOrEmpty(saveMessage))
+                                {
+                                    <div class="alert @(isSaveSuccess ? "alert-success" : "alert-danger") mb-4">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas @(isSaveSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+                                            <span>@saveMessage</span>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="card border-0 shadow-sm h-100">
+                                    <div class="card-header bg-white">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h4 class="fw-bold text-dark mb-0">
+                                                <i class="fas fa-user-edit me-2 text-primary"></i>
+                                                @(isManager ? "Данные сотрудника" : "Личные данные")
+                                            </h4>
+                                            @if (isManager)
+                                            {
+                                                <span class="badge bg-primary bg-opacity-20 text-white px-3 py-2">
+                                                    <i class="fas fa-user-tie me-1"></i>Сотрудник
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success bg-opacity-20 text-white px-3 py-2">
+                                                    <i class="fas fa-user me-1"></i>Клиент
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Общая информация -->
+                                        <div class="row g-4 mb-4">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label class="form-label fw-semibold text-dark mb-3">
+                                                        <i class="fas fa-envelope text-primary me-2"></i>Email
+                                                    </label>
+                                                    @if (isManager)
+                                                    {
+                                                        <input class="form-control form-control-lg" value="@(currentUser?.Email ?? "")" disabled />
+                                                    }
+                                                    else
+                                                    {
+                                                        <InputText class="form-control form-control-lg" @bind-Value="client.Email" Disabled="true" />
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label class="form-label fw-semibold text-dark mb-3">
+                                                        <i class="fas fa-phone text-primary me-2"></i>Телефон *
+                                                    </label>
+                                                    @if (isManager)
+                                                    {
+                                                        <InputText class="form-control form-control-lg"
+                                                                   @bind-Value="adminEmployee.Phone" />
+                                                        <ValidationMessage For="() => adminEmployee.Phone" class="text-danger small mt-2" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <input @bind="client.Phone" @ref="phoneInput" class="form-control form-control-lg" />
+                                                        <ValidationMessage For="() => client.Phone" class="text-danger small mt-2" />
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        @if (isManager)
+                                        {
+                                            <!-- Данные сотрудника -->
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Фамилия *</label>
+                                                    <InputText class="form-control form-control-lg"
+                                                               @bind-Value="adminEmployee.LastName" />
+                                                    <ValidationMessage For="() => adminEmployee.LastName" class="text-danger small mt-2" />
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Имя *</label>
+                                                    <InputText class="form-control form-control-lg"
+                                                               @bind-Value="adminEmployee.FirstName" />
+                                                    <ValidationMessage For="() => adminEmployee.FirstName" class="text-danger small mt-2" />
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Отчество</label>
+                                                    <InputText class="form-control form-control-lg"
+                                                               @bind-Value="adminEmployee.PatronymicName" />
+                                                    <ValidationMessage For="() => adminEmployee.PatronymicName" class="text-danger small mt-2" />
+                                                </div>
+
+                                                <!-- Неизменяемые поля -->
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold text-dark">Должность</label>
+                                                    <InputText class="form-control form-control-lg"
+                                                               @bind-Value="adminEmployee.Position"
+                                                               Disabled="true" />
+                                                    <div class="form-text text-muted mt-1">
+                                                        <i class="fas fa-info-circle me-1"></i>Для изменения должности обратитесь к администратору
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold text-dark">Филиал</label>
+                                                    <InputText class="form-control form-control-lg"
+                                                               @bind-Value="adminEmployee.Branch.NameBranches"
+                                                               Disabled="true" />
+                                                    <div class="form-text text-muted mt-1">
+                                                        <i class="fas fa-info-circle me-1"></i>Филиал назначается администратором
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Кнопка сохранения для сотрудника -->
+                                            <div class="mt-4 pt-4 border-top">
+                                                <div class="row align-items-center">
+                                                    <div class="col-md-8">
+                                                        <div class="alert alert-info border-0 mb-0">
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="fas fa-info-circle me-2 text-info"></i>
+                                                                <small>Вы можете изменить свои личные данные, кроме должности и филиала</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4 text-end">
+                                                        <button type="submit" class="btn btn-primary btn-lg px-5 py-3">
+                                                            <i class="fas fa-save me-2"></i>Сохранить изменения
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <!-- Данные клиента -->
+                                            <div class="mb-4">
+                                                <label class="form-label fw-semibold text-dark mb-3">Тип клиента*</label>
+                                                <InputRadioGroup @bind-Value="selectedClientTypeId">
+                                                    <div class="client-type-selector">
+                                                        <label class="client-type-option @(selectedClientTypeId == 1 ? "selected" : "")">
+                                                            <InputRadio Value="1" />
+                                                            <div class="option-content">
+                                                                <i class="fas fa-user fa-2x mb-2"></i>
+                                                                <span>Физическое лицо</span>
+                                                            </div>
+                                                        </label>
+                                                        <label class="client-type-option @(selectedClientTypeId == 2 ? "selected" : "")">
+                                                            <InputRadio Value="2" />
+                                                            <div class="option-content">
+                                                                <i class="fas fa-building fa-2x mb-2"></i>
+                                                                <span>Компания</span>
+                                                            </div>
+                                                        </label>
+                                                    </div>
+                                                </InputRadioGroup>
+                                            </div>
+
+                                            @if (selectedClientTypeId == 1)
+                                            {
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold text-dark">Фамилия*</label>
+                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.LastName" />
+                                                        <ValidationMessage For="() => individualClient.LastName" class="text-danger small mt-2" />
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold text-dark">Имя*</label>
+                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.FirstName" />
+                                                        <ValidationMessage For="() => individualClient.FirstName" class="text-danger small mt-2" />
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold text-dark">Отчество</label>
+                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.PatronymicName" />
+                                                        <ValidationMessage For="() => individualClient.PatronymicName" class="text-danger small mt-2" />
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold text-dark">Пасспорт*</label>
+                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.PassportNumber" />
+                                                        <ValidationMessage For="() => individualClient.PassportNumber" class="text-danger small mt-2" />
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold text-dark">Дата выдача пасспорта*</label>
+                                                        <InputDate class="form-control form-control-lg" @bind-Value="individualClient.PassportDateOfIssue" />
+                                                        <ValidationMessage For="() => individualClient.PassportDateOfIssue" class="text-danger small mt-2" />
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold text-dark">Название компании*</label>
+                                                        <InputText class="form-control form-control-lg" @bind-Value="companyClient.CompanyName" />
+                                                        <ValidationMessage For="() => companyClient.CompanyName" class="text-danger small mt-2" />
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold text-dark">ИИН*</label>
+                                                        <InputText class="form-control form-control-lg" @bind-Value="companyClient.Inn" />
+                                                        <ValidationMessage For="() => companyClient.Inn" class="text-danger small mt-2" />
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            <!-- Кнопка сохранения для клиента -->
+                                            <div class="mt-4 pt-4 border-top">
+                                                <button type="submit" class="btn btn-primary btn-lg px-5 py-3">
+                                                    <i class="fas fa-save me-2"></i>Сохранить изменения
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                    <!-- Посылки -->
+                    <div class="tab-pane fade h-100" id="packages" role="tabpanel">
+                        <div class="p-4 h-100 d-flex flex-column">
+                            @if (orders?.Any() == true)
+                            {
+                                <div class="card border-0 shadow-sm flex-grow-1">
+                                    <div class="card-header bg-white">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h4 class="fw-bold text-dark mb-0">
+                                                <i class="fas fa-box me-2 text-success"></i>Мои посылки
+                                            </h4>
+                                            <NavLink href="/create-order" class="btn btn-primary">
+                                                <i class="fas fa-plus-circle me-2"></i>Создать заказ
+                                            </NavLink>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover align-middle">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="border-0">№ Заказа</th>
+                                                        <th class="border-0">Описание</th>
+                                                        <th class="border-0">Размеры</th>
+                                                        <th class="border-0">Вес</th>
+                                                        <th class="border-0 text-end">Действия</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var order in orders)
+                                                    {
+                                                        <tr class="package-row">
+                                                            <td>
+                                                                <strong class="text-primary">#@order.OrdersId</strong>
+                                                            </td>
+                                                            <td>
+                                                                <div class="package-description">
+                                                                    @if (!string.IsNullOrEmpty(order.DescriptionParcel))
+                                                                    {
+                                                                        <span title="@order.DescriptionParcel">
+                                                                            @(order.DescriptionParcel.Length > 50 ? order.DescriptionParcel.Substring(0, 50) + "..." : order.DescriptionParcel)
+                                                                        </span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="text-muted">Без описания</span>
+                                                                    }
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
+                                                                {
+                                                                    <span>@order.LengthCm × @order.WidthCm × @order.HeightCm см</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                @if (order.Weight > 0)
+                                                                {
+                                                                    <span>@order.Weight кг</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <button class="btn btn-outline-primary btn-sm" type="button"
+                                                                        @onclick="() => ShowOrderDetails(order.OrdersId)">
+                                                                    <i class="fas fa-eye me-1"></i>Подробнее
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="card border-0 shadow-sm flex-grow-1">
+                                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                                        <div class="empty-state text-center">
+                                            <i class="fas fa-box-open fa-4x text-muted mb-4"></i>
+                                            <h5 class="text-muted mb-3">У вас пока нет посылок</h5>
+                                            <p class="text-muted mb-4">Все ваши заказы будут отображаться здесь</p>
+                                            <button class="btn btn-primary btn-lg">
+                                                <i class="fas fa-plus me-2"></i>Создать первый заказ
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                   
+                    <!-- Настройки -->
+                    <div class="tab-pane fade h-100" id="settings" role="tabpanel">
+                        <div class="p-4 h-100 d-flex flex-column">
+                            <div class="card border-0 shadow-sm flex-grow-1">
+                                <div class="card-header bg-white">
+                                    <h4 class="fw-bold text-dark mb-0">
+                                        <i class="fas fa-cog me-2 text-primary"></i>Настройки аккаунта
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-4">
+                                        <!-- Уведомления -->
+                                        <div class="col-lg-6">
+                                            <div class="card border-0 bg-gradient-light h-100">
+                                                <div class="card-body">
+                                                    <h6 class="fw-bold text-dark mb-4">
+                                                        <i class="fas fa-bell text-warning me-2"></i>Уведомления
+                                                    </h6>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                                                        <label class="form-check-label fw-semibold" for="emailNotifications">
+                                                            Email уведомления
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="smsNotifications">
+                                                        <label class="form-check-label fw-semibold" for="smsNotifications">
+                                                            SMS уведомления
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Смена пароля -->
+                                        <div class="col-lg-6">
+                                            <div class="card border-0 bg-gradient-light h-100">
+                                                <div class="card-body">
+                                                    <h6 class="fw-bold text-dark mb-4">
+                                                        <i class="fas fa-shield-alt text-primary me-2"></i>Безопасность
+                                                    </h6>
+                                                    <EditForm Model="changePasswordModel" OnValidSubmit="ChangePassword" FormName="changePassword">
+                                                        <DataAnnotationsValidator />
+
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold text-dark">Текущий пароль</label>
+                                                            <div class="input-group">
+                                                                <InputText type="@(showCurrentPassword ? "text" : "password")"
+                                                                           class="form-control"
+                                                                           @bind-Value="changePasswordModel.CurrentPassword"
+                                                                           placeholder="Введите текущий пароль" />
+                                                                <button type="button" class="btn btn-outline-secondary"
+                                                                        @onclick="() => showCurrentPassword = !showCurrentPassword">
+                                                                    <i class="fas @(showCurrentPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                                                </button>
+                                                            </div>
+                                                            <ValidationMessage For="() => changePasswordModel.CurrentPassword" class="text-danger small" />
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold text-dark">Новый пароль</label>
+                                                            <div class="input-group">
+                                                                <InputText type="@(showNewPassword ? "text" : "password")"
+                                                                           class="form-control"
+                                                                           @bind-Value="changePasswordModel.NewPassword"
+                                                                           placeholder="Введите новый пароль" />
+                                                                <button type="button" class="btn btn-outline-secondary"
+                                                                        @onclick="() => showNewPassword = !showNewPassword">
+                                                                    <i class="fas @(showNewPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                                                </button>
+                                                            </div>
+                                                            <ValidationMessage For="() => changePasswordModel.NewPassword" class="text-danger small" />
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold text-dark">Подтвердите новый пароль</label>
+                                                            <div class="input-group">
+                                                                <InputText type="@(showConfirmPassword ? "text" : "password")"
+                                                                           class="form-control"
+                                                                           @bind-Value="changePasswordModel.ConfirmPassword"
+                                                                           placeholder="Повторите новый пароль" />
+                                                                <button type="button" class="btn btn-outline-secondary"
+                                                                        @onclick="() => showConfirmPassword = !showConfirmPassword">
+                                                                    <i class="fas @(showConfirmPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                                                </button>
+                                                            </div>
+                                                            <ValidationMessage For="() => changePasswordModel.ConfirmPassword" class="text-danger small" />
+                                                        </div>
+
+                                                        @if (!string.IsNullOrEmpty(passwordChangeMessage))
+                                                        {
+                                                            <div class="alert @(isPasswordChangeSuccess ? "alert-success" : "alert-danger") mt-3">
+                                                                <i class="fas @(isPasswordChangeSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+                                                                @passwordChangeMessage
+                                                            </div>
+                                                        }
+
+                                                        <button type="submit" class="btn btn-primary w-100" disabled="@isChangingPassword">
+                                                            <i class="fas fa-key me-2"></i>
+                                                            @if (isChangingPassword)
+                                                            {
+                                                                <span>
+                                                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                                    Меняем пароль...
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>Сменить пароль</span>
+                                                            }
+                                                        </button>
+                                                    </EditForm>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showOrderDetailsModal && selectedOrder != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" style="z-index: 1050;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <!-- Заголовок модалки -->
+                <div class="modal-header bg-gradient-primary text-white">
+                    <div class="d-flex align-items-center w-100">
+                        <div class="modal-icon me-3">
+                            <i class="fas fa-box-open fa-lg"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="modal-title fw-bold mb-0">Детали заказа #@selectedOrder.OrdersId</h5>
+                            <small class="opacity-75">Полная информация о посылке</small>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" @onclick="CloseOrderDetails"></button>
+                    </div>
+                </div>
+
+                <!-- Тело модалки -->
+                <div class="modal-body p-4">
+                    <div class="row g-4">
+                        <!-- Информация о получатели -->
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-header bg-white border-0">
+                                    <h6 class="fw-bold text-primary mb-0">
+                                        <i class="fas fa-shipping-fast me-2"></i>Информация о получателе
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Фамилия получателя:</label>
+                                        <p class="mb-0">@selectedOrder.LastRecepientName</p>
+                                    </div>
+
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Имя получателя:</label>
+                                        <p class="mb-0">@selectedOrder.FirstRecepientName</p>
+                                    </div>
+
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Отчество получателя:</label>
+                                        <p class="mb-0">
+                                            @(string.IsNullOrEmpty(selectedOrder.MiddleRecepientName) ? "--" : selectedOrder.MiddleRecepientName)
+                                        </p>
+                                    </div>
+
+                                    <div class="info-item">
+                                        <label class="fw-semibold text-muted">Телефон получателя:</label>
+                                        <p class="mb-0">
+                                            @selectedOrder.PhoneRecepient
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Информация о посылке -->
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-header bg-white border-0">
+                                    <h6 class="fw-bold text-primary mb-0">
+                                        <i class="fas fa-box me-2"></i>Информация о посылке
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Описание:</label>
+                                        <p class="mb-0">@(string.IsNullOrEmpty(selectedOrder.DescriptionParcel) ? "Не указано" : selectedOrder.DescriptionParcel)</p>
+                                    </div>
+
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Размеры:</label>
+                                        <p class="mb-0">
+                                            @if (selectedOrder.LengthCm > 0 && selectedOrder.WidthCm > 0 && selectedOrder.HeightCm > 0)
+                                            {
+                                                @($"{selectedOrder.LengthCm} × {selectedOrder.WidthCm} × {selectedOrder.HeightCm} см")
+                                            }
+                                            else
+                                            {
+                                                @("Не указаны")
+                                            }
+                                        </p>
+                                    </div>
+
+                                    <div class="info-item">
+                                        <label class="fw-semibold text-muted">Вес:</label>
+                                        <p class="mb-0">
+                                            @if (selectedOrder.Weight > 0)
+                                            {
+                                                @($"{selectedOrder.Weight} кг")
+                                            }
+                                            else
+                                            {
+                                                @("Не указан")
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Информация о доставке -->
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-header bg-white border-0">
+                                    <h6 class="fw-bold text-primary mb-0">
+                                        <i class="fas fa-shipping-fast me-2"></i>Информация о доставке
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Тип доставки:</label>
+                                        <p class="mb-0">@selectedOrder.DeliveryType?.NameDeliveryType</p>
+                                    </div>
+
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Транспорт:</label>
+                                        <p class="mb-0">@selectedOrder.TransportType?.NameTransportType</p>
+                                    </div>
+
+                                    <div class="info-item mb-3">
+                                        <label class="fw-semibold text-muted">Откуда:</label>
+                                        <p class="mb-0">
+                                            @selectedOrder.OriginTown?.TownName, @selectedOrder.OriginTown?.Country?.CountryName
+                                        </p>
+                                    </div>
+
+                                    <div class="info-item">
+                                        <label class="fw-semibold text-muted">Куда:</label>
+                                        <p class="mb-0">
+                                            @selectedOrder.DestinationTown?.TownName, @selectedOrder.DestinationTown?.Country?.CountryName
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Дополнительная информация -->
+                        <div class="col-12">
+                            <div class="card border-0 bg-light">
+                                <div class="card-header bg-white border-0">
+                                    <h6 class="fw-bold text-primary mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>Дополнительная информация
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="info-item mb-3">
+                                                <label class="fw-semibold text-muted">Филиал забора:</label>
+                                                <p class="mb-0">@selectedOrder.PickupBranches?.NameBranches</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-item mb-3">
+                                                <label class="fw-semibold text-muted">Статус:</label>
+                                                <p class="mb-0">
+                                                    @if (selectedOrder?.Trackings?.Any() == true)
+                                                    {
+                                                        var latestTracking = selectedOrder.Trackings
+                                                        .OrderByDescending(t => t.UpdateDate)
+                                                        .FirstOrDefault();
+
+                                                        @if (latestTracking?.Status != null)
+                                                        {
+                                                            <span class="badge @(GetStatusBadgeClass(latestTracking.Status.StatusName))">
+                                                                @latestTracking.Status.StatusName
+                                                            </span>
+                                                            <small class="text-muted d-block mt-1">
+                                                                <i class="fas fa-clock me-1"></i>
+                                                                @latestTracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
+                                                            </small>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">Статус не указан</span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Нет данных отслеживания</span>
+                                                    }
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-item mb-3">
+                                                <label class="fw-semibold text-muted">Дата создания:</label>
+                                                <p class="mb-0">
+                                                    @if (selectedOrder?.Trackings?.Any() == true)
+                                                    {
+                                                        var firstTracking = selectedOrder.Trackings
+                                                        .OrderBy(t => t.UpdateDate)
+                                                        .FirstOrDefault();
+                                                        @firstTracking?.UpdateDate.ToString("dd.MM.yyyy HH:mm")
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">—</span>
+                                                    }
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- История статусов -->
+                        @if (selectedOrder?.Trackings?.Any() == true)
+                        {
+                            <div class="col-12 mt-4">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-white">
+                                        <h6 class="fw-bold text-primary mb-0">
+                                            <i class="fas fa-history me-2"></i>История статусов
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="tracking-timeline">
+                                            @foreach (var tracking in selectedOrder.Trackings.OrderByDescending(t => t.UpdateDate))
+                                            {
+                                                <div class="tracking-item">
+                                                    <div class="tracking-marker">
+                                                        <i class="fas fa-circle"></i>
+                                                    </div>
+                                                    <div class="tracking-content">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <span class="fw-semibold text-dark">@tracking.Status.StatusName</span>
+                                                            <small class="text-muted">@tracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")</small>
+                                                        </div>
+                                                        @if (!string.IsNullOrEmpty(tracking.LocationTrackings))
+                                                        {
+                                                            <div class="mb-1">
+                                                                <small class="text-muted">
+                                                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                                                    @tracking.LocationTrackings
+                                                                </small>
+                                                            </div>
+                                                        }
+                                                        @if (tracking.Branches != null)
+                                                        {
+                                                            <div>
+                                                                <small class="text-muted">
+                                                                    <i class="fas fa-building me-1"></i>
+                                                                    Филиал: @tracking.Branches.NameBranches
+                                                                </small>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Футер модалки -->
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseOrderDetails">
+                        <i class="fas fa-times me-2"></i>Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [SupplyParameterFromForm]
+    private Client client { get; set; } = new();
+    private IndividualClient individualClient { get; set; } = new();
+    private CompanyClient companyClient { get; set; } = new();
+    private List<Client> clients = new List<Client>();
+    private List<Order> orders = new List<Order>();
+    private Order selectedOrder = null;
+    private List<StatusDelivery> statusDelivery = new();
+    private string GetStatusBadgeClass(string statusName)
+    {
+        if (string.IsNullOrEmpty(statusName))
+            return "bg-secondary";
+
+        return statusName.ToLower() switch
+        {
+            "создан" or "ожидает обработки" => "bg-info",
+            "принят" or "в обработке" => "bg-primary",
+            "передан в доставку" or "в пути" => "bg-warning",
+            "на складе" or "доставляется" => "bg-info",
+            "у курьера" or "вручение" => "bg-primary",
+            "доставлен" or "получен" => "bg-success",
+            "отменен" or "отклонен" => "bg-danger",
+            "возврат" or "возвращен" => "bg-dark",
+            "проблема" or "задержка" => "bg-warning",
+            _ => "bg-secondary"
+        };
+    }
+    [Inject]
+    private IJSRuntime JS { get; set; }
+
+    [Inject]
+    private IDbContextFactory<AppDbContext> DbContextFactory { get; set; }
+
+    private ElementReference phoneInput;
+    private int selectedClientTypeId;
+
+    private ChangePasswordModel changePasswordModel = new();
+    private bool showCurrentPassword = false;
+    private bool showNewPassword = false;
+    private bool showConfirmPassword = false;
+    private string passwordChangeMessage = "";
+    private bool isPasswordChangeSuccess = false;
+    private bool isChangingPassword = false;
+    private bool showOrderDetailsModal = false;
+
+    private User currentUser;
+    private Employee adminEmployee;
+    private Branch adminBranch;
+    private Town adminTown;
+    private Country adminCountry;
+    private bool isManager = false;
+    private string adminEmail => currentUser?.Email ?? "";
+
+    private bool isSaving = false;
+    private string saveMessage = "";
+    private bool isSaveSuccess = false;
+
+    private bool showPasswordChangeDialog = false;
+    private bool isFirstLogin = false;
+    private bool isTempPassword = false;
+
+    public class ChangePasswordModel
+    {
+        [Required(ErrorMessage = "Текущий пароль обязателен")]
+        [Display(Name = "Текущий пароль")]
+        public string CurrentPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "Новый пароль обязателен")]
+        [MinLength(6, ErrorMessage = "Пароль должен содержать минимум 6 символов")]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$",
+            ErrorMessage = "Пароль должен содержать заглавные и строчные буквы, а также цифры")]
+        [Display(Name = "Новый пароль")]
+        public string NewPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "Подтверждение пароля обязательно")]
+        [Compare("NewPassword", ErrorMessage = "Пароли не совпадают")]
+        [Display(Name = "Подтверждение пароля")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = await DbContextFactory.CreateDbContextAsync();
+        await DetermineUserType();
+
+        statusDelivery = await db.StatusDeliveries.ToListAsync();
+        if (isManager)
+        {
+            await LoadAdminData();
+        }
+        else
+        {
+            await LoadClientData();
+        }
+       
+        await CheckFirstLogin();
+    }
+
+    private async Task CheckFirstLogin()
+    {
+        try
+        {
+            var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
+
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                // Проверяем куки
+                var hasChangedPassword = await JS.InvokeAsync<string>("eval",
+                    $"document.cookie.replace(/(?:(?:^|.*;\\s*)userPasswordChanged\\s*\\=\\s*([^;]*).*$)|^.*$/, '$1')");
+
+                // ПРОВЕРЯЕМ ВРЕМЕННЫЙ ПАРОЛЬ
+                isTempPassword = await IsTemporaryPassword(userEmail);
+
+                Console.WriteLine($"Debug: hasChangedPassword='{hasChangedPassword}', isTempPassword={isTempPassword}"); // ДЛЯ ОТЛАДКИ
+
+                // ПОКАЗЫВАЕМ ДИАЛОГ ТОЛЬКО ЕСЛИ ПАРОЛЬ ВРЕМЕННЫЙ И КУКИ НЕ УСТАНОВЛЕН
+                if (isTempPassword)
+                {
+                    showPasswordChangeDialog = true;
+                    StateHasChanged();
+                }
+                else
+                {
+                    showPasswordChangeDialog = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при проверке первого входа: {ex.Message}");
+        }
+    }
+    private async Task<bool> IsTemporaryPassword(string email)
+    {
+        try
+        {
+            using var context = DbContextFactory.CreateDbContext();
+
+            var user = await context.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+
+            return user?.IsTemporaryPassword == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    private async Task ChangePassword()
+    {
+        isChangingPassword = true;
+        passwordChangeMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                passwordChangeMessage = "Ошибка: пользователь не аутентифицирован";
+                isPasswordChangeSuccess = false;
+                return;
+            }
+
+            using var context = DbContextFactory.CreateDbContext();
+
+            var user = await context.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == userEmail.ToLower());
+
+            if (user == null)
+            {
+                passwordChangeMessage = "Ошибка: пользователь не найден";
+                isPasswordChangeSuccess = false;
+                return;
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(changePasswordModel.CurrentPassword, user.PasswordHash))
+            {
+                passwordChangeMessage = "Ошибка: текущий пароль указан неверно";
+                isPasswordChangeSuccess = false;
+                return;
+            }
+
+            var newPasswordHash = BCrypt.Net.BCrypt.HashPassword(changePasswordModel.NewPassword);
+            user.PasswordHash = newPasswordHash;
+
+            await context.SaveChangesAsync();
+
+            // Устанавливаем куки на 1 год
+            await JS.InvokeVoidAsync("eval",
+                $"document.cookie = 'userPasswordChanged=true; max-age=31536000; path=/'");
+
+            passwordChangeMessage = "Пароль успешно изменен!";
+            isPasswordChangeSuccess = true;
+            changePasswordModel = new ChangePasswordModel();
+
+            // Закрываем диалог
+            showPasswordChangeDialog = false;
+
+            await SendPasswordChangeNotification(userEmail);
+        }
+        catch (Exception ex)
+        {
+            passwordChangeMessage = $"Ошибка при смене пароля: {ex.Message}";
+            isPasswordChangeSuccess = false;
+            Console.WriteLine($"Ошибка смены пароля: {ex.Message}");
+        }
+        finally
+        {
+            isChangingPassword = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DismissPasswordChange()
+    {
+        var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
+
+        if (!string.IsNullOrEmpty(userEmail))
+        {
+            // Устанавливаем куки, чтобы больше не показывать
+            await JS.InvokeVoidAsync("eval",
+                $"document.cookie = 'userPasswordChanged=dismissed; max-age=31536000; path=/'");
+        }
+
+        showPasswordChangeDialog = false;
+        StateHasChanged();
+    }
+
+    private async Task DetermineUserType()
+    {
+        var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
+
+        if (!string.IsNullOrEmpty(userEmail))
+        {
+            using var context = DbContextFactory.CreateDbContext();
+
+            // Проверяем, является ли пользователь сотрудником
+            var employee = await context.Employees
+                .Include(e => e.User)
+                .FirstOrDefaultAsync(e => e.User != null && e.User.Email.ToLower() == userEmail.ToLower());
+
+            if (employee != null)
+            {
+                isManager = true;
+                currentUser = employee.User;
+                adminEmployee = employee;
+            }
+            else
+            {
+                isManager = false;
+            }
+        }
+    }
+    
+   
+    private async Task LoadAdminData()
+    {
+        if (currentUser == null) return;
+
+        using var context = DbContextFactory.CreateDbContext();
+
+        // Загружаем полные данные сотрудника с филиалом
+        adminEmployee = await context.Employees
+            .Include(e => e.Branch)
+                .ThenInclude(b => b.Town)
+                .ThenInclude(t => t.Country)
+            .Include(e => e.User)
+            .FirstOrDefaultAsync(e => e.UserId == currentUser.Id);
+
+        if (adminEmployee?.Branch != null)
+        {
+            adminBranch = adminEmployee.Branch;
+            adminTown = adminBranch.Town;
+            adminCountry = adminTown?.Country;
+        }
+
+        // Загружаем заказы для админа (заказы его филиала)
+        if (adminBranch != null)
+        {
+            orders = await context.Orders
+                .Include(o => o.Template)
+                .Include(o => o.DeliveryType)
+                .Include(o => o.TransportType)
+                .Include(o => o.OriginTown)
+                    .ThenInclude(t => t.Country)
+                .Include(o => o.DestinationTown)
+                    .ThenInclude(t => t.Country)
+                .Include(o => o.Clients)
+                .Where(o => o.PickupBranchesId == adminBranch.BranchesId ||
+                           o.DestinationBranchId == adminBranch.BranchesId)
+                .OrderByDescending(o => o.OrdersId)
+                .ToListAsync();
+        }
+    }
+
+    private async Task LoadClientData()
+    {
+        var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
+
+        if (!string.IsNullOrEmpty(userEmail))
+        {
+            using var context = DbContextFactory.CreateDbContext();
+
+            client = await context.Clients
+                .Include(c => c.IndividualClients)
+                .Include(c => c.CompanyClients)
+                .FirstOrDefaultAsync(c => c.Email == userEmail);
+
+            if (client == null)
+            {
+                client = new Client { Email = userEmail };
+            }
+            else
+            {
+                // Загружаем посылки клиента
+                orders = await context.Orders
+                    .Include(o => o.Template)
+                    .Include(o => o.DeliveryType)
+                    .Include(o => o.TransportType)
+                    .Include(o => o.OriginTown)
+                        .ThenInclude(t => t.Country)
+                    .Include(o => o.DestinationTown)
+                        .ThenInclude(t => t.Country)
+                    .Where(o => o.ClientsId == client.ClientsId)
+                    .OrderByDescending(o => o.OrdersId)
+                    .ToListAsync();
+
+                if (client.ClientTypeId == 1 && client.IndividualClients?.Any() == true)
+                {
+                    individualClient = client.IndividualClients.First();
+                    selectedClientTypeId = 1;
+                }
+                else if (client.ClientTypeId == 2 && client.CompanyClients?.Any() == true)
+                {
+                    companyClient = client.CompanyClients.First();
+                    selectedClientTypeId = 2;
+                }
+            }
+        }
+    }
+
+
+    private async Task SendPasswordChangeNotification(string email)
+    {
+        try
+        {
+            var message = $@"
+                Уважаемый пользователь,
+
+                Пароль для вашего аккаунта был успешно изменен.
+                Если это были не вы, немедленно свяжитесь со службой поддержки.
+
+                С уважением,
+                Служба доставки Logistic Company";
+
+            Console.WriteLine($"Уведомление о смене пароля отправлено на {email}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка отправки уведомления: {ex.Message}");
+        }
+    }
+
+    private async Task ShowOrderDetails(int orderId)
+    {
+        try
+        {
+            using var context = DbContextFactory.CreateDbContext();
+
+            selectedOrder = await context.Orders
+                .Include(o => o.Template)
+                .Include(o => o.DeliveryType)
+                .Include(o => o.TransportType)
+                .Include(o => o.OriginTown)
+                    .ThenInclude(t => t.Country)
+                .Include(o => o.DestinationTown)
+                    .ThenInclude(t => t.Country)
+                .Include(o => o.PickupBranches)
+                .Include(o => o.Clients)
+                .Include(o => o.Trackings)
+                     .ThenInclude( t => t.Status)
+                .FirstOrDefaultAsync(o => o.OrdersId == orderId);
+
+            if (selectedOrder == null)
+            {
+                await JS.InvokeVoidAsync("alert", "Заказ не найден");
+                return;
+            }
+            showOrderDetailsModal = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при загрузке заказа: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", "Ошибка при загрузке данных заказа");
+        }
+    }
+
+    private void CloseOrderDetails()
+    {
+        showOrderDetailsModal = false;
+        selectedOrder = null;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("applyPhoneMask", phoneInput);
+        }
+    }
+
+    private async Task SaveClient()
+    {
+        try
+        {
+            using var context = DbContextFactory.CreateDbContext();
+
+            client.ClientTypeId = selectedClientTypeId;
+
+            if (client.ClientsId == 0)
+            {
+                context.Clients.Add(client);
+            }
+            else
+            {
+                context.Clients.Update(client);
+            }
+
+            if (selectedClientTypeId == 1)
+            {
+                individualClient.Clients = client;
+
+                if (individualClient.IndividualId == 0)
+                    context.IndividualClients.Add(individualClient);
+                else
+                    context.IndividualClients.Update(individualClient);
+            }
+            else if (selectedClientTypeId == 2)
+            {
+                companyClient.Clients = client;
+
+                if (companyClient.CompanyId == 0)
+                    context.CompanyClients.Add(companyClient);
+                else
+                    context.CompanyClients.Update(companyClient);
+            }
+
+            await context.SaveChangesAsync();
+            await JS.InvokeVoidAsync("alert", "Данные успешно сохранены!");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка при сохранении: {ex.Message}");
+        }
+    }
+
+    private void Logout()
+    {
+        Navigation.NavigateTo("/logout", true);
+    }
+    
+    private async Task SaveEmployee()
+    {
+        using var context = DbContextFactory.CreateDbContext();
+        isSaving = true;
+        saveMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            // Валидация обязательных полей
+            if (string.IsNullOrWhiteSpace(adminEmployee.FirstName))
+            {
+                saveMessage = "Имя обязательно для заполнения";
+                isSaveSuccess = false;
+                isSaving = false;
+                StateHasChanged();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(adminEmployee.LastName))
+            {
+                saveMessage = "Фамилия обязательна для заполнения";
+                isSaveSuccess = false;
+                isSaving = false;
+                StateHasChanged();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(adminEmployee.Phone))
+            {
+                saveMessage = "Телефон обязателен для заполнения";
+                isSaveSuccess = false;
+                isSaving = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Обновляем только разрешенные поля
+            var employeeToUpdate = await context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == adminEmployee.EmployeeId);
+
+            if (employeeToUpdate != null)
+            {
+                // Обновляем только те поля, которые можно изменять
+                employeeToUpdate.FirstName = adminEmployee.FirstName;
+                employeeToUpdate.LastName = adminEmployee.LastName;
+                employeeToUpdate.PatronymicName = adminEmployee.PatronymicName;
+                employeeToUpdate.Phone = adminEmployee.Phone;
+
+                await context.SaveChangesAsync();
+
+                saveMessage = "Данные успешно сохранены!";
+                isSaveSuccess = true;
+
+                // Обновляем локальную копию
+                adminEmployee = employeeToUpdate;
+            }
+            else
+            {
+                saveMessage = "Сотрудник не найден";
+                isSaveSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Ошибка при сохранении: {ex.Message}";
+            isSaveSuccess = false;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+
+            // Автоматически скрываем сообщение через 5 секунд
+            if (isSaveSuccess)
+            {
+                _ = HideMessageAfterDelay();
+            }
+        }
+    }
+
+    private async Task HideMessageAfterDelay()
+    {
+        await Task.Delay(5000);
+        saveMessage = "";
+        StateHasChanged();
+    }
+    
+
+}
+
+<style>
+    .tracking-timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+
+        .tracking-timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e9ecef;
+        }
+
+    .tracking-item {
+        position: relative;
+        margin-bottom: 25px;
+    }
+
+    .tracking-marker {
+        position: absolute;
+        left: -30px;
+        top: 5px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #007bff;
+        border: 2px solid white;
+        box-shadow: 0 0 0 2px #007bff;
+    }
+
+    .tracking-content {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .tracking-item:last-child {
+        margin-bottom: 0;
+    }
+    .account-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #ffffff 100%);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    .sidebar {
+        background: linear-gradient(135deg, #1a2b3c 0%, #2c3e50 50%, #34495e 100%);
+        backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-header {
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .avatar-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .bg-gradient-success {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .sidebar-nav .nav-link {
+        color: rgba(255, 255, 255, 0.7) !important;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        background: transparent;
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .nav-link-content {
+        display: flex;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .sidebar-nav .nav-link::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s;
+    }
+
+    .sidebar-nav .nav-link:hover::before {
+        left: 100%;
+    }
+
+    .sidebar-nav .nav-link:hover,
+    .sidebar-nav .nav-link.active {
+        background: rgba(255, 255, 255, 0.1);
+        color: white !important;
+        transform: translateX(8px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .btn-logout {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 10px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+        .btn-logout:hover {
+            background: rgba(220, 53, 69, 0.2);
+            color: white;
+            border-color: rgba(220, 53, 69, 0.3);
+            transform: translateY(-2px);
+        }
+
+    .welcome-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        overflow: hidden;
+        position: relative;
+    }
+
+        .welcome-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1%, transparent 1%);
+            background-size: 20px 20px;
+            transform: rotate(30deg);
+        }
+
+    .welcome-icon {
+        font-size: 5rem;
+        opacity: 0.3;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    .stat-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+        }
+
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin: 0 auto;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .btn-action {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        color: #2c3e50;
+    }
+
+        .btn-action:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+    .action-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .client-type-selector {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .client-type-option {
+        border: 2px solid #e9ecef;
+        border-radius: 16px;
+        padding: 2rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+        .client-type-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f8f9ff, #eef1ff);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .client-type-option .option-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+    .package-row {
+        transition: all 0.3s ease;
+    }
+
+        .package-row:hover {
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), transparent);
+            transform: translateX(4px);
+        }
+
+    .form-control-lg {
+        border-radius: 12px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+        .form-control-lg:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            transform: translateY(-2px);
+        }
+
+    .bg-gradient-light {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 16px;
+    }
+
+    /* Анимации */
+    @@keyframes float {
+        0%, 100%
+
+    {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    }
+
+    .tab-pane {
+        animation: slideIn 0.5s ease-out;
+    }
+
+    @@keyframes slideIn {
+        from
+
+    {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    }
+
+    /* Адаптивность */
+    @@media (max-width: 768px) {
+        .sidebar
+
+    {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 280px;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s ease;
+    }
+
+    .sidebar.show {
+        left: 0;
+    }
+
+    .client-type-selector {
+        grid-template-columns: 1fr;
+    }
+
+    .welcome-icon {
+        font-size: 3rem;
+    }
+
+    }
+
+    .modal-backdrop {
+        z-index: 1040;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal {
+        z-index: 1050;
+    }
+
+    .modal-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .info-item label {
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+
+    .info-item p {
+        font-size: 1rem;
+        color: #333;
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+</style>

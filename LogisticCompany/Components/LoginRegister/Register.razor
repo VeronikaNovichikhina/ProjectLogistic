@@ -1,0 +1,690 @@
+﻿@page "/register"
+@inject AppDbContext DbContext
+@using LogisticCompany.Db
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+@rendermode InteractiveServer
+
+@inject NavigationManager Navigation
+
+<div class="register-page min-vh-100">
+    <div class="container-fluid h-100 p-0">
+        <div class="row g-0 h-100">
+            <!-- Left Side - Background -->
+            <div class="col-lg-6 d-none d-lg-block register-background">
+                <div class="d-flex flex-column justify-content-center align-items-center h-100 text-white p-5">
+                    <div class="text-center">
+                        <div class="logo-container mb-4">
+                            <div class="logo-icon mb-3">
+                                <i class="fas fa-shipping-fast"></i>
+                            </div>
+                            <h1 class="fw-bold display-4 mb-3">Logistic Company</h1>
+                        </div>
+                        <p class="lead mb-5 opacity-75">Станьте частью нашей логистической сети</p>
+                        <div class="features-list">
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-rocket"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h6 class="fw-bold mb-1">Мгновенная регистрация</h6>
+                                    <small class="opacity-75">Всего 2 минуты для начала работы</small>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h6 class="fw-bold mb-1">Максимальная безопасность</h6>
+                                    <small class="opacity-75">Ваши данные под надежной защитой</small>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-bolt"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h6 class="fw-bold mb-1">Немедленный доступ</h6>
+                                    <small class="opacity-75">Начните работу сразу после регистрации</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side - Register Form -->
+            <div class="col-lg-6 d-flex align-items-center justify-content-center">
+                <div class="register-content w-100">
+                    <div class="card register-form-card border-0">
+                        <div class="card-body p-4 p-md-5">
+                            
+                            <!-- Header -->
+                            <div class="text-center mb-4">
+                                <div class="register-icon-container mb-3">
+                                    <div class="register-icon-circle">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                </div>
+                                <h2 class="fw-bold text-dark mb-2">Создайте аккаунт</h2>
+                                <p class="text-muted">Присоединяйтесь к нашей платформе</p>
+                            </div>
+
+                            <EditForm Model="@userModel" OnValidSubmit="@HandleValidSubmit" FormName="register">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary class="alert alert-danger rounded-3 border-0" />
+
+                                <!-- Email Field -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold text-dark mb-3">
+                                        <i class="fas fa-envelope me-2"></i>Email адрес *
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-at"></i>
+                                        </span>
+                                        <InputText @bind-Value="userModel.Email"
+                                                   @bind-Value:event="oninput"
+                                                   type="email"
+                                                   class="form-control"
+                                                   placeholder="your.email@example.com" />
+                                    </div>
+                                    <ValidationMessage For="@(() => userModel.Email)" class="text-danger small mt-2" />
+                                </div>
+
+                                <!-- Password Field -->
+                                <!-- Password Field -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold text-dark mb-3">
+                                        <i class="fas fa-key me-2"></i>Пароль *
+                                    </label>
+                                    <div class="password-field position-relative">
+                                        <div class="input-group input-group-lg">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-lock"></i>
+                                            </span>
+                                            <input @bind="userModel.Password"
+                                                       @bind:event="oninput"
+                                                       type="@(showPassword ? "text" : "password")"
+                                                       class="form-control password-input"
+                                                       placeholder="Не менее 6 символов" />
+                                            <span class="password-eye-container position-absolute top-50 end-0 translate-middle-y me-3"
+                                                  @onclick="TogglePasswordVisibility"
+                                                  style="cursor: pointer; z-index: 5;">
+                                                <i class="@(showPassword ? "fas fa-eye-slash" : "fas fa-eye") password-eye-icon"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <ValidationMessage For="() => userModel.Password" class="text-danger small mt-2" />
+
+                                    <!-- Password Strength Indicator -->
+                                    <div class="password-strength mt-3">
+                                        <div class="strength-bar">
+                                            <div class="strength-progress"></div>
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Пароль должен содержать минимум 6 символов
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <!-- Confirm Password Field -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold text-dark mb-3">
+                                        <i class="fas fa-key me-2"></i>Подтверждение пароля *
+                                    </label>
+                                    <div class="password-field position-relative">
+                                        <div class="input-group input-group-lg">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-lock"></i>
+                                            </span>
+                                            <input @bind="userModel.ConfirmPassword"
+                                                       @bind:event="oninput"
+                                                       type="@(showConfirmPassword ? "text" : "password")"
+                                                       class="form-control password-input"
+                                                       placeholder="Повторите ваш пароль" />
+                                            <span class="password-eye-container position-absolute top-50 end-0 translate-middle-y me-3"
+                                                  @onclick="TogglePasswordVisibility"
+                                                  style="cursor: pointer; z-index: 5;">
+                                                <i class="@(showConfirmPassword ? "fas fa-eye-slash" : "fas fa-eye") password-eye-icon"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <ValidationMessage For="() => userModel.ConfirmPassword" class="text-danger small mt-2" />
+                                    @if (!string.IsNullOrEmpty(confirmPasswordError))
+                                    {
+                                        <div class="text-danger small mt-2">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>@confirmPasswordError
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Submit Button -->
+                                <button type="submit" class="btn btn-register w-100 py-3 fw-bold rounded-3 register-btn">
+                                    <i class="fas fa-user-plus me-2"></i>Создать аккаунт
+                                </button>
+                            </EditForm>
+
+                            <!-- Divider -->
+                            <div class="position-relative my-4">
+                                <hr class="my-4" />
+                                <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small">
+                                    или
+                                </span>
+                            </div>
+
+                            <!-- Login Link -->
+                            <div class="text-center">
+                                <p class="text-muted mb-3">Уже есть аккаунт?</p>
+                                <NavLink href="/login" class="btn btn-outline-login w-100 py-3 rounded-3">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Войти в систему
+                                </NavLink>
+                            </div>
+
+                            <!-- Security Info -->
+                            <div class="mt-4 p-3 security-info rounded-3">
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-shield-alt me-2 text-primary mt-1"></i>
+                                    <div>
+                                        <h6 class="fw-semibold text-dark mb-2">Безопасность данных</h6>
+                                        <div class="small text-muted">
+                                            <div class="mb-1">• Все пароли хранятся в зашифрованном виде</div>
+                                            <div class="mb-1">• Ваши данные защищены и конфиденциальны</div>
+                                            <div>• Мы не передаем вашу информацию третьим лицам</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+   
+    public class RegisterModel
+    {
+        
+
+        [Required(ErrorMessage = "Введите Email")]
+        [EmailAddress(ErrorMessage = "Некорректный формат Email")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Введите пароль")]
+        [MinLength(6, ErrorMessage = "Пароль должен быть не менее 6 символов")]
+        public string Password { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Подтвердите пароль")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    [SupplyParameterFromForm]
+    private RegisterModel userModel{ get; set; } = new RegisterModel();
+   
+    private string message;
+    private string confirmPasswordError = string.Empty;
+    private bool showPassword = false;
+    private bool showConfirmPassword = false;
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+        StateHasChanged();
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        showConfirmPassword = !showConfirmPassword;
+        StateHasChanged();
+    }
+    private void OnConfirmPasswordChanged()
+    {
+        confirmPasswordError = string.Empty;
+        if (!string.IsNullOrEmpty(userModel.Password) && !string.IsNullOrEmpty(userModel.ConfirmPassword) &&
+            userModel.Password != userModel.ConfirmPassword)
+        {
+            confirmPasswordError = "Пароли не совпадают";
+        }
+    }
+    private async Task HandleValidSubmit()
+    {
+        message = string.Empty;
+        confirmPasswordError = string.Empty;
+
+        if (userModel.Password != userModel.ConfirmPassword)
+        {
+            confirmPasswordError = "Пароли не совпадают";
+            return;
+        }
+
+        if (await DbContext.Users.AnyAsync(u => u.Email == userModel.Email))
+        {
+            message = "Пользователь с таким Email уже существует.";
+            return;
+        }
+
+        try
+        {
+            var user = new User
+            {
+                Email = userModel.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(userModel.Password),
+                Role = "User"
+            };
+
+            DbContext.Users.Add(user);
+            await DbContext.SaveChangesAsync();
+
+            message = "Регистрация прошла успешно!";
+            await Task.Delay(1000);
+            Navigation.NavigateTo("/profile");
+        }
+        catch (Exception ex)
+        {
+            message = $"Ошибка при регистрации: {ex.Message}";
+        }
+    }
+} 
+
+<style>
+    .register-page {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+    }
+
+    .register-background {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%), url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .register-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 70% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+    .logo-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        margin: 0 auto;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .features-list {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background: rgba(255,255,255,0.1);
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+    }
+
+        .feature-item:hover {
+            transform: translateX(-10px);
+            background: rgba(255,255,255,0.15);
+        }
+
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .register-content {
+        max-width: 480px;
+        padding: 2rem;
+    }
+
+    .register-form-card {
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.3);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        overflow: hidden;
+    }
+
+        .register-form-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+    .register-icon-circle {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto;
+        color: white;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+    }
+
+        .register-icon-circle:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+    /* Progress Steps */
+    .progress-steps {
+        padding: 0 1rem;
+    }
+
+    .steps {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+    }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 25%;
+            right: 25%;
+            height: 2px;
+            background: #e9ecef;
+            z-index: 1;
+        }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .step.active .step-number {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .step-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .step.active .step-label {
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .input-group-lg {
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group-text {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #e9ecef;
+        border-right: none;
+        border-radius: 12px 0 0 12px !important;
+        color: #667eea;
+        font-size: 1.1rem;
+    }
+
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-left: none;
+        border-radius: 0 12px 12px 0 !important;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+            background: white;
+        }
+
+    .input-group:focus-within .input-group-text {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    /* Password Strength */
+    .password-strength {
+        margin-top: 1rem;
+    }
+
+    .strength-bar {
+        height: 4px;
+        background: #e9ecef;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+
+    .strength-progress {
+        height: 100%;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 2px;
+    }
+
+    .btn-register {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .btn-register::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-register:hover::before {
+            left: 100%;
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+    .btn-outline-login {
+        border: 2px solid #667eea;
+        color: #667eea;
+        background: transparent;
+        transition: all 0.3s ease;
+    }
+
+        .btn-outline-login:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+        }
+
+    .security-info {
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+        border: 1px solid #e6e8ff;
+    }
+
+    .alert-danger {
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+        color: #d63031;
+        box-shadow: 0 5px 15px rgba(214, 48, 49, 0.1);
+    }
+
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+
+    /* Анимации */
+    @@keyframes gradientShift {
+        0%
+
+    {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+
+    }
+
+    @@keyframes float {
+        0%, 100%
+
+    {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+
+    }
+
+    .register-form-card {
+        animation: slideInRight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    @@keyframes slideInRight {
+        from
+
+    {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    }
+
+    /* Адаптивность */
+    @@media (max-width: 991.98px) {
+        .register-background
+
+    {
+        display: none !important;
+    }
+
+    .register-content {
+        max-width: 100%;
+        padding: 1rem;
+    }
+
+    .register-form-card {
+        margin: 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    }
+
+    @@media (max-width: 575.98px) {
+        .card-body
+
+    {
+        padding: 2rem 1.5rem !important;
+    }
+
+    .register-icon-circle {
+        width: 70px;
+        height: 70px;
+        font-size: 1.5rem;
+    }
+
+    .feature-item {
+        padding: 1rem;
+    }
+
+    .feature-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    .steps::before {
+        left: 20%;
+        right: 20%;
+    }
+
+    }
+</style>

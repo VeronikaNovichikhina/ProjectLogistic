@@ -1,0 +1,533 @@
+﻿ @page "/ordersList"
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using LogisticCompany.Domain.Entities.Orders
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext context
+@inject NavigationManager NavigationManager
+
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        <!-- Header -->
+        <div class="card border-0 shadow-lg mb-4 glass-card">
+            <div class="card-body py-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <div class="header-icon-primary me-3">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <div>
+                                <h1 class="h3 fw-bold text-dark mb-1">Список заказов</h1>
+                                <p class="text-muted mb-0">Управление всеми заказами доставки</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <NavLink href="/orders/create" class="btn btn-primary btn-lg shadow-sm">
+                            <i class="fas fa-plus-circle me-2"></i>Создать заказ
+                        </NavLink>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm stat-card-primary">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h4 class="fw-bold mb-0 text-white">@orders?.Count.ToString()</h4>
+                                <small class="text-white opacity-75">Всего заказов</small>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-boxes"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (orders == null)
+        {
+            <!-- Loading State -->
+            <div class="card border-0 shadow-lg glass-card">
+                <div class="card-body text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <h5 class="text-muted">Загрузка заказов...</h5>
+                </div>
+            </div>
+        }
+        else if (!orders.Any())
+        {
+            <!-- Empty State -->
+            <div class="card border-0 shadow-lg glass-card">
+                <div class="card-body text-center py-5">
+                    <div class="empty-state-icon mb-3">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <h4 class="text-dark mb-3">Заказов не найдено</h4>
+                    <p class="text-muted mb-4">Создайте первый заказ для начала работы</p>
+                    <NavLink href="/orders/create" class="btn btn-primary btn-lg shadow-sm">
+                        <i class="fas fa-plus-circle me-2"></i>Создать первый заказ
+                    </NavLink>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Orders Grid -->
+            <div class="row g-4">
+                @foreach (var or in orders)
+                {
+                    <div class="col-12 col-lg-6 col-xl-4">
+                        <div class="card order-card border-0 shadow-lg h-100 hover-lift">
+                            <div class="card-header border-0 pb-0">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h5 class="fw-bold text-dark mb-1">
+                                            <i class="fas fa-hashtag text-primary me-2"></i>Заказ #@or.OrdersId
+                                        </h5>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary border-0 rounded-circle"
+                                                type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                                            <li>
+                                                <a class="dropdown-item" href="@($"/orders/details/{or.OrdersId}")">
+                                                    <i class="fas fa-eye me-2 text-primary"></i>Просмотр
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="@($"/orders/edit/{or.OrdersId}")">
+                                                    <i class="fas fa-edit me-2 text-warning"></i>Редактировать
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#">
+                                                    <i class="fas fa-trash me-2"></i>Удалить
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <!-- Status Badge -->
+                                <div class="mb-2">
+                                    <OrderStatusBadge Status="@GetCurrentStatus(or)" />
+                                </div>
+                                <!-- Tracking Info -->
+                                @{
+                                    var lastTracking = or.Trackings.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
+                                }
+                                @if (lastTracking != null)
+                                {
+                                    <div class="tracking-info">
+                                        <small class="text-muted">
+                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                            @lastTracking.LocationTrackings
+                                        </small>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            @lastTracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
+                                        </small>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="card-body">
+                                <!-- Client Info -->
+                                <div class="mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="info-icon bg-primary">
+                                            <i class="fas fa-user text-white"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Клиент</small>
+                                            @if (or.Clients.ClientTypeId == 1 && or.Clients.IndividualClients.Any())
+                                            {
+                                                var individual = or.Clients.IndividualClients.First();
+                                                <span class="fw-semibold text-dark">@individual.LastName @individual.FirstName</span>
+                                            }
+                                            else if (or.Clients.ClientTypeId == 2 && or.Clients.CompanyClients.Any())
+                                            {
+                                                var company = or.Clients.CompanyClients.First();
+                                                <span class="fw-semibold text-dark">@company.CompanyName</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Route Info -->
+                                <div class="mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="info-icon bg-info">
+                                            <i class="fas fa-route text-white"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Маршрут</small>
+                                            <div class="d-flex align-items-center">
+                                                <span class="fw-semibold text-dark">@or.OriginTown.TownName</span>
+                                                <i class="fas fa-arrow-right mx-2 text-muted small"></i>
+                                                <span class="fw-semibold text-dark">@or.DestinationTown.TownName</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Package Info -->
+                                <div class="mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="info-icon bg-warning">
+                                            <i class="fas fa-box text-white"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Посылка</small>
+                                            @if (or.Weight > 0)
+                                            {
+                                                <span class="fw-semibold text-dark">@or.Weight кг</span>
+                                                <span class="text-muted mx-1">•</span>
+                                            }
+                                            @if (or.LengthCm > 0 && or.WidthCm > 0 && or.HeightCm > 0)
+                                            {
+                                                <span class="fw-semibold text-dark">@or.LengthCm×@or.WidthCm×@or.HeightCm см</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delivery Type -->
+                                @if (or.DeliveryType != null)
+                                {
+                                    <div class="mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="info-icon bg-success">
+                                                <i class="fas fa-shipping-fast text-white"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <small class="text-muted d-block">Тип доставки</small>
+                                                <span class="fw-semibold text-dark">@or.DeliveryType.NameDeliveryType</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="card-footer bg-transparent border-0 pt-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button class="btn btn-outline-primary btn-sm shadow-sm"
+                                            onclick="window.location.href='@($"/orders/details/{or.OrdersId}")'; event.stopPropagation()">
+                                        <i class="fas fa-eye me-1"></i>Подробнее
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Pagination -->
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <div class="text-muted">
+                    Показано <strong class="text-dark">@orders.Count</strong> из <strong class="text-dark">@orders.Count</strong> заказов
+                </div>
+                <nav>
+                    <ul class="pagination mb-0 shadow-sm">
+                        <li class="page-item disabled">
+                            <a class="page-link border-0" href="#">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item active">
+                            <a class="page-link border-0 bg-primary text-white" href="#">1</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link border-0 text-dark" href="#">2</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link border-0 text-dark" href="#">3</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link border-0" href="#">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-bg {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #ffffff 100%);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .header-icon-primary {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Stat Cards */
+    .stat-card-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+    }
+
+    .stat-card-warning {
+        background: linear-gradient(135deg, #ffd666 0%, #ffa94d 100%);
+        border-radius: 16px;
+    }
+
+    .stat-card-success {
+        background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+        border-radius: 16px;
+    }
+
+    .stat-card-danger {
+        background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%);
+        border-radius: 16px;
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        color: white;
+    }
+
+    .stat-card-warning .stat-icon {
+        color: #e67700;
+    }
+
+    /* Order Cards */
+    .order-card {
+        background: white;
+        border-radius: 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .order-card .card-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+        border-radius: 20px 20px 0 0 !important;
+        padding: 1.5rem;
+    }
+
+    .info-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    /* Status Badges */
+    .badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+    }
+
+        .badge.bg-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+
+        .badge.bg-success {
+            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%) !important;
+        }
+
+        .badge.bg-warning {
+            background: linear-gradient(135deg, #ffd666 0%, #ffa94d 100%) !important;
+            color: #000 !important;
+        }
+
+        .badge.bg-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%) !important;
+        }
+
+        .badge.bg-secondary {
+            background: linear-gradient(135deg, #868e96 0%, #495057 100%) !important;
+        }
+
+    /* Empty State */
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #6c757d;
+        margin: 0 auto;
+    }
+
+    /* Buttons */
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+    .btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 10px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+        .btn-outline-primary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+    /* Pagination */
+    .pagination .page-link {
+        border-radius: 10px;
+        margin: 0 2px;
+        font-weight: 500;
+    }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+    }
+
+    /* Dropdown */
+    .dropdown-menu {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        margin: 2px 0.5rem;
+        width: auto;
+    }
+
+        .dropdown-item:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+    /* Text Colors */
+    .text-dark {
+        color: #2c3e50 !important;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .header-icon-primary {
+            width: 50px;
+            height: 50px;
+            font-size: 1.3rem;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.1rem;
+        }
+
+        .order-card .card-header {
+            padding: 1rem;
+        }
+
+        .info-icon {
+            width: 35px;
+            height: 35px;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
+@code {
+    private List<Order>? orders;
+    private List<StatusDelivery> statuses = new();
+    protected override async Task OnInitializedAsync()
+    {
+        orders = await context.Orders
+         .Include(o => o.Clients)
+             .ThenInclude(c => c.IndividualClients)
+         .Include(o => o.Clients)
+             .ThenInclude(c => c.CompanyClients)
+         .Include(o => o.OriginTown)
+         .Include(o => o.DestinationTown)
+         .Include(o => o.DeliveryType)
+         .Include(o => o.Template)
+         .Include(o => o.Trackings)
+                .ThenInclude(t => t.Status)
+         .ToListAsync();
+        statuses = await context.StatusDeliveries.ToListAsync();
+    }
+    private int GetStatusCount(string statusName)
+    {
+        return orders.Count(o => o.Trackings
+            .OrderByDescending(t => t.UpdateDate)
+            .FirstOrDefault()?.Status?.StatusName == statusName);
+    }
+
+    private StatusDelivery? GetCurrentStatus(Order order)
+    {
+        return order.Trackings
+            .OrderByDescending(t => t.UpdateDate)
+            .FirstOrDefault()?.Status;
+    }
+
+} 

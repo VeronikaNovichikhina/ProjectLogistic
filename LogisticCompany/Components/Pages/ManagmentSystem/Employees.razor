@@ -1,0 +1,1720 @@
+﻿@page "/employees"
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using LogisticCompany.Domain.Entities.Employee
+@using LogisticCompany.Domain.Entities.Location
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext DbContext
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<div class="page-container">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="page-header glass-card">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center">
+                        <div class="header-icon me-3">
+                            <i class="fas fa-users-cog"></i>
+                        </div>
+                        <div>
+                            <h1 class="page-title">Управление сотрудниками</h1>
+                            <p class="page-subtitle">Администрирование персонала компании</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-primary btn-lg shadow-sm" @onclick="ShowCreateModal">
+                        <i class="fas fa-plus-circle me-2"></i>Добавить сотрудника
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card stat-total">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value">@(employees?.Count ?? 0)</h3>
+                        <p class="stat-label">Всего сотрудников</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card stat-managers">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value">@(employees?.Count(e => e.Position == "Менеджер") ?? 0)</h3>
+                        <p class="stat-label">Менеджеров</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card stat-couriers">
+                    <div class="stat-icon">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value">@(employees?.Count(e => e.Position == "Курьер") ?? 0)</h3>
+                        <p class="stat-label">Курьеров</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card stat-active">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value">@(employees?.Count(e => e.UserId != null) ?? 0)</h3>
+                        <p class="stat-label">С аккаунтом</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-card glass-card mb-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-code-branch me-2"></i>Филиал
+                        </label>
+                        <select @bind="selectedBranchId" class="form-select filter-select" @oninput="OnBranchChanged">
+                            <option value="0">Все филиалы</option>
+                            @foreach (var branch in branches)
+                            {
+                                <option value="@branch.BranchesId">@branch.NameBranches</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-search me-2"></i>Поиск
+                        </label>
+                        <div class="search-input-container">
+                            <i class="fas fa-search search-icon"></i>
+                            <input @bind="searchTerm" @oninput="OnSearch" class="form-control search-input"
+                                   placeholder="Поиск сотрудников..." />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-briefcase me-2"></i>Должность
+                        </label>
+                        <select @bind="selectedPosition" class="form-select filter-select" @oninput="LoadEmployees">
+                            <option value="">Все должности</option>
+                            <option value="Менеджер">Менеджер</option>
+                            <option value="Курьер">Курьер</option>
+                            <option value="Администратор">Администратор</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employees Table -->
+        <div class="main-card glass-card">
+            <div class="card-body">
+                @if (employees?.Any() == true)
+                {
+                    <div class="table-container">
+                        <table class="employees-table">
+                            <thead>
+                                <tr>
+                                    <th class="employee-id">№</th>
+                                    <th class="employee-name">Сотрудник</th>
+                                    <th class="employee-position">Должность</th>
+                                    <th class="employee-branch">Филиал</th>
+                                    <th class="employee-contacts">Контакты</th>
+                                    <th class="employee-status">Статус</th>
+                                    <th class="employee-actions">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var (employee, index) in employees.Select((value, i) => (value, i)))
+                                {
+                                    <tr class="employee-row">
+                                        <td class="employee-id">@(index + 1)</td>
+                                        <td class="employee-name">
+                                            <div class="employee-avatar">
+                                                <div class="avatar-circle @GetPositionClass(employee.Position)">
+                                                    <i class="@GetPositionIcon(employee.Position)"></i>
+                                                </div>
+                                            </div>
+                                            <div class="employee-info">
+                                                <div class="employee-fullname">
+                                                    @employee.LastName @employee.FirstName @employee.PatronymicName
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="employee-position">
+                                            <span class="position-badge @GetPositionBadgeClass(employee.Position)">
+                                                @employee.Position
+                                            </span>
+                                        </td>
+                                        <td class="employee-branch">
+                                            <div class="branch-info">
+                                                <i class="fas fa-building me-2 text-muted"></i>
+                                                <span>@employee.Branch?.NameBranches</span>
+                                            </div>
+                                            <small class="text-muted">@employee.Branch?.Town?.TownName</small>
+                                        </td>
+                                        <td class="employee-contacts">
+                                            <div class="contact-item">
+                                                <i class="fas fa-envelope text-primary me-2"></i>
+                                                <span>@employee.Email</span>
+                                            </div>
+                                            <div class="contact-item">
+                                                <i class="fas fa-phone text-success me-2"></i>
+                                                <span>@employee.Phone</span>
+                                            </div>
+                                        </td>
+                                        <td class="employee-status">
+                                            @if (employee.UserId != null)
+                                            {
+                                                <span class="status-badge status-active">
+                                                    <i class="fas fa-check-circle me-1"></i>Активен
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="status-badge status-inactive">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>Без аккаунта
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="employee-actions">
+                                            <div class="action-buttons">
+                                                <button class="btn-action btn-view"
+                                                        @onclick="() => ShowEmployeeDetails(employee.EmployeeId)"
+                                                        >Просмотр
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-action btn-delete"
+                                                         @onclick="() => DeleteEmployee(employee.EmployeeId)" 
+                                                       >Удалить
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h4 class="empty-title">Сотрудники не найдены</h4>
+                        <p class="empty-description">Добавьте первого сотрудника или измените параметры поиска</p>
+                        <button class="btn btn-primary" @onclick="ShowCreateModal">
+                            <i class="fas fa-plus me-2"></i>Добавить сотрудника
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Details Modal -->
+@if (showDetailsModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-modal">
+                <div class="modal-header">
+                    <div class="modal-title-section">
+                        <div class="modal-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title">Информация о сотруднике</h5>
+                            <p class="modal-subtitle">Детальная информация и контакты</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseDetailsModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (selectedEmployee != null)
+                    {
+                        <div class="employee-details">
+                            <!-- Header Info -->
+                            <div class="detail-header">
+                                <div class="detail-avatar @GetPositionClass(selectedEmployee.Position)">
+                                    <i class="@GetPositionIcon(selectedEmployee.Position)"></i>
+                                </div>
+                                <div class="detail-info">
+                                    <h4 class="detail-name">
+                                        @selectedEmployee.LastName @selectedEmployee.FirstName @selectedEmployee.PatronymicName
+                                    </h4>
+                                    <div class="detail-meta">
+                                        <span class="detail-position @GetPositionBadgeClass(selectedEmployee.Position)">
+                                            @selectedEmployee.Position
+                                        </span>
+                                        <span class="detail-id">ID: #@selectedEmployee.EmployeeId</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-4 mt-3">
+                                <!-- Personal Info -->
+                                <div class="col-md-6">
+                                    <div class="detail-card">
+                                        <div class="detail-card-header">
+                                            <i class="fas fa-id-card text-primary me-2"></i>
+                                            <h6>Основная информация</h6>
+                                        </div>
+                                        <div class="detail-card-body">
+                                            <div class="detail-item">
+                                                <label>ФИО:</label>
+                                                <span>@selectedEmployee.LastName @selectedEmployee.FirstName @selectedEmployee.PatronymicName</span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <label>Должность:</label>
+                                                <span class="text-primary fw-bold">@selectedEmployee.Position</span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <label>Статус аккаунта:</label>
+                                                @if (selectedEmployee.UserId != null)
+                                                {
+                                                    <span class="status-badge status-active">
+                                                        <i class="fas fa-check-circle me-1"></i>Активен
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="status-badge status-inactive">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>Без аккаунта
+                                                    </span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Contact Info -->
+                                <div class="col-md-6">
+                                    <div class="detail-card">
+                                        <div class="detail-card-header">
+                                            <i class="fas fa-address-book text-success me-2"></i>
+                                            <h6>Контактная информация</h6>
+                                        </div>
+                                        <div class="detail-card-body">
+                                            <div class="detail-item">
+                                                <label>Email:</label>
+                                                <span>
+                                                    <i class="fas fa-envelope me-1 text-muted"></i>
+                                                    @selectedEmployee.Email
+                                                </span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <label>Телефон:</label>
+                                                <span>
+                                                    <i class="fas fa-phone me-1 text-muted"></i>
+                                                    @selectedEmployee.Phone
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Branch Info -->
+                                <div class="col-12">
+                                    <div class="detail-card">
+                                        <div class="detail-card-header">
+                                            <i class="fas fa-building text-warning me-2"></i>
+                                            <h6>Информация о филиале</h6>
+                                        </div>
+                                        <div class="detail-card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="detail-item">
+                                                        <label>Страна филиала:</label>
+                                                        <span>
+                                                            <i class="fas fa-phone me-1 text-muted"></i>
+                                                            @selectedEmployee.Branch?.Town?.Country?.CountryName
+                                                        </span>
+                                                    </div>
+                                                    <div class="detail-item">
+                                                        <label>Город филиала:</label>
+                                                        <span>
+                                                            <i class="fas fa-city me-1 text-muted"></i>
+                                                            @selectedEmployee.Branch?.Town?.TownName
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="detail-item">
+                                                        <label>Филиал:</label>
+                                                        <span>@selectedEmployee.Branch?.NameBranches</span>
+                                                    </div>
+                                                    <div class="detail-item">
+                                                        <label>Адрес:</label>
+                                                        <span>
+                                                            <i class="fas fa-map-marker-alt me-1 text-muted"></i>
+                                                            @selectedEmployee.Branch?.AddressBranches
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="detail-item">
+                                                        <label>Телефон филиала:</label>
+                                                        <span>
+                                                            <i class="fas fa-phone me-1 text-muted"></i>
+                                                            @selectedEmployee.Branch?.PhoneBranches
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseDetailsModal">
+                        <i class="fas fa-times me-2"></i>Закрыть
+                    </button>
+                    <button class="btn btn-primary"
+                            @onclick="() => { EditEmployeeFromDetails(selectedEmployee.EmployeeId); CloseDetailsModal(); }">
+                        <i class="fas fa-edit me-2"></i>Редактировать
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add/Edit Employee Modal -->
+@if (showModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-modal">
+                <div class="modal-header">
+                    <div class="modal-title-section">
+                        <div class="modal-icon @(isEditing ? "bg-warning" : "bg-primary")">
+                            <i class="fas @(isEditing ? "fa-edit" : "fa-user-plus")"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title">@(isEditing ? "Редактирование сотрудника" : "Добавление сотрудника")</h5>
+                            <p class="modal-subtitle">@(isEditing ? "Обновите информацию о сотруднике" : "Заполните данные нового сотрудника")</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <EditForm Model="employeeDto" OnValidSubmit="SaveEmployee">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="form-label required">Фамилия</label>
+                                    <InputText @bind-Value="employeeDto.LastName" class="form-control modern-input" />
+                                    <ValidationMessage For="() => employeeDto.LastName" class="validation-error" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="form-label required">Имя</label>
+                                    <InputText @bind-Value="employeeDto.FirstName" class="form-control modern-input" />
+                                    <ValidationMessage For="() => employeeDto.FirstName" class="validation-error" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="form-label">Отчество</label>
+                                    <InputText @bind-Value="employeeDto.PatronymicName" class="form-control modern-input" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Email</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-envelope input-icon"></i>
+                                        <InputText @bind-Value="employeeDto.Email" class="form-control modern-input" />
+                                    </div>
+                                    <ValidationMessage For="() => employeeDto.Email" class="validation-error" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Телефон</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-phone input-icon"></i>
+                                        <InputText @bind-Value="employeeDto.Phone" class="form-control modern-input" />
+                                    </div>
+                                    <ValidationMessage For="() => employeeDto.Phone" class="validation-error" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Должность</label>
+                                    <InputSelect @bind-Value="employeeDto.Position" class="form-select modern-select">
+                                        <option value="">Выберите должность</option>
+                                        <option value="Менеджер">Менеджер</option>
+                                        <option value="Курьер">Курьер</option>
+                                        <option value="Администратор">Администратор</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="() => employeeDto.Position" class="validation-error" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Страна филиала</label>
+                                    <InputSelect @bind-Value="employeeDto.CountryId" class="form-select modern-select">
+                                        <option value="0">Выберите страну</option>
+                                        @foreach (var c in country)
+                                        {
+                                            <option value="@c.CountryId">@c.CountryName</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => employeeDto.CountryId" class="validation-error" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Город филиала</label>
+                                    <InputSelect @bind-Value="employeeDto.TownId" class="form-select modern-select">
+                                        <option value="0">Выберите город</option>
+                                        @foreach (var t in FilteredTowns)
+                                        {
+                                            <option value="@t.TownId">@t.TownName</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => employeeDto.TownId" class="validation-error" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Филиал</label>
+                                    <InputSelect @bind-Value="employeeDto.BranchId" class="form-select modern-select">
+                                        <option value="0">Выберите филиал</option>
+                                        @foreach (var branch in FilteredBranches)
+                                        {
+                                            <option value="@branch.BranchesId">@branch.NameBranches</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => employeeDto.BranchId" class="validation-error" />
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (!isEditing)
+                        {
+                            <div class="form-check modern-checkbox">
+                                <InputCheckbox @bind-Value="employeeDto.CreateUserAccount" class="form-check-input" id="createAccount" />
+                                <label class="form-check-label" for="createAccount">
+                                    <i class="fas fa-user-plus me-2"></i>Создать учетную запись для входа в систему
+                                </label>
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">
+                            <i class="fas fa-times me-2"></i>Отмена
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas @(isEditing ? "fa-save" : "fa-plus-circle") me-2"></i>
+                            @(isEditing ? "Обновить" : "Создать")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    private List<Employee> employees = new();
+    private List<Branch> branches = new();
+    private List<Town> town = new();
+    private List<Country> country = new();
+    private EmployeeDTO employeeDto = new();
+    private bool showModal = false;
+    private bool isEditing = false;
+    private int selectedBranchId = 0;
+    private string searchTerm = "";
+    private string selectedPosition = "";
+    private bool showDetailsModal = false;
+    private Employee selectedEmployee = null;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBranches();
+        await LoadEmployees();
+        await LoadTown();
+        await LoadCountry();
+    }
+
+    private async Task LoadBranches()
+    {
+        branches = await DbContext.Branches
+            .Include(b => b.Town)
+            .OrderBy(b => b.NameBranches)
+            .ToListAsync();
+    }
+    private async Task LoadTown()
+    {
+        town = await DbContext.Towns
+            .Include(t => t.Country)
+            .OrderBy(t => t.TownName)
+            .ToListAsync();
+    }
+    private async Task LoadCountry()
+    {
+        country = await DbContext.Countries.ToListAsync();
+    }
+
+    private IEnumerable<Town> FilteredTowns =>
+       town?.Where(t => t.CountryId == employeeDto.CountryId) ?? Enumerable.Empty<Town>();
+
+    private IEnumerable<Branch> FilteredBranches =>
+        branches?.Where(b => b.TownId == employeeDto.TownId) ?? Enumerable.Empty<Branch>();
+
+    private async Task LoadEmployees()
+    {
+        var query = DbContext.Employees
+            .Include(e => e.Branch)
+            .ThenInclude(b => b.Town)
+            .AsQueryable();
+
+        if (selectedBranchId > 0)
+        {
+            query = query.Where(e => e.BranchId == selectedBranchId);
+        }
+
+        if (!string.IsNullOrEmpty(selectedPosition))
+        {
+            query = query.Where(e => e.Position == selectedPosition);
+        }
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            query = query.Where(e => 
+                e.FirstName.Contains(searchTerm) ||
+                e.LastName.Contains(searchTerm) ||
+                e.PatronymicName.Contains(searchTerm) ||
+                e.Email.Contains(searchTerm) ||
+                e.Phone.Contains(searchTerm) ||
+                e.Branch.NameBranches.Contains(searchTerm));
+        }
+
+        employees = await query
+            .OrderBy(e => e.LastName)
+            .ThenBy(e => e.FirstName)
+            .ToListAsync();
+    }
+
+    private async Task OnBranchChanged()
+    {
+        await LoadEmployees();
+    }
+
+    private async Task OnSearch()
+    {
+        await Task.Delay(300);
+        await LoadEmployees();
+    }
+
+    private void ShowCreateModal()
+    {
+        employeeDto = new EmployeeDTO();
+        isEditing = false;
+        showModal = true;
+    }
+
+    private async Task EditEmployee(int employeeId)
+    {
+        var employee = await DbContext.Employees
+            .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+
+        if (employee != null)
+        {
+            employeeDto = new EmployeeDTO
+            {
+                EmployeeId = employee.EmployeeId,
+                FirstName = employee.FirstName,
+                LastName = employee.LastName,
+                PatronymicName = employee.PatronymicName,
+                Email = employee.Email,
+                Phone = employee.Phone,
+                Position = employee.Position,
+                BranchId = employee.BranchId
+            };
+            isEditing = true;
+            showModal = true;
+        }
+    }
+
+    private async Task SaveEmployee()
+    {
+        try
+        {
+            if (isEditing)
+            {
+                // Редактирование существующего сотрудника
+                var employee = await DbContext.Employees
+                     .Include(e => e.User)
+                    .FirstOrDefaultAsync(e => e.EmployeeId == employeeDto.EmployeeId);
+
+                if (employee != null)
+                {
+                    employee.FirstName = employeeDto.FirstName;
+                    employee.LastName = employeeDto.LastName;
+                    employee.PatronymicName = employeeDto.PatronymicName;
+                    employee.Phone = employeeDto.Phone;
+
+                    string oldPosition = employee.Position;
+                    employee.Position = employeeDto.Position;
+                    employee.BranchId = employeeDto.BranchId;
+                    if (employee.UserId.HasValue && oldPosition != employeeDto.Position)
+                    {
+                        string newRole = GetRoleByPosition(employeeDto.Position);
+                        if (employee.User != null)
+                        {
+                            employee.User.Role = newRole;
+                        }
+                    }
+                    DbContext.Employees.Update(employee);
+                }
+            }
+            else
+            {
+                // Создание нового сотрудника
+                // Проверяем уникальность email
+                var emailExists = await DbContext.Employees
+
+                    .AnyAsync(e => e.Email == employeeDto.Email);
+
+                if (emailExists)
+                {
+                    await JS.InvokeVoidAsync("alert", "Сотрудник с таким email уже существует");
+                    return;
+                }
+
+                // Проверяем уникальность телефона
+                var phoneExists = await DbContext.Employees
+                    .AnyAsync(e => e.Phone == employeeDto.Phone);
+
+                if (phoneExists)
+                {
+                    await JS.InvokeVoidAsync("alert", "Сотрудник с таким телефоном уже существует");
+                    return;
+                }
+
+                var employee = new Employee
+                {
+                    FirstName = employeeDto.FirstName,
+                    LastName = employeeDto.LastName,
+                    PatronymicName = employeeDto.PatronymicName,
+                    Email = employeeDto.Email,
+                    Phone = employeeDto.Phone,
+                    Position = employeeDto.Position,
+                    BranchId = employeeDto.BranchId,
+
+                };
+
+                if (employeeDto.CreateUserAccount)
+                {
+                    var password = GenerateTemporaryPassword();
+                    string userRole = GetRoleByPosition(employeeDto.Position);
+
+                    var user = new User
+                    {
+                        Email = employeeDto.Email,
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                        Role = userRole, 
+                        IsTemporaryPassword = true
+                    };
+
+                    DbContext.Users.Add(user);
+                    await DbContext.SaveChangesAsync(); 
+
+                    employee.UserId = user.Id;
+
+                    await JS.InvokeVoidAsync("alert", 
+                        $"Сотрудник создан!\n\nДанные для входа:\nЛогин: {employeeDto.Email}\nПароль: {password}");
+                }
+
+                DbContext.Employees.Add(employee);
+            }
+
+            await DbContext.SaveChangesAsync();
+            await LoadEmployees();
+            CloseModal();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+        }
+    }
+    private string GetRoleByPosition(string position)
+    {
+        return position?.ToLower() switch
+        {
+            "администратор" => "Admin",
+            "менеджер" => "Manager",
+            _ => "User" 
+        };
+    }
+    private async Task ToggleEmployeeStatus(int employeeId)
+    {
+        var employee = await DbContext.Employees
+            .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+
+        if (employee != null)
+        {
+
+            DbContext.Employees.Update(employee);
+            await DbContext.SaveChangesAsync();
+            await LoadEmployees();
+        }
+    }
+
+    private async Task ShowEmployeeDetails(int employeeId)
+    {
+        try
+        {
+            // Показываем спиннер загрузки
+            showDetailsModal = true;
+            selectedEmployee = null;
+            StateHasChanged();
+
+            // Загружаем данные сотрудника
+            selectedEmployee = await DbContext.Employees
+                .Include(e => e.Branch)
+                .ThenInclude(b => b.Town)
+                .Include(e => e.User)
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+
+            if (selectedEmployee == null)
+            {
+                await JS.InvokeVoidAsync("alert", "Сотрудник не найден");
+                CloseDetailsModal();
+                return;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка загрузки деталей сотрудника: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", "Ошибка загрузки информации о сотруднике");
+            CloseDetailsModal();
+        }
+    }
+
+    private void CloseDetailsModal()
+    {
+        showDetailsModal = false;
+        selectedEmployee = null;
+        StateHasChanged();
+    }
+
+    private async Task EditEmployeeFromDetails(int employeeId)
+    {
+        CloseDetailsModal();
+        await Task.Delay(300); // Небольшая задержка для анимации
+        await EditEmployee(employeeId);
+    }
+
+
+    private void CloseModal()
+    {
+        showModal = false;
+        employeeDto = new EmployeeDTO();
+        StateHasChanged();
+    }
+
+    private string GenerateTemporaryPassword()
+    {
+        var random = new Random();
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        return new string(Enumerable.Repeat(chars, 10)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+    private string GetPositionClass(string position)
+    {
+        return position?.ToLower() switch
+        {
+            "менеджер" => "avatar-manager",
+            _ => "avatar-admin"
+        };
+    }
+
+    private string GetPositionIcon(string position)
+    {
+        return position?.ToLower() switch
+        {
+            "менеджер" => "fas fa-user-tie",
+            _ => "fas fa-user"
+        };
+    }
+
+    private string GetPositionBadgeClass(string position)
+    {
+        return position?.ToLower() switch
+        {
+            "менеджер" => "badge-manager",
+            _ => "badge-admin"
+        };
+    }
+
+    private async Task DeleteEmployee(int employeeId)
+    {
+        try
+        {
+            bool confirmed = await JS.InvokeAsync<bool>("confirm",
+                "Вы уверены, что хотите удалить сотрудника? Это действие нельзя отменить.\n\n");
+
+            if (!confirmed)
+                return;
+
+            var employee = await DbContext.Employees
+                .Include(e => e.User)
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+
+            if (employee == null)
+            {
+                await JS.InvokeVoidAsync("alert", "Сотрудник не найден");
+                return;
+            }
+
+            using var transaction = await DbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                await DeleteEmployeeRelatedOrders(employeeId);
+
+                if (employee.UserId.HasValue)
+                {
+                    var user = await DbContext.Users
+                        .FirstOrDefaultAsync(u => u.Id == employee.UserId.Value);
+
+                    if (user != null)
+                    {
+                        DbContext.Users.Remove(user);
+                    }
+                }
+
+                DbContext.Employees.Remove(employee);
+
+                await DbContext.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                await LoadEmployees();
+
+                await JS.InvokeVoidAsync("alert", "Сотрудник успешно удален");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception($"Ошибка при удалении сотрудника: {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка удаления сотрудника: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", $"Ошибка при удалении сотрудника: {ex.Message}");
+        }
+    }
+
+    // Метод для удаления связанных заказов (если в вашей системе сотрудники связаны с заказами)
+    private async Task DeleteEmployeeRelatedOrders(int employeeId)
+    {
+        try
+        {
+            // Пример: если у вас есть связь сотрудник-заказы
+            // var relatedOrders = await DbContext.Orders
+            //     .Where(o => o.EmployeeId == employeeId)
+            //     .ToListAsync();
+            //
+            // if (relatedOrders.Any())
+            // {
+            //     DbContext.Orders.RemoveRange(relatedOrders);
+            // }
+
+            // Или если нужно обнулить ссылку на сотрудника вместо удаления заказов:
+            // var relatedOrders = await DbContext.Orders
+            //     .Where(o => o.EmployeeId == employeeId)
+            //     .ToListAsync();
+            //
+            // foreach (var order in relatedOrders)
+            // {
+            //     order.EmployeeId = null;
+            // }
+
+            // Адаптируйте этот метод под вашу структуру базы данных
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Ошибка при удалении связанных заказов: {ex.Message}");
+        }
+    }
+
+    // Дополнительный метод для "мягкого" удаления (если хотите сделать архив вместо полного удаления)
+    private async Task SoftDeleteEmployee(int employeeId)
+    {
+        try
+        {
+            bool confirmed = await JS.InvokeAsync<bool>("confirm",
+                "Вы уверены, что хотите архивировать сотрудника? Данные будут сохранены в архиве.");
+
+            if (!confirmed)
+                return;
+
+            var employee = await DbContext.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+
+            if (employee == null)
+            {
+                await JS.InvokeVoidAsync("alert", "Сотрудник не найден");
+                return;
+            }
+
+            // Добавляем поле IsDeleted (нужно добавить в модель Employee)
+            // employee.IsDeleted = true;
+            // employee.DeletedAt = DateTime.Now;
+
+            // Деактивируем учетную запись пользователя
+            if (employee.UserId.HasValue)
+            {
+                var user = await DbContext.Users
+                    .FirstOrDefaultAsync(u => u.Id == employee.UserId.Value);
+
+                if (user != null)
+                {
+                    // Можно добавить поле IsActive в модель User
+                    // user.IsActive = false;
+                }
+            }
+
+            DbContext.Employees.Update(employee);
+            await DbContext.SaveChangesAsync();
+            await LoadEmployees();
+
+            await JS.InvokeVoidAsync("alert", "Сотрудник перемещен в архив");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка при архивировании сотрудника: {ex.Message}");
+        }
+    }
+}
+
+
+<style>
+    .page-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #ffffff 100%);
+        min-height: 100vh;
+        padding: 2rem 0;
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Header Styles */
+    .page-header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-icon {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .page-subtitle {
+        color: #6c757d;
+        margin: 0.5rem 0 0 0;
+        font-size: 1.1rem;
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+    .stat-total {
+        border-left: 4px solid #667eea;
+    }
+
+    .stat-managers {
+        border-left: 4px solid #28a745;
+    }
+
+    .stat-couriers {
+        border-left: 4px solid #ffc107;
+    }
+
+    .stat-active {
+        border-left: 4px solid #17a2b8;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .stat-total .stat-icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .stat-managers .stat-icon {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+
+    .stat-couriers .stat-icon {
+        background: linear-gradient(135deg, #ffc107 0%, #ffd43b 100%);
+    }
+
+    .stat-active .stat-icon {
+        background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        margin: 0.25rem 0 0 0;
+        font-size: 0.9rem;
+    }
+
+    /* Filters */
+    .filters-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .filter-group {
+        margin-bottom: 0;
+    }
+
+    .filter-label {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .filter-select, .search-input {
+        border-radius: 12px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+        .filter-select:focus, .search-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+
+    .search-input-container {
+        position: relative;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 2;
+    }
+
+    .search-input {
+        padding-left: 3rem;
+    }
+
+    /* Main Table */
+    .main-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .employees-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .employees-table th {
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+            color: #2c3e50;
+            font-weight: 600;
+            padding: 1.25rem 1rem;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .employees-table td {
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid #f8f9fa;
+            vertical-align: middle;
+        }
+
+    .employee-row:hover {
+        background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), transparent);
+    }
+
+    /* Employee Cells */
+    .employee-name {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .avatar-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .avatar-manager {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+
+    .avatar-courier {
+        background: linear-gradient(135deg, #ffc107 0%, #ffd43b 100%);
+    }
+
+    .avatar-admin {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .employee-fullname {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.25rem;
+    }
+
+    .employee-id {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .position-badge {
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-manager {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+
+    .badge-courier {
+        background: rgba(255, 193, 7, 0.1);
+        color: #e67700;
+    }
+
+    .badge-admin {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+    }
+
+    .branch-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .contact-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+        .contact-item:last-child {
+            margin-bottom: 0;
+        }
+
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-active {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+
+    .status-inactive {
+        background: rgba(255, 193, 7, 0.1);
+        color: #e67700;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-action {
+        height: 40px;
+        border-radius: 10px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-view {
+        background: rgba(23, 162, 184, 0.1);
+        color: #17a2b8;
+    }
+
+    .btn-edit {
+        background: rgba(255, 193, 7, 0.1);
+        color: #e67700;
+    }
+
+    .btn-delete {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .btn-view:hover {
+        background: #17a2b8;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .btn-edit:hover {
+        background: #ffc107;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .btn-delete:hover {
+        background: #dc3545;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #6c757d;
+        margin: 0 auto 2rem;
+    }
+
+    .empty-title {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .empty-description {
+        color: #6c757d;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    /* Modal Styles */
+    .glass-modal {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-title-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .modal-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        color: white;
+    }
+
+    .modal-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .modal-subtitle {
+        color: #6c757d;
+        margin: 0.25rem 0 0 0;
+        font-size: 0.9rem;
+    }
+
+    /* Employee Details */
+    .employee-details {
+        padding: 0.5rem;
+    }
+
+    .detail-header {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+
+    .detail-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .detail-name {
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+    }
+
+    .detail-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .detail-position {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .detail-id {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .detail-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+
+    .detail-card-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1.25rem;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+
+        .detail-card-header h6 {
+            margin: 0;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+    .detail-card-body {
+        padding: 1.5rem;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: between;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+        .detail-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .detail-item label {
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 140px;
+            margin: 0;
+        }
+
+        .detail-item span {
+            color: #495057;
+            flex: 1;
+        }
+
+    /* Form Styles */
+    .modern-input, .modern-select {
+        border-radius: 12px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+        .modern-input:focus, .modern-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+
+    .input-with-icon {
+        position: relative;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 2;
+    }
+
+    .input-with-icon .modern-input {
+        padding-left: 3rem;
+    }
+
+    .modern-checkbox {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+        margin-top: 1rem;
+    }
+
+    .form-label.required::after {
+        content: " *";
+        color: #dc3545;
+    }
+
+    .validation-error {
+        font-size: 0.875rem;
+        color: #dc3545;
+        margin-top: 0.25rem;
+    }
+
+    /* Buttons */
+    .btn {
+        border-radius: 12px;
+        font-weight: 500;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+    .btn-secondary {
+        background: #6c757d;
+        border: none;
+    }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .header-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.3rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .employee-name {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-action {
+            width: 35px;
+            height: 35px;
+            font-size: 0.8rem;
+        }
+
+        .detail-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .detail-item {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+            .detail-item label {
+                min-width: auto;
+            }
+    }
+</style>

@@ -1,0 +1,444 @@
+﻿@page "/clients/edit/{clientId:int}"
+@using LogisticCompany.Application.DTOs.Clients
+@using LogisticCompany.Application.Interfaces
+@using Presentation.Shared
+@inherits ClientBaseComponent
+@inject IClientService ClientService
+@rendermode InteractiveServer
+
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-8 col-xl-6">
+                @if (Loading)
+                {
+                    <!-- Loading State -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center py-5">
+                            <div class="spinner-border text-success mb-3" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <h5 class="text-muted">Загрузка данных клиента...</h5>
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger">@ErrorMessage</div>
+                }
+                else if (Client == null)
+                {
+                    <div class="alert alert-warning">Клиент не найден</div>
+                }
+                else
+                {
+                    <!-- Header Card -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white py-4">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-circle bg-warning me-3">
+                                    <i class="fas fa-edit text-white"></i>
+                                </div>
+                                <div>
+                                    <h1 class="h4 fw-bold text-dark mb-1">Редактирование клиента</h1>
+                                    <p class="text-muted mb-0">
+                                        @if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
+                                        {
+                                            <span>@Client.IndividualClient.LastName @Client.IndividualClient.FirstName @Client.IndividualClient.PatronymicName</span>
+                                        }
+                                        else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
+                                        {
+                                            <span>@Client.CompanyClient.CompanyName</span>
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <EditForm Model="Client" OnValidSubmit="() => HandleAsync(UpdateClient)">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="alert alert-danger" />
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white">
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-circle-sm bg-info me-3">
+                                        <i class="fas fa-user-tag text-white"></i>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-0">Тип клиента</h5>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-dark">Тип клиента</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">
+                                            <i class="fas @(Client.ClientTypeId == 1 ? "fa-user" : "fa-building") text-muted"></i>
+                                        </span>
+                                        <InputSelect @bind-Value="Client.ClientTypeId" class="form-control" disabled>
+                                            <option value="1">Физическое лицо</option>
+                                            <option value="2">Юридическое лицо</option>
+                                        </InputSelect>
+                                    </div>
+                                    <small class="text-muted">Тип клиента нельзя изменить после создания</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white">
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-circle-sm bg-success me-3">
+                                        <i class="fas fa-phone text-white"></i>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-0">Контактная информация</h5>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark">Телефон *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-mobile-alt text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="Client.Phone" class="form-control"
+                                                       placeholder="+7 (XXX) XXX-XX-XX" />
+                                        </div>
+                                        <ValidationMessage For="() => Client.Phone" class="text-danger small" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark">Email</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i class="fas fa-envelope text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="Client.Email" class="form-control"
+                                                       placeholder="email@example.com" />
+                                        </div>
+                                        <ValidationMessage For="() => Client.Email" class="text-danger small" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
+                        {
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-white">
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-circle-sm bg-primary me-3">
+                                            <i class="fas fa-user text-white"></i>
+                                        </div>
+                                        <h5 class="fw-bold text-dark mb-0">Данные физического лица</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Фамилия *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-user text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="Client.IndividualClient.LastName" class="form-control"
+                                                           placeholder="Иванов" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Имя *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-user text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="Client.IndividualClient.FirstName" class="form-control"
+                                                           placeholder="Иван" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Отчество</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-user text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="Client.IndividualClient.PatronymicName" class="form-control"
+                                                           placeholder="Иванович" />
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold text-dark">Паспорт *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-id-card text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="Client.IndividualClient.PassportNumber" class="form-control"
+                                                           placeholder="Номер паспорта" />
+                                            </div>
+                                        </div>
+                                        <div class="mt-4">
+                                            <label class="form-label fw-semibold text-dark">
+                                                <i class="fas fa-passport text-muted me-2"></i>Дата истечения паспорта *
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light border-end-0">
+                                                    <i class="fas fa-id-card text-muted"></i>
+                                                </span>
+                                                <InputDate @bind-Value="Client.IndividualClient.PassportDateOfIssue"
+                                                           maxlength="12"
+                                                           class="form-control border-start-0" />
+                                            </div>
+                                            <ValidationMessage For="() => Client.IndividualClient.PassportDateOfIssue" class="text-danger small mt-1" />
+
+                                            @if (Client.IndividualClient.PassportDateOfIssue.HasValue)
+                                            {
+                                                <div class="mt-2">
+                                                    @if (Client.IndividualClient.IsPassportExpired)
+                                                    {
+                                                        <div class="alert alert-danger small py-2">
+                                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                                            <strong>Паспорт просрочен!</strong>
+                                                        </div>
+                                                    }
+                                                    else if (Client.IndividualClient.DaysUntilExpiry <= 30)
+                                                    {
+                                                        <div class="alert alert-warning small py-2">
+                                                            <i class="fas fa-exclamation-circle me-2"></i>
+                                                            <strong>Срок истекает через @Client.IndividualClient.DaysUntilExpiry дней</strong>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="alert alert-success small py-2">
+                                                            <i class="fas fa-check-circle me-2"></i>
+                                                            Паспорт действителен
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
+                        {
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-white">
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-circle-sm bg-warning me-3">
+                                            <i class="fas fa-building text-white"></i>
+                                        </div>
+                                        <h5 class="fw-bold text-dark mb-0">Данные компании</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold text-dark">Название компании *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-building text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="Client.CompanyClient.CompanyName" class="form-control"
+                                                           placeholder="ООО 'Компания'" />
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold text-dark">ИИН/БИН *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-hashtag text-muted"></i>
+                                                </span>
+                                                <InputText @bind-Value="Client.CompanyClient.Inn" class="form-control"
+                                                           placeholder="1234567890" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Action Buttons -->
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <button type="submit" class="btn btn-success w-100 py-3" disabled="@Loading">
+                                            <i class="fas fa-save me-2"></i>
+                                            @(Loading ? "Сохранение..." : "Сохранить изменения")
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="button" class="btn btn-outline-secondary w-100 py-3"
+                                                @onclick="GoBack" disabled="@Loading">
+                                            <i class="fas fa-arrow-left me-2"></i>Отменить
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int ClientId { get; set; }
+    private ClientDto? Client { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClient();
+    }
+    private bool ValidatePassport()
+    {
+        if (!Client.IndividualClient.PassportDateOfIssue.HasValue)
+            return false;
+
+        if (Client.IndividualClient.IsPassportExpired)
+        {
+
+            return false;
+        }
+
+        return true;
+    }
+    private async Task LoadClient()
+    {
+        var result = await ClientService.GetClientByIdAsync(ClientId);
+        if (result.IsSuccess)
+        {
+            Client = result.Value;
+        }
+        else
+        {
+            ErrorMessage = result.Error;
+        }
+    }
+
+    private async Task UpdateClient()
+    {
+        var updateClientDto = new UpdateClientDto
+        {
+            Phone = Client!.Phone,
+            Email = Client.Email
+        };
+        var result = await ClientService.UpdateClientAsync(ClientId, updateClientDto);
+        if (result.IsSuccess)
+        {
+            if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
+            {
+                var updateIndividualDto = new UpdateIndividualClientDto
+                    {
+                        LastName = Client.IndividualClient.LastName,
+                        FirstName = Client.IndividualClient.FirstName,
+                        PatronymicName = Client.IndividualClient.PatronymicName,
+                        PassportNumber = Client.IndividualClient.PassportNumber
+                    };
+
+                await ClientService.UpdateIndividualClientAsync(ClientId, updateIndividualDto);
+            }
+            else if( Client.ClientTypeId == 2 && Client.CompanyClient != null)
+            {
+                var updateCompanyDto = new UpdateCompanyClientDto
+                {
+                    CompanyName = Client.CompanyClient.CompanyName,
+                    Inn = Client.CompanyClient.Inn
+                };
+                await ClientService.UpdateCompanyClientAsync(ClientId, updateCompanyDto);
+			}
+			SuccessMessage = "Данные клиента успешно обновлены.";
+            NavigateTo($"/clients/details/{ClientId}");
+        }
+        else
+        {
+            ErrorMessage = result.Error;
+        }
+       
+    }
+}
+
+<style>
+    .page-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .icon-circle-sm {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .form-control, .input-group-text {
+        border-radius: 8px;
+    }
+
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
+    }
+
+    .btn {
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+    }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+    .btn-outline-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(108, 117, 125, 0.2);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .alert-danger {
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
+    }
+
+</style>
+ 
+ 
+

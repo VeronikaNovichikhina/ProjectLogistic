@@ -1,0 +1,276 @@
+﻿@page "/clients/create"
+@using LogisticCompany.Application.DTOs.Clients
+@using LogisticCompany.Application.Interfaces
+@using Presentation.Shared
+@inherits ClientBaseComponent
+@inject IClientService ClientService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+                <!-- Header Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-4">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-circle bg-success me-3">
+                                <i class="fas fa-user-plus text-white"></i>
+                            </div>
+                            <div>
+                                <h1 class="h4 fw-bold text-dark mb-1">Добавление клиента</h1>
+                                <p class="text-muted mb-0">Заполните основную информацию о клиенте</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger">@ErrorMessage</div>
+                }
+
+                <EditForm Model="createDto" OnValidSubmit="() => HandleAsync(CreateClient)" FormName="createClient">
+                    <DataAnnotationsValidator />
+                    
+                    <!-- Contact Information Card -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-circle-sm bg-primary me-3">
+                                    <i class="fas fa-address-card text-white"></i>
+                                </div>
+                                <h5 class="fw-bold text-dark mb-0">Контактная информация</h5>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Phone Field -->
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-dark">
+                                    <i class="fas fa-mobile-alt text-muted me-2"></i>Телефон *
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="fas fa-phone text-muted"></i>
+                                    </span>
+                                    <input @bind="createDto.Phone" @ref="phoneInput"
+                                               class="form-control border-start-0"
+                                               placeholder="+7 (XXX) XXX-XX-XX" />
+                                </div>
+                                <ValidationMessage For="() => createDto.Phone" class="text-danger small mt-1" />
+                            </div>
+
+                            <!-- Email Field -->
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-dark">
+                                    <i class="fas fa-envelope text-muted me-2"></i>Email адрес *
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="fas fa-at text-muted"></i>
+                                    </span>
+                                    <InputText @bind-Value="createDto.Email"
+                                               class="form-control border-start-0"
+                                               placeholder="example@mail.ru" />
+                                </div>
+                                <ValidationMessage For="() => createDto.Email" class="text-danger small mt-1" />
+                            </div>
+
+                            <!-- Client Type Field -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-dark">
+                                    <i class="fas fa-users text-muted me-2"></i>Тип клиента *
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="fas fa-user-tag text-muted"></i>
+                                    </span>
+                                    <InputSelect @bind-Value="createDto.ClientTypeId" class="form-control border-start-0">
+                                        <option value="">Выберите тип клиента</option>
+                                        @foreach (var ct in clientTypes)
+                                        {
+                                            <option value="@ct.ClientTypeId">@ct.TypeName</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <ValidationMessage For="() => createDto.ClientTypeId" class="text-danger small mt-1" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <button type="submit" class="btn btn-success w-100 py-3" disabled="@Loading">
+                                        <i class="fas fa-arrow-right me-2"></i>
+                                        @(Loading ? "Создание..." : "Продолжить")
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-secondary w-100 py-3"
+                                            @onclick="GoBack" disabled="@Loading">
+                                        <i class="fas fa-arrow-left me-2"></i>Назад
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateClientDto createDto = new();
+    private List<ClientTypeDto> clientTypes = new();
+    private ElementReference phoneInput;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+
+           await JS.InvokeVoidAsync("applyPhoneMask", phoneInput);
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClientTypes();
+    }
+
+    private async Task LoadClientTypes()
+    {
+        var result = await ClientService.GetClientTypesAsync();
+        if (result.IsSuccess)
+        {
+            clientTypes = result.Value;
+        }
+        else
+        {
+            ErrorMessage = result.Error;
+        }
+    }
+
+    private async Task CreateClient()
+    {
+        var result = await ClientService.CreateClientAsync(createDto);
+
+        if (result.IsSuccess)
+        {
+            if (createDto.ClientTypeId == 1)
+            {
+                NavigateTo($"/clients/create-individual/{result.Value.ClientsId}");
+            }
+            else if (createDto.ClientTypeId == 2)
+            {
+                NavigateTo($"/clients/create-company/{result.Value.ClientsId}");
+            }
+        }
+        else
+        {
+            ErrorMessage = result.Error;
+        }
+    }
+}
+
+
+<style>
+    .page-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .icon-circle-sm {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .form-control, .input-group-text {
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
+    }
+
+    .form-control:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+
+    .btn {
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+    }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+    .btn-outline-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(108, 117, 125, 0.2);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .alert-danger {
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
+    }
+
+    .input-group .form-control:not(:first-child) {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+
+    .input-group .input-group-text:not(:last-child) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+</style>
+
+

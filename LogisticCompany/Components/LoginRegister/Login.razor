@@ -1,0 +1,567 @@
+﻿@page "/login"
+@inject AppDbContext DbContext
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+@using LogisticCompany.Db
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+
+<div class="login-page min-vh-100">
+    <div class="container-fluid h-100 p-0">
+        <div class="row g-0 h-100">
+            <!-- Left Side - Background -->
+            <div class="col-lg-6 d-none d-lg-block login-background">
+                <div class="d-flex flex-column justify-content-center align-items-center h-100 text-white p-5">
+                    <div class="text-center">
+                        <div class="logo-container mb-4">
+                            <div class="logo-icon mb-3">
+                                <i class="fas fa-shipping-fast"></i>
+                            </div>
+                            <h1 class="fw-bold display-4 mb-3">Logistic Company</h1>
+                        </div>
+                        <p class="lead mb-5 opacity-75">Инновационная система управления доставкой</p>
+                        <div class="features-list">
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-bolt"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h6 class="fw-bold mb-1">Мгновенное отслеживание</h6>
+                                    <small class="opacity-75">Реальное время положение посылок</small>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h6 class="fw-bold mb-1">Аналитика в реальном времени</h6>
+                                    <small class="opacity-75">Полная статистика доставок</small>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h6 class="fw-bold mb-1">Автоматизация процессов</h6>
+                                    <small class="opacity-75">Умная маршрутизация</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side - Login Form -->
+            <div class="col-lg-6 d-flex align-items-center justify-content-center">
+                <div class="login-content w-100">
+                    <div class="card login-form-card border-0">
+                        <div class="card-body p-4 p-md-5">
+                            <!-- Header -->
+                            <div class="text-center mb-4">
+                                <div class="login-icon-container mb-3">
+                                    <div class="login-icon-circle">
+                                        <i class="fas fa-lock-open"></i>
+                                    </div>
+                                </div>
+                                <h2 class="fw-bold text-black mb-2" style="color: #000 !important; background: none !important; -webkit-text-fill-color: #000 !important;">
+                                    С возвращением!
+                                </h2>
+                                <p class="text-muted">Войдите в свою учетную запись</p>
+                            </div>
+
+                            <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="login">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary class="alert alert-danger rounded-3 border-0" />
+
+                                <!-- Email Field -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold text-dark mb-3">
+                                        <i class="fas fa-envelope me-2"></i>Email адрес
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-at"></i>
+                                        </span>
+                                        <InputText @bind-Value="loginModel.Email"
+                                                   type="email"
+                                                   class="form-control"
+                                                   placeholder="your.email@example.com" />
+                                    </div>
+                                    <ValidationMessage For="() => loginModel.Email" class="text-danger small mt-2" />
+                                </div>
+
+                                <!-- Password Field -->
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="form-label fw-semibold text-dark mb-0">
+                                            <i class="fas fa-key me-2"></i>Пароль
+                                        </label>
+                                        <NavLink href="/forgot-password" class="text-decoration-none small forgot-password">
+                                            Забыли пароль?
+                                        </NavLink>
+                                    </div>
+                                    <div class="password-field">
+                                        <div class="input-group input-group-lg">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-lock"></i>
+                                            </span>
+                                            <InputText @bind-Value="loginModel.Password"
+                                                       type="@(showPassword ? "text" : "password")"
+                                                       class="form-control password-input"
+                                                       placeholder="Введите ваш пароль" />
+                                            <button class="btn btn-outline-secondary password-toggle-btn"
+                                                    type="button"
+                                                    @onclick="TogglePasswordVisibility">
+                                                <i class="@(showPassword ? "fas fa-eye-slash" : "fas fa-eye")"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <ValidationMessage For="() => loginModel.Password" class="text-danger small mt-2" />
+                                </div>
+
+                                <!-- Submit Button -->
+                                <button type="submit" class="btn btn-login w-100 py-3 fw-bold rounded-3 login-btn">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Войти в систему
+                                </button>
+                            </EditForm>
+
+                            <!-- Divider -->
+                            <div class="position-relative my-4">
+                                <hr class="my-4" />
+                                <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small">
+                                    или
+                                </span>
+                            </div>
+
+                            <!-- Registration Link -->
+                            <div class="text-center">
+                                <p class="text-muted mb-3">Еще нет аккаунта?</p>
+                                <NavLink href="/register" class="btn btn-outline-register w-100 py-3 rounded-3">
+                                    <i class="fas fa-user-plus me-2"></i>Создать аккаунт
+                                </NavLink>
+                            </div>
+
+                            <!-- Security Info -->
+                            <div class="mt-4 p-3 security-info rounded-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-shield-alt me-2 text-primary"></i>
+                                    <small class="text-muted">Ваши данные защищены современными методами шифрования</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3" role="alert" style="z-index: 1050;">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span>@message</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+
+
+
+@code {
+    [SupplyParameterFromForm]
+    private LoginModel loginModel { get; set; } = new();
+    private string message;
+    private bool isLoading = false;
+
+    public class LoginModel
+    {
+        public string Email { get; set; } = string.Empty; // Инициализируйте свойства
+        public string Password { get; set; } = string.Empty;
+    }
+    private bool showPassword = false;
+
+
+    private void TogglePasswordVisibility()
+    {
+        try
+        {
+            showPassword = !showPassword;
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in TogglePasswordVisibility: {ex.Message}");
+        }
+    }
+    private async Task HandleLogin()
+    {
+      
+    var user = await DbContext.Users
+            .FirstOrDefaultAsync(u => u.Email == loginModel.Email);
+
+        if (user != null && BCrypt.Net.BCrypt.Verify(loginModel.Password, user.PasswordHash))
+        {
+            // создаём claims
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.Name, user.Email),
+        new Claim(ClaimTypes.Role, user.Role)
+    };
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+            await HttpContextAccessor.HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(claimsIdentity),
+                new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30)
+                    });
+
+            if (user.Role == "Admin")
+                Navigation.NavigateTo("/admin-home");
+            else if (user.Role == "Manager")
+                Navigation.NavigateTo("/profile");
+            else
+                Navigation.NavigateTo("/profile");
+        }
+    }
+}
+
+<style>
+    .login-page {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+    }
+
+    .login-background {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%), url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .login-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+    .logo-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        margin: 0 auto;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .features-list {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background: rgba(255,255,255,0.1);
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+    }
+
+        .feature-item:hover {
+            transform: translateX(10px);
+            background: rgba(255,255,255,0.15);
+        }
+
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .login-content {
+        max-width: 450px;
+        padding: 2rem;
+    }
+
+    .login-form-card {
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.3);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        overflow: hidden;
+    }
+
+        .login-form-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+    .login-icon-circle {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto;
+        color: white;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+    }
+
+        .login-icon-circle:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+    .input-group-lg {
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group-text {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #e9ecef;
+        border-right: none;
+        border-radius: 12px 0 0 12px !important;
+        color: #667eea;
+        font-size: 1.1rem;
+    }
+
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-left: none;
+        border-radius: 0 12px 12px 0 !important;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+            background: white;
+        }
+
+    .input-group:focus-within .input-group-text {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-login {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+    .btn-outline-register {
+        border: 2px solid #667eea;
+        color: #667eea;
+        background: transparent;
+        transition: all 0.3s ease;
+    }
+
+        .btn-outline-register:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+        }
+
+    .forgot-password {
+        color: #667eea !important;
+        transition: all 0.3s ease;
+    }
+
+        .forgot-password:hover {
+            color: #764ba2 !important;
+            text-decoration: underline !important;
+        }
+
+    .security-info {
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+        border: 1px solid #e6e8ff;
+    }
+
+    .alert-danger {
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+        color: #d63031;
+        box-shadow: 0 5px 15px rgba(214, 48, 49, 0.1);
+    }
+
+    /* Анимации */
+    @@keyframes gradientShift {
+        0%
+
+    {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+
+    }
+
+    @@keyframes float {
+        0%, 100%
+
+    {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+
+    }
+
+    .login-form-card {
+        animation: slideInRight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    @@keyframes slideInRight {
+        from
+
+    {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    }
+
+    /* Адаптивность */
+    @@media (max-width: 991.98px) {
+        .login-background
+
+    {
+        display: none !important;
+    }
+
+    .login-content {
+        max-width: 100%;
+        padding: 1rem;
+    }
+
+    .login-form-card {
+        margin: 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    }
+
+    @@media (max-width: 575.98px) {
+        .card-body
+
+    {
+        padding: 2rem 1.5rem !important;
+    }
+
+    .login-icon-circle {
+        width: 70px;
+        height: 70px;
+        font-size: 1.5rem;
+    }
+
+    .feature-item {
+        padding: 1rem;
+    }
+
+    .feature-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    }
+
+    /* Улучшенная типографика */
+    h1, h2 {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+</style>

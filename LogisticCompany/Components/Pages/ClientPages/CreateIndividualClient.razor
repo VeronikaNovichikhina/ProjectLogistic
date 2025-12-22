@@ -1,0 +1,355 @@
+﻿@page "/clients/create-individual/{clientId:int}"
+@using LogisticCompany.Application.DTOs.Clients
+@using LogisticCompany.Application.Interfaces
+@using Presentation.Shared
+@inherits ClientBaseComponent
+@inject IClientService ClientService
+
+@rendermode InteractiveServer
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+                <!-- Header Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-4">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-circle bg-primary me-3">
+                                <i class="fas fa-user text-white"></i>
+                            </div>
+                            <div>
+                                <h1 class="h4 fw-bold text-dark mb-1">Создание физического лица</h1>
+                                <p class="text-muted mb-0">Заполните персональные данные клиента</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Loading)
+                {
+                    <!-- Loading State -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center py-5">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <h5 class="text-muted">Подготовка формы...</h5>
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger">@ErrorMessage</div>
+                }
+                else
+                {
+                    <EditForm Model="individualDto" OnValidSubmit="() => HandleAsync(SaveIndividual)" FormName="createInd">
+                        <DataAnnotationsValidator />
+                        
+
+                        <!-- Personal Information Card -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white">
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-circle-sm bg-primary me-3">
+                                        <i class="fas fa-id-card text-white"></i>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-0">Персональные данные</h5>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Name Fields in Row -->
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">
+                                            <i class="fas fa-signature text-muted me-1"></i>Имя *
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0">
+                                                <i class="fas fa-user text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="individualDto.FirstName"
+                                                       class="form-control border-start-0"
+                                                       placeholder="Иван" />
+                                        </div>
+                                        <ValidationMessage For="() => individualDto.FirstName" class="text-danger small mt-1" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Отчество</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0">
+                                                <i class="fas fa-user text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="individualDto.PatronymicName"
+                                                       class="form-control border-start-0"
+                                                       placeholder="Иванович" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">
+                                            Фамилия *
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0">
+                                                <i class="fas fa-user text-muted"></i>
+                                            </span>
+                                            <InputText @bind-Value="individualDto.LastName"
+                                                       class="form-control border-start-0"
+                                                       placeholder="Иванов" />
+                                        </div>
+                                        <ValidationMessage For="() => individualDto.LastName" class="text-danger small mt-1" />
+                                    </div>
+                                </div>
+
+                                <!-- Passport Field -->
+                                <div class="mt-4">
+                                    <label class="form-label fw-semibold text-dark">
+                                        <i class="fas fa-passport text-muted me-2"></i>Паспорт *
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light border-end-0">
+                                            <i class="fas fa-id-card text-muted"></i>
+                                        </span>
+                                        <InputText @bind-Value="individualDto.PassportNumber"
+                                                   maxlength="12"
+                                                   class="form-control border-start-0"
+                                                   placeholder="123456789012" />
+                                    </div>
+                                    <ValidationMessage For="() => individualDto.PassportNumber" class="text-danger small mt-1" />
+                                    <small class="text-muted">12-значный номер паспорта</small>
+                                </div>
+                                <div class="mt-4">
+                                    <label class="form-label fw-semibold text-dark">
+                                        <i class="fas fa-passport text-muted me-2"></i>Дата истечения паспорта *
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light border-end-0">
+                                            <i class="fas fa-id-card text-muted"></i>
+                                        </span>
+                                        <InputDate @bind-Value="individualDto.PassportDateOfIssue"
+                                                   maxlength="12"
+                                                   class="form-control border-start-0" />
+                                    </div>
+                                    <ValidationMessage For="() => individualDto.PassportDateOfIssue" class="text-danger small mt-1" />
+
+                                    @if (individualDto.PassportDateOfIssue.HasValue)
+                                    {
+                                        <div class="mt-2">
+                                            @if (individualDto.IsPassportExpired)
+                                            {
+                                                <div class="alert alert-danger small py-2">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                    <strong>Паспорт просрочен!</strong>
+                                                </div>
+                                            }
+                                            else if (individualDto.DaysUntilExpiry <= 30)
+                                            {
+                                                <div class="alert alert-warning small py-2">
+                                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                                    <strong>Срок истекает через @individualDto.DaysUntilExpiry дней</strong>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="alert alert-success small py-2">
+                                                    <i class="fas fa-check-circle me-2"></i>
+                                                    Паспорт действителен
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <button type="submit" class="btn btn-primary w-100 py-3" disabled="@Loading">
+                                            <i class="fas fa-save me-2"></i>
+                                            @(Loading ? "Сохранение..." : "Сохранить клиента")
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="button" class="btn btn-outline-secondary w-100 py-3"
+                                                @onclick="GoBack" disabled="@Loading">
+                                            <i class="fas fa-arrow-left me-2"></i>Назад к списку
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+
+                <!-- Data Protection Info -->
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-shield-alt text-success me-3 fa-lg"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="fw-bold text-dark mb-2">Защита персональных данных</h6>
+                                <ul class="text-muted small mb-0">
+                                    <li>Все персональные данные защищены и хранятся в соответствии с законодательством</li>
+                                    <li>Паспортные данные используются только для идентификации клиента</li>
+                                    <li>Доступ к информации имеют только уполномоченные сотрудники</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+	[Parameter] public int clientId { get; set; } 
+    private IndividualClientDto individualDto = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.CompletedTask;
+    }
+    private bool ValidatePassport()
+    {
+        if (!individualDto.PassportDateOfIssue.HasValue)
+            return false;
+
+        if (individualDto.IsPassportExpired)
+        {
+           
+            return false; 
+        }
+
+        return true;
+    }
+    private async Task SaveIndividual()
+    {
+        var result = await ClientService.CreateIndividualClientAsync(clientId, individualDto);
+
+        if (result.IsSuccess)
+        {
+            NavigateTo("/orders/create");
+        }
+        else
+        {
+            ErrorMessage = result.Error;
+        }
+    }
+}
+
+
+<style>
+    .page-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .icon-circle-sm {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .form-control, .input-group-text {
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
+    }
+
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    .btn {
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+    }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        }
+
+    .btn-outline-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(108, 117, 125, 0.2);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .alert-danger {
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
+    }
+
+    .preview-section {
+        border-left: 4px solid #007bff;
+    }
+
+    .input-group .form-control:not(:first-child) {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+
+    .input-group .input-group-text:not(:last-child) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+</style>

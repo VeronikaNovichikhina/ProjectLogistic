@@ -1,0 +1,1129 @@
+﻿@page "/"
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using LogisticCompany.Domain.Entities.Location
+@using LogisticCompany.Domain.Entities.Orders
+@using LogisticCompany.Domain.Entities.Tracking
+@using LogisticCompany.Infrastructure.Service
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext DbContext
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="main-container">
+    <!-- Хедер -->
+    <header class="d-flex justify-content-between align-items-center mb-5 p-4 rounded-4 shadow-lg header-main">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-shipping-fast fa-2x text-white me-3"></i>
+            <div>
+                <h2 class="fw-bold text-white mb-0">Logistic Company</h2>
+                <small class="text-white-50">Быстро. Надежно. Безопасно</small>
+            </div>
+        </div>
+        <div>
+            @if (isLoggedIn)
+            {
+                <NavLink class="btn btn-light btn-gradient fw-semibold" href="/profile">
+                    <i class="fas fa-user-circle me-2"></i>Мой аккаунт
+                </NavLink>
+            }
+            else
+            {
+                <NavLink class="btn btn-outline-light me-2 fw-semibold" href="/login">
+                    <i class="fas fa-sign-in-alt me-2"></i>Вход
+                </NavLink>
+                <NavLink class="btn btn-light btn-gradient fw-semibold" href="/register">
+                    <i class="fas fa-user-plus me-2"></i>Регистрация
+                </NavLink>
+            }
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <div class="row g-4">
+        <!-- Поиск трекера -->
+        <div class="col-lg-8">
+            <div class="card tracker-card shadow-lg rounded-4 border-0">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <div class="d-flex align-items-center">
+                        <div class="tracker-icon me-3">
+                            <i class="fas fa-search-location"></i>
+                        </div>
+                        <div>
+                            <h4 class="card-title fw-bold text-dark mb-1">Отследить посылку</h4>
+                            <p class="text-muted mb-0">Введите номер заказа для получения актуальной информации</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@trackingModel" OnValidSubmit="SearchTracking">
+                        <DataAnnotationsValidator />
+
+                        <div class="input-group input-group-lg mb-3">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="fas fa-barcode text-muted"></i>
+                            </span>
+                            <InputText @bind-Value="trackingModel.OrderNumber"
+                                       class="form-control border-start-0 py-3"
+                                       placeholder="Например: 12345" />
+                            <button type="submit" class="btn btn-success px-4 fw-bold" disabled="@isSearching">
+                                @if (isSearching)
+                                {
+                                    <span>
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        Поиск...
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>
+                                        <i class="fas fa-search me-2"></i>Найти
+                                    </span>
+                                }
+                            </button>
+                        </div>
+                        <ValidationMessage For="@(() => trackingModel.OrderNumber)" class="text-danger small" />
+                    </EditForm>
+
+                    <!-- Сообщения об ошибках/результатах -->
+                    @if (!string.IsNullOrEmpty(searchMessage))
+                    {
+                        <div class="alert @(isSearchSuccess ? "alert-success" : "alert-danger") mt-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas @(isSearchSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+                                <span>@searchMessage</span>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Результаты поиска -->
+                    @if (searchResult != null)
+                    {
+                        <div class="search-results mt-4">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-dark mb-3">Результаты отслеживания:</h6>
+
+                                    <!-- Информация о заказе -->
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">Номер заказа:</small>
+                                            <p class="fw-semibold mb-1">#@searchResult.Order.OrdersId</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">Текущий статус:</small>
+                                            <p class="mb-1">
+                                                <span class="badge @GetStatusBadgeClass(searchResult.CurrentStatus?.StatusId)">
+                                                    @(searchResult.CurrentStatus?.StatusName ?? "Неизвестно")
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Получатель -->
+                                    <div class="row mb-3">
+                                        <div class="col-12">
+                                            <small class="text-muted">Получатель:</small>
+                                            <p class="fw-semibold mb-1">
+                                                @searchResult.Order.LastRecepientName @searchResult.Order.FirstRecepientName @searchResult.Order.MiddleRecepientName
+                                            </p>
+                                            <small class="text-muted">Телефон: @searchResult.Order.PhoneRecepient</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- История трекинга -->
+                                    <div class="tracking-history">
+                                        <h6 class="fw-bold text-dark mb-3">История перемещений:</h6>
+                                        <div class="timeline">
+                                            @foreach (var tracking in searchResult.TrackingHistory.OrderByDescending(t => t.UpdateDate))
+                                            {
+                                                <div class="timeline-item">
+                                                    <div class="timeline-marker @GetTimelineMarkerClass(tracking.StatusId)"></div>
+                                                    <div class="timeline-content">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <div class="flex-grow-1">
+                                                                <strong class="d-block">@tracking.LocationTrackings</strong>
+                                                                <p class="mb-1 text-muted small">
+                                                                    <span class="badge @GetStatusBadgeClass(tracking.StatusId) me-2">
+                                                                        @tracking.Status.StatusName
+                                                                    </span>
+                                                                </p>
+                                                                @if (tracking.Branches != null)
+                                                                {
+                                                                    <small class="text-primary">
+                                                                        <i class="fas fa-building me-1"></i>@tracking.Branches.NameBranches
+                                                                    </small>
+                                                                }
+                                                            </div>
+                                                            <small class="text-muted text-nowrap ms-2">
+                                                                @tracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <!-- Кнопка для просмотра деталей -->
+                                    <div class="text-center mt-3">
+                                        @if (isLoggedIn)
+                                        {
+                                            <NavLink href="/profile" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-eye me-2"></i>Подробнее о заказе
+                                            </NavLink>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-outline-primary btn-sm" @onclick="RedirectToLogin">
+                                                <i class="fas fa-sign-in-alt me-2"></i>Войдите для просмотра деталей
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                    <div class="stat-card bg-primary text-white rounded-3 p-3 text-center">
+                        <i class="fas fa-shipping-fast fa-2x mb-2"></i>
+                        <h5 class="fw-bold mb-1">15K+</h5>
+                        <small>Доставок в день</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card bg-success text-white rounded-3 p-3 text-center">
+                        <i class="fas fa-globe-americas fa-2x mb-2"></i>
+                        <h5 class="fw-bold mb-1">50+</h5>
+                        <small>Стран обслуживания</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card bg-warning text-white rounded-3 p-3 text-center">
+                        <i class="fas fa-users fa-2x mb-2"></i>
+                        <h5 class="fw-bold mb-1">10K+</h5>
+                        <small>Довольных клиентов</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Лента новостей -->
+        <div class="col-lg-4">
+            <div class="card news-card shadow-lg rounded-4 border-0 h-100">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="news-icon me-3">
+                                <i class="fas fa-newspaper"></i>
+                            </div>
+                            <h4 class="card-title fw-bold text-dark mb-0">Новости компании</h4>
+                        </div>
+                        <span class="badge bg-success">Обновлено</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="news-list">
+                        <div class="news-item p-3 rounded-3 mb-3">
+                            <div class="d-flex align-items-start">
+                                <div class="news-date bg-light rounded-2 text-center me-3 p-2">
+                                    <div class="fw-bold text-primary">15</div>
+                                    <small class="text-muted">Дек</small>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Запуск экспресс-доставки</h6>
+                                    <p class="text-muted small mb-2">Теперь доставляем заказы в течение 24 часов</p>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary small">Новое</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="news-item p-3 rounded-3 mb-3">
+                            <div class="d-flex align-items-start">
+                                <div class="news-date bg-light rounded-2 text-center me-3 p-2">
+                                    <div class="fw-bold text-primary">10</div>
+                                    <small class="text-muted">Дек</small>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Новый складской комплекс</h6>
+                                    <p class="text-muted small mb-2">Открыли современный склад площадью 5000м²</p>
+                                    <span class="badge bg-success bg-opacity-10 text-success small">Развитие</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="news-item p-3 rounded-3">
+                            <div class="d-flex align-items-start">
+                                <div class="news-date bg-light rounded-2 text-center me-3 p-2">
+                                    <div class="fw-bold text-primary">05</div>
+                                    <small class="text-muted">Дек</small>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Экологичная упаковка</h6>
+                                    <p class="text-muted small mb-2">Переходим на биоразлагаемые материалы</p>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning small">Экология</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <div class="row g-3 mt-4">
+        <div class="col-md-3">
+            <div class="quick-action-card text-center p-4 rounded-3"
+                 @onclick="OpenCalculator">
+                <div class="action-icon mb-3">
+                    <i class="fas fa-calculator fa-2x text-primary"></i>
+                </div>
+                <h6 class="fw-bold text-dark">Рассчитать стоимость</h6>
+                <small class="text-muted">Узнайте цену доставки</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="quick-action-card text-center p-4 rounded-3">
+                <div class="action-icon mb-3">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <h6 class="fw-bold">Найти отделение</h6>
+                <small class="text-muted">Ближайшие пункты выдачи</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="quick-action-card text-center p-4 rounded-3">
+                <div class="action-icon mb-3">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <h6 class="fw-bold">Поддержка 24/7</h6>
+                <small class="text-muted">Помощь и консультации</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="quick-action-card text-center p-4 rounded-3">
+                <div class="action-icon mb-3">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <h6 class="fw-bold">Мобильное приложение</h6>
+                <small class="text-muted">Управление на ходу</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showCalculator)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-calculator me-2"></i>Калькулятор стоимости доставки
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseCalculator"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Левая колонка - информация о посылке -->
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header bg-warning text-dark py-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-box me-3 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">Информация о посылке</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Тип посылки -->
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold text-dark mb-3">Тип посылки *</label>
+                                        <InputRadioGroup @bind-Value="selectedTypeParcel">
+                                            <div class="btn-group w-100" role="group">
+                                                <label class="btn @(selectedTypeParcel== 1 ? "btn-warning text-dark" : "btn-outline-warning")">
+                                                    <InputRadio Value="1" />
+                                                    <i class="fas fa-cube me-2"></i>Стандартные размеры
+                                                </label>
+                                                <label class="btn @(selectedTypeParcel == 2 ? "btn-warning text-dark" : "btn-outline-warning")">
+                                                    <InputRadio Value="2" />
+                                                    <i class="fas fa-ruler-combined me-2"></i>Нестандартные размеры
+                                                </label>
+                                            </div>
+                                        </InputRadioGroup>
+                                    </div>
+
+                                    @if (selectedTypeParcel == 1)
+                                    {
+                                        <!-- Шаблон посылки -->
+                                        <div class="mb-4">
+                                            <label class="form-label fw-semibold text-dark">Шаблон посылки</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-box-open text-muted"></i>
+                                                </span>
+                                                <InputSelect @bind-Value="order.ParcelTemplateId" class="form-select">
+                                                    <option value="0" disabled selected>Выберите шаблон посылки</option>
+                                                    @if (parcelTemplates != null)
+                                                    {
+                                                        @foreach (var template in parcelTemplates)
+                                                        {
+                                                            <option value="@template.TemplateId">
+                                                                @template.TemplateName — @template.LengthCm×@template.WidthCm×@template.HeightCm см, до @template.MaxWeight кг
+                                                            </option>
+                                                        }
+                                                    }
+                                                </InputSelect>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (selectedTypeParcel == 2)
+                                    {
+                                        <!-- Нестандартные размеры -->
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Длина (см) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-ruler-vertical text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.LengthCm" class="form-control"
+                                                                 placeholder="0" />
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Ширина (см) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-ruler-horizontal text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.WidthCm" class="form-control"
+                                                                 placeholder="0" />
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Высота (см) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-arrows-alt-v text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.HeightCm" class="form-control"
+                                                                 placeholder="0" />
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold text-dark">Вес (кг) *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-weight-hanging text-muted"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="order.Weight" class="form-control"
+                                                                 placeholder="0" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Правая колонка - информация о доставке -->
+                        @* <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header bg-primary text-white py-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-shipping-fast me-3 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">Информация о доставке</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Отправление -->
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Страна отправления</label>
+                                        <InputSelect @bind-Value="order.OriginCountryId" class="form-select">
+                                            <option value="0" disabled>Выберите страну</option>
+                                            @if (countries != null)
+                                            {
+                                                @foreach (var ct in countries)
+                                                {
+                                                    <option value="@ct.CountryId">@ct.CountryName</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => order.OriginCountryId" class="text-danger small mt-1" />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Город отправления</label>
+                                        <InputSelect @bind-Value="order.OriginTownId" class="form-select">
+                                            <option value="0" disabled>Выберите город</option>
+                                            @if (towns != null)
+                                            {
+                                                foreach (var town in FilteredTowns)
+                                                {
+                                                    <option value="@town.TownId">@town.TownName</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => order.OriginTownId" class="text-danger small mt-1" />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Филиал забора</label>
+                                        <InputSelect @bind-Value="order.PickupBranchesId" class="form-select">
+                                            <option value="0" disabled>Выберите филиал</option>
+                                            @if (branches != null)
+                                            {
+                                                foreach (var branch in FilteredBranches)
+                                                {
+                                                    <option value="@branch.BranchesId">@branch.NameBranches</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => order.PickupBranchesId" class="text-danger small mt-1" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Тип транспорта</label>
+                                        <InputSelect @bind-Value="order.TransportTypeId" class="form-select">
+                                            <option value="0" disabled>Выберите транспорт</option>
+                                            @if (transportTypes != null)
+                                            {
+                                                @foreach (var transportType in transportTypes)
+                                                {
+                                                    <option value="@transportType.TransportTypeId">@transportType.NameTransportType</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => order.TransportTypeId" class="text-danger small mt-1" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Тип доставки</label>
+                                        <InputSelect @bind-Value="order.DeliveryTypeId" class="form-select">
+                                            <option value="0" disabled>Выберите тип доставки</option>
+                                            @if (deliveryTypes != null)
+                                            {
+                                                @foreach (var dl in deliveryTypes)
+                                                {
+                                                    <option value="@dl.DeliveryTypeId">@dl.NameDeliveryType</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => order.DeliveryTypeId" class="text-danger small mt-1" />
+                                    </div>
+                                    <!-- Назначение -->
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Страна назначения</label>
+                                        <InputSelect @bind-Value="order.DestinationCountryId" class="form-select">
+                                            <option value="0" disabled>Выберите страну</option>
+                                            @if (countries != null)
+                                            {
+                                                @foreach (var ct in countries)
+                                                {
+                                                    <option value="@ct.CountryId">@ct.CountryName</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => order.DestinationCountryId" class="text-danger small mt-1" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-dark">Город назначения</label>
+                                        <InputSelect @bind-Value="order.DestinationTownId" class="form-select">
+                                            <option value="0" disabled>Выберите город</option>
+                                            @if (towns != null)
+                                            {
+                                                @foreach (var town in FilteredTownsDes)
+                                                {
+                                                    <option value="@town.TownId">@town.TownName</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="() => order.DestinationTownId" class="text-danger small mt-1" />
+                                    </div>
+                                    @if (order.DeliveryTypeId == 2)
+                                    {
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold text-dark">Филиал назначения</label>
+                                            <InputSelect @bind-Value="order.DestinationBranchesId" class="form-select">
+                                                <option value="0" disabled>Выберите филиал</option>
+                                                @if (branches != null)
+                                                {
+                                                    @foreach (var branch in FilteredBranchesDes)
+                                                    {
+                                                        <option value="@branch.BranchesId">@branch.NameBranches</option>
+                                                    }
+                                                }
+                                            </InputSelect>
+                                            <ValidationMessage For="() => order.DestinationBranchesId" class="text-danger small mt-1" />
+                                        </div>
+                                    }
+
+                                    @* @if (order.DeliveryTypeId == 1)
+                                    {
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold text-dark">Адрес доставки</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-home text-muted"></i>
+                                                </span>
+                                                <input @bind="order.CourierDestAddress" class="form-control"
+                                                       placeholder="Введите полный адрес доставки" />
+                                            </div>
+                                            <ValidationMessage For="() => order.CourierDestAddress" class="text-danger small mt-1" />
+                                        </div>
+                                    } 
+                                     @if (order.OriginTownId > 0 && order.DestinationTownId > 0)
+                                    {
+                                        <div class="row">
+                                            <div class="card border-0 shadow-sm">
+                                                <div class="card-header bg-info text-white">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-calculator me-2"></i>Расчет стоимости доставки
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <!-- Индикатор загрузки -->
+                                                    @if (calculatedPrice == -1)
+                                                    {
+                                                        <div class="text-center py-3">
+                                                            <div class="spinner-border text-info mb-2" role="status">
+                                                                <span class="visually-hidden">Загрузка...</span>
+                                                            </div>
+                                                            <div class="text-muted">Рассчитываем стоимость...</div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="row text-center">
+                                                            <div class="col-md-4 mb-3">
+                                                                <div class="border rounded p-3 bg-light">
+                                                                    <small class="text-muted d-block">Расстояние</small>
+                                                                    <span class="h5 text-primary">@distance.ToString("F1") км</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-4 mb-3">
+                                                                <div class="border rounded p-3 bg-light">
+                                                                    <small class="text-muted d-block">Тариф</small>
+                                                                    <span class="h6 text-success">
+                                                                        @(deliveryTariffs.FirstOrDefault(t => t.DeliveryTypeId == order.DeliveryTypeId)?.BasePrice.ToString("F2") ?? "0.00")
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-4 mb-3">
+                                                                <div class="border rounded p-3 bg-success text-white">
+                                                                    <small class="d-block">Итого</small>
+                                                                    <span class="h5">@calculatedPrice.ToString("F2")</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+
+                                                    <!-- Кнопка расчета -->
+                                                    <div class="text-center mt-3">
+                                                        <button type="button" class="btn @(calculatedPrice > 0 ? "btn-outline-info" : "btn-info")"
+                                                                @onclick="CalculatePrice"
+                                                                disabled="@(order.OriginTownId == 0 || order.DestinationTownId == 0)">
+                                                            <i class="fas @(calculatedPrice > 0 ? "fa-sync-alt" : "fa-calculator") me-2"></i>
+                                                            @(calculatedPrice > 0 ? "Пересчитать стоимость" : "Рассчитать стоимость")
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    } 
+                                </div>
+                            </div>
+                        </div>  *@
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+@code {
+    [SupplyParameterFromForm]
+    protected OrdersDTO order { get; set; } = new();
+    [Inject] protected IHttpClientFactory HttpClientFactory { get; set; }
+    protected List<Town> towns = new();
+    protected List<Branch> branches = new();
+    protected List<DeliveryType> deliveryTypes = new();
+    protected List<TransportType> transportTypes = new();
+    protected List<PaymentMethod> paymentMethods = new();
+    protected List<Country> countries = new();
+    protected List<ParcelTemplate> parcelTemplates = new();
+
+    protected int selectedTypeParcel = 1;
+    protected decimal distance = 0;
+    protected List<DeliveryTariff> deliveryTariffs = new();
+    protected OpenStreetMapService _mapService;
+    private bool showCalculator = false;
+    private decimal calculatedPrice = 0;
+    private decimal calcDistance = 0;
+
+   
+
+    private bool isLoggedIn = false;
+    private string userName = "";
+   
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = await DbContextFactory.CreateDbContextAsync();
+
+
+        towns = await db.Towns.ToListAsync();
+        branches = await db.Branches.ToListAsync();
+        deliveryTypes = await db.DeliveryTypes.ToListAsync();
+        transportTypes = await db.TransportTypes.ToListAsync();
+        paymentMethods = await db.PaymentMethods.ToListAsync();
+        countries = await db.Countries.ToListAsync();
+        parcelTemplates = await db.ParcelTemplates.ToListAsync();
+		deliveryTariffs = await db.DeliveryTariffs.ToListAsync();
+
+        // ИНИЦИАЛИЗАЦИЯ СЕРВИСА
+        _mapService = new OpenStreetMapService(HttpClientFactory.CreateClient());
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            isLoggedIn = true;
+            userName = user.FindFirst(c => c.Type == "name")?.Value ?? user.Identity.Name;
+        }
+    }
+    private async Task RedirectToLogin()
+    {
+        
+        if (searchResult != null)
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "pendingOrderView", searchResult.Order.OrdersId.ToString());
+        }
+
+        NavigationManager.NavigateTo("/login", true);
+    }
+    // Модель для поиска
+    private TrackingSearchModel trackingModel = new();
+    private TrackingSearchResult? searchResult;
+    private string searchMessage = "";
+    private bool isSearchSuccess = false;
+    private bool isSearching = false;
+
+    [Inject] private IDbContextFactory<AppDbContext> DbContextFactory { get; set; } = null!;
+
+    // Модель для поиска
+    public class TrackingSearchModel
+    {
+       
+        public string OrderNumber { get; set; } = string.Empty;
+    }
+
+    // Модель результата поиска
+    public class TrackingSearchResult
+    {
+        public Order Order { get; set; } = null!;
+        public List<Tracking> TrackingHistory { get; set; } = new();
+        public StatusDelivery? CurrentStatus => TrackingHistory.OrderByDescending(t => t.UpdateDate).FirstOrDefault()?.Status;
+    }
+
+    // Метод поиска
+    private async Task SearchTracking()
+    {
+        isSearching = true;
+        searchMessage = "";
+        searchResult = null;
+
+        try
+        {
+            using var db = await DbContextFactory.CreateDbContextAsync();
+
+            // Ищем заказ по номеру
+            if (int.TryParse(trackingModel.OrderNumber, out int orderId))
+            {
+                var order = await db.Orders
+                    .Include(o => o.Trackings)
+                        .ThenInclude(t => t.Status) // StatusDelivery
+                    .Include(o => o.Trackings)
+                        .ThenInclude(t => t.Branches)
+                    .FirstOrDefaultAsync(o => o.OrdersId == orderId);
+
+                if (order != null && order.Trackings != null && order.Trackings.Any())
+                {
+                    searchResult = new TrackingSearchResult
+                    {
+                        Order = order,
+                        TrackingHistory = order.Trackings.ToList()
+                    };
+
+                    searchMessage = "Информация о посылке найдена!";
+                    isSearchSuccess = true;
+                }
+                else if (order != null)
+                {
+                    searchMessage = "Заказ найден, но информация о трекинге отсутствует.";
+                    isSearchSuccess = false;
+                }
+                else
+                {
+                    searchMessage = "Заказ с таким номером не найден.";
+                    isSearchSuccess = false;
+                }
+            }
+            else
+            {
+                searchMessage = "Введите корректный номер заказа (только цифры).";
+                isSearchSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            searchMessage = $"Произошла ошибка при поиске: {ex.Message}";
+            isSearchSuccess = false;
+        }
+        finally
+        {
+            isSearching = false;
+            StateHasChanged();
+        }
+    }
+
+    // Метод для получения класса бейджа статуса
+    private string GetStatusBadgeClass(int? statusId)
+    {
+        return statusId switch
+        {
+            1 => "bg-warning text-dark", // Ожидает оплаты
+            2 => "bg-success", // Оплачено
+            3 => "bg-info", // В обработке
+            4 => "bg-primary", // В пути
+            5 => "bg-success", // Доставлено
+            6 => "bg-danger", // Отменено
+            7 => "bg-info", // Принято в офисе
+            8 => "bg-secondary", // На таможне
+            _ => "bg-secondary"
+        };
+    }
+
+    // Метод для цвета маркера в timeline
+    private string GetTimelineMarkerClass(int statusId)
+    {
+        return statusId switch
+        {
+            1 => "warning", // Ожидает оплаты
+            2 => "success", // Оплачено
+            3 => "info", // В обработке
+            4 => "primary", // В пути
+            5 => "success", // Доставлено
+            6 => "secondary", // Отменено
+            7 => "info", // Принято в офисе
+            8 => "secondary", // На таможне
+            _ => "secondary"
+        };
+    }
+
+    // Очистка результатов поиска
+    private void ClearSearch()
+    {
+        searchResult = null;
+        searchMessage = "";
+        trackingModel.OrderNumber = "";
+    }
+
+
+    private void OpenCalculator()
+    {
+        showCalculator = true;
+        calculatedPrice = 0;
+        calcDistance = 0;
+
+        order.OriginCountryId = 0;
+        order.OriginTownId = 0;
+        order.DestinationCountryId = 0;
+        order.DestinationTownId = 0;
+        order.TransportTypeId = 0;
+        order.DeliveryTypeId = 0;
+        order.ParcelTemplateId = 0;
+        order.Weight = null;
+        order.LengthCm = null;
+        order.WidthCm = null;
+        order.HeightCm = null;
+        order.Amount = null;
+    }
+
+
+    private void CloseCalculator()
+    {
+        showCalculator = false;
+    }
+
+    protected IEnumerable<Town> FilteredTowns =>
+        towns?.Where(t => t.CountryId == order.OriginCountryId) ?? Enumerable.Empty<Town>();
+
+    protected IEnumerable<Town> FilteredTownsDes =>
+       towns?.Where(t => t.CountryId == order.DestinationCountryId) ?? Enumerable.Empty<Town>();
+    private IEnumerable<Branch> FilteredBranches =>
+    branches?.Where(b => b.TownId == order.OriginTownId) ?? Enumerable.Empty<Branch>();
+    private IEnumerable<Branch> FilteredBranchesDes =>
+        branches?.Where(b => b.TownId == order.DestinationTownId) ?? Enumerable.Empty<Branch>();
+
+    protected async Task CalculatePrice()
+    {
+        try
+        {
+            calculatedPrice = -1;
+
+            var fromTown = towns.FirstOrDefault(t => t.TownId == order.OriginTownId);
+            var toTown = towns.FirstOrDefault(t => t.TownId == order.DestinationTownId);
+
+            if (fromTown == null || toTown == null)
+            {
+                calculatedPrice = 0;
+                return;
+            }
+
+            // Получаем расстояние с учетом типа транспорта
+            distance = await _mapService.GetDistanceAsync(
+                fromTown.TownName,
+                toTown.TownName,
+                order.TransportTypeId);
+
+            // Получаем вес
+            decimal weight = GetWeight();
+
+            // Получаем тариф с учетом типа транспорта
+            var tariff = GetTariff(order.DeliveryTypeId, order.TransportTypeId);
+
+            if (tariff == null)
+            {
+                calculatedPrice = 0;
+                return;
+            }
+
+            calculatedPrice = tariff.BasePrice +
+                             (distance * tariff.PricePerKm) +
+                             (weight * tariff.PricePerKg);
+
+            order.Amount = calculatedPrice.ToString("F2");
+            order.CalculatedPrice = calculatedPrice;
+            order.Distance = distance;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка расчета: {ex.Message}");
+            calculatedPrice = 0;
+        }
+    }
+    protected decimal GetWeight()
+    {
+        if (selectedTypeParcel == 1)
+        {
+            var template = parcelTemplates.FirstOrDefault(t => t.TemplateId == order.ParcelTemplateId);
+            return template?.MaxWeight ?? 0;
+        }
+        else
+        {
+            return order.Weight ?? 0;
+        }
+    }
+
+    private DeliveryTariff GetTariff(int deliveryTypeId, int transportTypeId)
+    {
+        // Определяем является ли транспорт авиа
+        bool isAirTransport = IsAirTransport(transportTypeId);
+
+        // Ищем подходящий тариф
+        var tariff = deliveryTariffs.FirstOrDefault(t =>
+            t.DeliveryTypeId == deliveryTypeId &&
+            IsAirTariff(t) == isAirTransport);
+
+        // Если не нашли специфичный тариф, берем первый подходящий по DeliveryTypeId
+        return tariff ?? deliveryTariffs.FirstOrDefault(t => t.DeliveryTypeId == deliveryTypeId);
+    }
+
+    private bool IsAirTransport(int transportTypeId)
+    {
+        return transportTypeId == 2;
+    }
+
+    private bool IsAirTariff(DeliveryTariff tariff)
+    {
+
+        return tariff.PricePerKm > 50 || tariff.BasePrice > 2000;
+    }
+   
+
+   
+
+}
+
+
+
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .main-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .header-main {
+        background: linear-gradient(135deg, #2e7d32, #4caf50);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .tracker-card, .news-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .tracker-card:hover, .news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+    .tracker-icon, .news-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #4caf50, #2e7d32);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+        .tracker-icon i, .news-icon i {
+            font-size: 1.2rem;
+        }
+
+    .timeline-marker {
+        position: absolute;
+        left: -8px;
+        top: 15px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #28a745;
+        border: 2px solid white;
+    }
+
+    .timeline-content {
+        margin-left: 20px;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffffff, #f8f9fa);
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+    .stat-card {
+        transition: transform 0.3s ease;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+    .news-item {
+        background: rgba(248, 249, 250, 0.8);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+        .news-item:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+    .news-date {
+        min-width: 50px;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .quick-action-card {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+        .quick-action-card:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+    .action-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .input-group-text {
+        background: rgba(248, 249, 250, 0.8);
+        border: 1px solid #ced4da;
+    }
+
+    .form-control {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #ced4da;
+    }
+
+        .form-control:focus {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+        }
+
+    h2, h4, h5, h6 {
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .badge {
+        font-weight: 500;
+    }
+
+</style>
