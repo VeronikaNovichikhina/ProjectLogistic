@@ -1,0 +1,188 @@
+﻿@page "/orders/payment/{OrdersId:int}"
+@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.Application.Services
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using LogisticCompany.Domain.Entities.Orders
+@using LogisticCompany.Domain.Entities.Tracking
+@using Microsoft.EntityFrameworkCore
+@rendermode InteractiveServer
+
+@inject IOrderService OrderService
+@inject PaymentService PaymentService
+
+<div class="page-bg min-vh-100 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            @if(order == null)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-success mb-3" role="status"></div>
+                    <p>Загрузка данных заказа...</p>
+                </div>
+            }
+            else
+            {
+                <div class="col-12 col-lg-8">
+                    <div class="card border-0 shadow-lg">
+                        <div class="card-header bg-success text-white py-4">
+                            <div class="text-center">
+                                <i class="fas fa-credit-card fa-3x mb-3"></i>
+                                <h1 class="h2 fw-bold mb-2">Оплата заказа</h1>
+                                <p class="mb-0">Номер заказа: <strong>@order.OrderNumber</strong></p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="payment-summary bg-light rounded p-4">
+                                    @if (order != null)
+                                    {
+                                        <div class="card shadow-sm p-4">
+                                            
+											<div class="mb-4 text-center">
+												<label class="form-label fw-semibold text-dark d-block">Сумма заказа</label>
+                                                <span class="display-5 fw-bold text-success">
+                                                    @(order.CalculatedPrice.HasValue
+                                                                                                ? order.CalculatedPrice.Value.ToString("F2")
+                                                                                                : "—")
+                                                </span>
+
+											</div>
+                                            <!-- Способ оплаты -->
+                                            <div class="mb-4">
+                                                <label class="form-label fw-semibold text-dark">Способ оплаты</label>
+                                                <InputSelect @bind-Value="payment.PaymentMethodId" class="form-select">
+                                                    <option value="0" disabled>Выберите способ оплаты</option>
+                                                    @foreach (var method in paymentMethods)
+                                                    {
+                                                        <option value="@method.PaymentMethodId">@method.MethodName</option>
+                                                    }
+                                                </InputSelect>
+                                            </div>
+                                            <!-- Кнопка подтверждения -->
+                                            <div class="d-grid gap-2">
+                                                <button class="btn btn-success btn-lg"
+                                                        @onclick="ProcessPayment">
+                                                    @if (isProcessing)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                    }
+                                                    <span><i class="fas fa-check-circle me-2"></i>Подтвердить оплату</span>
+                                                </button>
+                                            </div>
+
+                                            <!-- Сообщение -->
+                                            @if (!string.IsNullOrEmpty(alertMessage))
+                                            {
+                                                <div class="mt-3 alert @(isAlertSuccess ? "alert-success" : "alert-danger")" role="alert">
+                                                    @alertMessage
+                                                </div>
+                                                <button type="submit" @onclick="NavigateToDetails">Вернуться назад</button>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-success text-center">
+                                            <i class="fas fa-check-circle me-2"></i>Заказ оплачен
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    Дата оплаты: @payment.PaymentDate?.ToString("dd.MM.yyyy HH:mm")
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="d-grid gap-2 mt-3">
+                                            <button class="btn btn-primary" @onclick="NavigateToDetails">
+                                                <i class="fas fa-eye me-2"></i>Посмотреть детали заказа
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
+            
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int OrdersId { get; set; }
+
+    protected Order order;
+    protected Payment payment;
+    protected Tracking currentTracking;
+    protected List<PaymentMethod> paymentMethods = new();
+    protected string alertMessage = "";
+    protected bool isAlertSuccess = false;
+    protected bool isProcessing = false;
+
+    [Inject] protected NavigationManager Navigation { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+		await LoadOrderData();
+        if (order != null && order.Payments != null && !order.Payments.Any())
+        {
+            payment = new Payment();
+        }
+        else
+        {
+            payment = order?.Payments.FirstOrDefault();
+        }
+    }
+
+    protected async Task LoadOrderData()
+    {
+        try
+        {
+            order = await OrderService.GetOrderForPaymentAsync(OrdersId);
+            paymentMethods = await OrderService.GetPaymentMethodsAsync();
+
+            currentTracking = order?.Trackings?.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            alertMessage = ex.Message;
+        }
+	}
+    protected async Task ProcessPayment()
+    {
+        isProcessing = true;
+        try
+        {
+            await PaymentService.ProcessPaymentAsync(
+                OrdersId,
+                payment.PaymentMethodId
+            );
+
+            alertMessage = "Оплата успешно выполнена";
+            isAlertSuccess = true;
+
+            await LoadOrderData();
+        }
+        catch (Exception ex)
+        {
+            alertMessage = ex.Message;
+            isAlertSuccess = false;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    
+    protected void NavigateToDetails()
+    {
+        Navigation.NavigateTo($"/order/details/{OrdersId}");
+    }
+
+    protected void ClearAlert()
+    {
+        alertMessage = "";
+    }
+}

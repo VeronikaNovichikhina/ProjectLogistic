@@ -1,6 +1,7 @@
 ﻿@rendermode InteractiveServer
 @inject IJSRuntime JS
 @page "/clients/delete/{clientId:int}"
+@using LogisticCompany.Application.Interfaces
 @using LogisticCompany.DTO
 @using LogisticCompany.Db
 @using Microsoft.EntityFrameworkCore
@@ -198,7 +199,7 @@
     private ClientDto? Client { get; set; }
     private bool isConfirmed = false;
 
-    [Inject] private AppDbContext Db { get; set; } = default!;
+    [Inject] private IClientService ClientService { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
@@ -210,23 +211,9 @@
     {
         try
         {
-            var clientEntity = await Db.Clients
-                .FirstOrDefaultAsync(c => c.ClientsId == ClientId);
-
-            if (clientEntity != null)
-            {
-                Client = new ClientDto
-                {
-                    ClientsId = clientEntity.ClientsId,
-                    Phone = clientEntity.Phone,
-                    Email = clientEntity.Email,
-                    ClientTypeId = clientEntity.ClientTypeId
-                };
-            }
-            else
-            {
+            Client = await ClientService.GetByIdAsync(ClientId);
+            if (Client == null)
                 ErrorMessage = "Клиент не найден";
-            }
         }
         catch (Exception ex)
         {
@@ -238,20 +225,8 @@
     {
         try
         {
-            var clientEntity = await Db.Clients
-                .FirstOrDefaultAsync(c => c.ClientsId == ClientId);
-
-            if (clientEntity != null)
-            {
-                Db.Clients.Remove(clientEntity);
-                await Db.SaveChangesAsync();
-
-                Navigation.NavigateTo("/clients");
-            }
-            else
-            {
-                ErrorMessage = "Клиент не найден";
-            }
+            await ClientService.DeleteAsync(ClientId);
+            Navigation.NavigateTo("/clients");
         }
         catch (Exception ex)
         {

@@ -1,14 +1,13 @@
-﻿using LogisticCompany.Components;
-using LogisticCompany.Components.LoginRegister;
+﻿using LogisticCompany.Application.Interfaces;
+using LogisticCompany.Application.Services;
+using LogisticCompany.Components;
 using LogisticCompany.Db;
-using LogisticCompany.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -23,6 +22,23 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
 
+builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<ICompanyClientService, CompanyClientService>();
+builder.Services.AddScoped<IIndividualClientService, IndividualClientService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IDeliveryDictionaryService, DeliveryDictionaryService>();
+builder.Services.AddScoped<IPriceCalculatorService, PriceCalculationService>();
+builder.Services.AddScoped<IMapService, OpenStreetMapService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IOrderQueryService, OrderQueryService>();
+builder.Services.AddScoped<IRoleHelper, RoleHelperService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITrackingService, TrackingService>();
+
+
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -36,8 +52,6 @@ builder.Services.AddAuthorization();
 
 
 builder.Services.AddScoped<OpenStreetMapService>();
-
-// HTTP Client для карт
 builder.Services.AddHttpClient<OpenStreetMapService>();
 
 
@@ -59,11 +73,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
     app.UseMigrationsEndPoint();
 }

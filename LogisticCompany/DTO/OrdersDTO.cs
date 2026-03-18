@@ -2,6 +2,7 @@
 {
     public class OrdersDTO
     {
+        public string OrderNumber { get; set; } = string.Empty;
         public int StatusId { get; set; } = 1; 
         public string? LocationTracking { get; set; }
         public int? TrackingBranchId { get; set; }

@@ -1,4 +1,5 @@
 ﻿ @page "/ordersList"
+@using LogisticCompany.Application.Interfaces
 @using LogisticCompany.DTO
 @using LogisticCompany.Db
 @using LogisticCompany.Domain.Entities.Orders
@@ -6,281 +7,212 @@
 @using Microsoft.EntityFrameworkCore
 @inject AppDbContext context
 @inject NavigationManager NavigationManager
+@inject IOrderQueryService OrderQueryService
+@rendermode InteractiveServer
 
-<div class="page-bg min-vh-100 py-5">
-    <div class="container">
+<div class="page-container">
+    <div class="container-fluid">
         <!-- Header -->
-        <div class="card border-0 shadow-lg mb-4 glass-card">
-            <div class="card-body py-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <div class="d-flex align-items-center">
-                            <div class="header-icon-primary me-3">
-                                <i class="fas fa-clipboard-list"></i>
-                            </div>
-                            <div>
-                                <h1 class="h3 fw-bold text-dark mb-1">Список заказов</h1>
-                                <p class="text-muted mb-0">Управление всеми заказами доставки</p>
-                            </div>
+        <div class="page-header glass-card">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center">
+                        <div class="header-icon me-3">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <div>
+                            <h1 class="page-title">Управление заказами</h1>
+                            <p class="page-subtitle">Администрирование всех заказов доставки</p>
                         </div>
                     </div>
-                    <div class="col-md-4 text-end">
-                        <NavLink href="/orders/create" class="btn btn-primary btn-lg shadow-sm">
-                            <i class="fas fa-plus-circle me-2"></i>Создать заказ
-                        </NavLink>
-                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <NavLink href="/admin-home" class="btn btn-secondary btn-lg me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Назад
+                    </NavLink>
+                    <NavLink href="/orders/create" class="btn btn-primary btn-lg shadow-sm">
+                        <i class="fas fa-plus-circle me-2"></i>Создать заказ
+                    </NavLink>
                 </div>
             </div>
         </div>
 
-        <!-- Statistics Cards -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm stat-card-primary">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <h4 class="fw-bold mb-0 text-white">@orders?.Count.ToString()</h4>
-                                <small class="text-white opacity-75">Всего заказов</small>
-                            </div>
-                            <div class="stat-icon">
-                                <i class="fas fa-boxes"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+       
 
         @if (orders == null)
         {
             <!-- Loading State -->
-            <div class="card border-0 shadow-lg glass-card">
+            <div class="main-card glass-card">
                 <div class="card-body text-center py-5">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Загрузка...</span>
+                    <div class="loading-spinner">
+                        <i class="fas fa-boxes fa-3x text-primary mb-3"></i>
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <h5 class="text-muted">Загрузка данных заказов...</h5>
                     </div>
-                    <h5 class="text-muted">Загрузка заказов...</h5>
                 </div>
             </div>
         }
         else if (!orders.Any())
         {
             <!-- Empty State -->
-            <div class="card border-0 shadow-lg glass-card">
+            <div class="main-card glass-card">
                 <div class="card-body text-center py-5">
-                    <div class="empty-state-icon mb-3">
-                        <i class="fas fa-box-open"></i>
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-box-open"></i>
+                        </div>
+                        <h4 class="empty-title">Заказы не найдены</h4>
+                        <p class="empty-description">Создайте первый заказ для начала работы</p>
+                        <NavLink href="/orders/create" class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus-circle me-2"></i>Создать заказ
+                        </NavLink>
                     </div>
-                    <h4 class="text-dark mb-3">Заказов не найдено</h4>
-                    <p class="text-muted mb-4">Создайте первый заказ для начала работы</p>
-                    <NavLink href="/orders/create" class="btn btn-primary btn-lg shadow-sm">
-                        <i class="fas fa-plus-circle me-2"></i>Создать первый заказ
-                    </NavLink>
                 </div>
             </div>
         }
         else
         {
-            <!-- Orders Grid -->
-            <div class="row g-4">
-                @foreach (var or in orders)
-                {
-                    <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="card order-card border-0 shadow-lg h-100 hover-lift">
-                            <div class="card-header border-0 pb-0">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <h5 class="fw-bold text-dark mb-1">
-                                            <i class="fas fa-hashtag text-primary me-2"></i>Заказ #@or.OrdersId
-                                        </h5>
-                                    </div>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary border-0 rounded-circle"
-                                                type="button" data-bs-toggle="dropdown">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                                            <li>
-                                                <a class="dropdown-item" href="@($"/orders/details/{or.OrdersId}")">
-                                                    <i class="fas fa-eye me-2 text-primary"></i>Просмотр
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="@($"/orders/edit/{or.OrdersId}")">
-                                                    <i class="fas fa-edit me-2 text-warning"></i>Редактировать
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item text-danger" href="#">
-                                                    <i class="fas fa-trash me-2"></i>Удалить
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                <!-- Status Badge -->
-                                <div class="mb-2">
-                                    <OrderStatusBadge Status="@GetCurrentStatus(or)" />
-                                </div>
-                                <!-- Tracking Info -->
-                                @{
-                                    var lastTracking = or.Trackings.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
-                                }
-                                @if (lastTracking != null)
+            <!-- Orders Table -->
+            <div class="main-card glass-card">
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="orders-table">
+                            <thead>
+                                <tr>
+                                    <th class="order-id">№</th>
+                                    <th class="order-number">Заказ</th>
+                                    <th class="order-client">Клиент</th>
+                                    <th class="order-route">Маршрут</th>
+                                    <th class="order-package">Посылка</th>
+                                    <th class="order-status">Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var (order, index) in orders.Select((value, i) => (value, i)))
                                 {
-                                    <div class="tracking-info">
-                                        <small class="text-muted">
-                                            <i class="fas fa-map-marker-alt me-1"></i>
-                                            @lastTracking.LocationTrackings
-                                        </small>
-                                        <br>
-                                        <small class="text-muted">
-                                            <i class="fas fa-clock me-1"></i>
-                                            @lastTracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
-                                        </small>
-                                    </div>
+                                    <tr class="order-row" @onclick="() => NavigateToOrder(order.OrdersId)">
+                                        <td class="order-id">
+                                            @(index + 1)
+                                        </td>
+                                        <td class="order-number">
+                                            <div class="order-details">
+                                                <div class="order-title">
+                                                    <i class="fas fa-hashtag text-primary me-1"></i>
+                                                    #@order.OrderNumber
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="order-client">
+                                            @if (order.Clients.ClientTypeId == 1 && order.Clients.IndividualClients.Any())
+                                            {
+                                                var individual = order.Clients.IndividualClients.First();
+                                                <div class="client-info">
+                                                    <div class="client-name">@individual.LastName @individual.FirstName</div>
+                                                    <div class="client-contact">
+                                                        <i class="fas fa-phone text-success me-1"></i>
+                                                        @order.Clients.Phone
+                                                    </div>
+                                                </div>
+                                            }
+                                            else if (order.Clients.ClientTypeId == 2 && order.Clients.CompanyClients.Any())
+                                            {
+                                                var company = order.Clients.CompanyClients.First();
+                                                <div class="client-info">
+                                                    <div class="client-name">@company.CompanyName</div>
+                                                    <div class="client-contact">
+                                                        <i class="fas fa-id-card text-warning me-1"></i>
+                                                        ИНН: @company.Inn
+                                                    </div>
+                                                </div>
+                                            }
+                                        </td>
+                                        <td class="order-route">
+                                            <div class="route-info">
+                                                <div class="route-from">
+                                                    <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                                    @order.OriginTown.TownName
+                                                </div>
+                                                <div class="route-arrow">
+                                                    <i class="fas fa-arrow-right text-muted"></i>
+                                                </div>
+                                                <div class="route-to">
+                                                    <i class="fas fa-flag-checkered text-success me-1"></i>
+                                                    @order.DestinationTown.TownName
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="order-package">
+                                            <div class="package-info">
+                                                @if (order.Template != null)
+                                                {
+                                                    <div class="package-type">
+                                                        <i class="fas fa-box text-primary me-1"></i>
+                                                        @order.Template.TemplateName
+                                                    </div>
+                                                }
+                                                @if (order.Weight != null && order.Weight > 0)
+                                                {
+                                                    <div class="package-weight text-muted">
+                                                        <i class="fas fa-weight-hanging me-1"></i>
+                                                        @order.Weight 
+                                                    </div>
+                                                }
+
+                                                @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
+                                                {
+                                                    <div class="package-size text-muted">
+                                                        <i class="fas fa-ruler-combined me-1"></i>
+                                                        @order.LengthCm × @order.WidthCm × @order.HeightCm 
+                                                    </div>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="order-status">
+                                            @{
+                                                var lastTracking = order.Trackings.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
+                                            }
+                                           <OrderStatusBadge  Status="@lastTracking?.Status" />
+                                           
+                                            @if (lastTracking != null)
+                                            {
+                                                <div class="tracking-info">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                                        @lastTracking.LocationTrackings
+                                                    </small>
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
                                 }
-                            </div>
-
-                            <div class="card-body">
-                                <!-- Client Info -->
-                                <div class="mb-3">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="info-icon bg-primary">
-                                            <i class="fas fa-user text-white"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <small class="text-muted d-block">Клиент</small>
-                                            @if (or.Clients.ClientTypeId == 1 && or.Clients.IndividualClients.Any())
-                                            {
-                                                var individual = or.Clients.IndividualClients.First();
-                                                <span class="fw-semibold text-dark">@individual.LastName @individual.FirstName</span>
-                                            }
-                                            else if (or.Clients.ClientTypeId == 2 && or.Clients.CompanyClients.Any())
-                                            {
-                                                var company = or.Clients.CompanyClients.First();
-                                                <span class="fw-semibold text-dark">@company.CompanyName</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Route Info -->
-                                <div class="mb-3">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="info-icon bg-info">
-                                            <i class="fas fa-route text-white"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <small class="text-muted d-block">Маршрут</small>
-                                            <div class="d-flex align-items-center">
-                                                <span class="fw-semibold text-dark">@or.OriginTown.TownName</span>
-                                                <i class="fas fa-arrow-right mx-2 text-muted small"></i>
-                                                <span class="fw-semibold text-dark">@or.DestinationTown.TownName</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Package Info -->
-                                <div class="mb-3">
-                                    <div class="d-flex align-items-center">
-                                        <div class="info-icon bg-warning">
-                                            <i class="fas fa-box text-white"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <small class="text-muted d-block">Посылка</small>
-                                            @if (or.Weight > 0)
-                                            {
-                                                <span class="fw-semibold text-dark">@or.Weight кг</span>
-                                                <span class="text-muted mx-1">•</span>
-                                            }
-                                            @if (or.LengthCm > 0 && or.WidthCm > 0 && or.HeightCm > 0)
-                                            {
-                                                <span class="fw-semibold text-dark">@or.LengthCm×@or.WidthCm×@or.HeightCm см</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Delivery Type -->
-                                @if (or.DeliveryType != null)
-                                {
-                                    <div class="mb-3">
-                                        <div class="d-flex align-items-center">
-                                            <div class="info-icon bg-success">
-                                                <i class="fas fa-shipping-fast text-white"></i>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <small class="text-muted d-block">Тип доставки</small>
-                                                <span class="fw-semibold text-dark">@or.DeliveryType.NameDeliveryType</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="card-footer bg-transparent border-0 pt-0">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <button class="btn btn-outline-primary btn-sm shadow-sm"
-                                            onclick="window.location.href='@($"/orders/details/{or.OrdersId}")'; event.stopPropagation()">
-                                        <i class="fas fa-eye me-1"></i>Подробнее
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
-                }
-            </div>
-
-            <!-- Pagination -->
-            <div class="d-flex justify-content-between align-items-center mt-4">
-                <div class="text-muted">
-                    Показано <strong class="text-dark">@orders.Count</strong> из <strong class="text-dark">@orders.Count</strong> заказов
                 </div>
-                <nav>
-                    <ul class="pagination mb-0 shadow-sm">
-                        <li class="page-item disabled">
-                            <a class="page-link border-0" href="#">
-                                <i class="fas fa-chevron-left"></i>
-                            </a>
-                        </li>
-                        <li class="page-item active">
-                            <a class="page-link border-0 bg-primary text-white" href="#">1</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link border-0 text-dark" href="#">2</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link border-0 text-dark" href="#">3</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link border-0" href="#">
-                                <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
             </div>
         }
     </div>
 </div>
 
 <style>
-    .page-bg {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #ffffff 100%);
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    .page-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+        padding: 2rem 0;
     }
 
-    .glass-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+    .page-header {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
     }
 
-    .header-icon-primary {
+    .header-icon {
         width: 60px;
         height: 60px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -288,212 +220,370 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
         color: white;
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        font-size: 1.8rem;
     }
 
-    /* Stat Cards */
-    .stat-card-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 16px;
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
     }
 
-    .stat-card-warning {
-        background: linear-gradient(135deg, #ffd666 0%, #ffa94d 100%);
-        border-radius: 16px;
+    .page-subtitle {
+        color: #6c757d;
+        font-size: 1rem;
+        margin-bottom: 0;
     }
 
-    .stat-card-success {
-        background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
-        border-radius: 16px;
+    /* Statistics Cards */
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.06);
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
     }
 
-    .stat-card-danger {
-        background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%);
-        border-radius: 16px;
-    }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        .stat-card.stat-total {
+            border-top: 4px solid #667eea;
+        }
+
+        .stat-card.stat-new {
+            border-top: 4px solid #fd7e14;
+        }
+
+        .stat-card.stat-in-transit {
+            border-top: 4px solid #0dcaf0;
+        }
+
+        .stat-card.stat-delivered {
+            border-top: 4px solid #198754;
+        }
 
     .stat-icon {
-        width: 50px;
-        height: 50px;
-        background: rgba(255, 255, 255, 0.2);
+        width: 60px;
+        height: 60px;
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.3rem;
+        font-size: 1.5rem;
         color: white;
-    }
-
-    .stat-card-warning .stat-icon {
-        color: #e67700;
-    }
-
-    /* Order Cards */
-    .order-card {
-        background: white;
-        border-radius: 20px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    .hover-lift:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
-    }
-
-    .order-card .card-header {
-        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-        border-radius: 20px 20px 0 0 !important;
-        padding: 1.5rem;
-    }
-
-    .info-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
         margin-right: 1rem;
         flex-shrink: 0;
     }
 
-    /* Status Badges */
-    .badge {
-        font-weight: 500;
-        font-size: 0.75rem;
+    .stat-card.stat-total .stat-icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 
-        .badge.bg-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        }
+    .stat-card.stat-new .stat-icon {
+        background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
+    }
 
-        .badge.bg-success {
-            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%) !important;
-        }
+    .stat-card.stat-in-transit .stat-icon {
+        background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%);
+    }
 
-        .badge.bg-warning {
-            background: linear-gradient(135deg, #ffd666 0%, #ffa94d 100%) !important;
-            color: #000 !important;
-        }
+    .stat-card.stat-delivered .stat-icon {
+        background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+    }
 
-        .badge.bg-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%) !important;
-        }
+    .stat-content h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+        color: #2c3e50;
+    }
 
-        .badge.bg-secondary {
-            background: linear-gradient(135deg, #868e96 0%, #495057 100%) !important;
-        }
+    .stat-content p {
+        color: #6c757d;
+        margin-bottom: 0;
+        font-size: 0.9rem;
+    }
 
-    /* Empty State */
-    .empty-state-icon {
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    /* Main Card */
+    .main-card {
+        background: white;
         border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        border-radius: 15px;
+    }
+
+    /* Orders Table */
+    .orders-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+        .orders-table thead {
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+        }
+
+        .orders-table th {
+            padding: 1.25rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .orders-table tbody tr {
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #f8f9fa;
+            cursor: pointer;
+        }
+
+            .orders-table tbody tr:hover {
+                background-color: rgba(13, 110, 253, 0.05);
+                transform: scale(1.01);
+            }
+
+        .orders-table td {
+            padding: 1rem;
+            vertical-align: top;
+        }
+
+    /* Column styles */
+    .order-id {
+        width: 60px;
+        font-weight: 600;
+        color: #495057;
+        text-align: center;
+    }
+
+    .order-number {
+        width: 180px;
+    }
+
+    .order-client {
+        width: 220px;
+    }
+
+    .order-route {
+        width: 200px;
+    }
+
+    .order-package {
+        width: 150px;
+    }
+
+    .order-status {
+        width: 180px;
+    }
+
+    .order-amount {
+        width: 140px;
+    }
+
+    /* Content styles */
+    .order-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .order-title {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 1.1rem;
+    }
+
+    .order-date {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .client-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .client-name {
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .client-contact {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .route-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .route-from, .route-to {
         display: flex;
         align-items: center;
+        font-size: 0.9rem;
+    }
+
+    .route-arrow {
+        text-align: center;
+        color: #adb5bd;
+    }
+
+    .package-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .package-detail {
+        display: flex;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #495057;
+    }
+
+    .tracking-info {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .amount-info {
+        text-align: right;
+    }
+
+    .amount-value {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .payment-method {
+        font-size: 0.8rem;
+    }
+
+    /* Loading and Empty States */
+    .loading-spinner {
+        text-align: center;
+    }
+
+        .loading-spinner i.fa-3x {
+            opacity: 0.5;
+        }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+
+    .empty-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
-        font-size: 2rem;
-        color: #6c757d;
-        margin: 0 auto;
-    }
-
-    /* Buttons */
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 12px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-        }
-
-    .btn-outline-primary {
-        border: 2px solid #667eea;
         color: #667eea;
-        border-radius: 10px;
-        font-weight: 500;
-        transition: all 0.3s ease;
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
     }
 
-        .btn-outline-primary:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
-        }
-
-    /* Pagination */
-    .pagination .page-link {
-        border-radius: 10px;
-        margin: 0 2px;
-        font-weight: 500;
+    .empty-title {
+        font-size: 1.5rem;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
     }
 
-    .page-item.active .page-link {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: #667eea;
-    }
-
-    /* Dropdown */
-    .dropdown-menu {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
-
-    .dropdown-item {
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        margin: 2px 0.5rem;
-        width: auto;
-    }
-
-        .dropdown-item:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-    /* Text Colors */
-    .text-dark {
-        color: #2c3e50 !important;
-    }
-
-    .text-muted {
-        color: #6c757d !important;
+    .empty-description {
+        color: #6c757d;
+        margin-bottom: 2rem;
     }
 
     /* Responsive */
     @@media (max-width: 768px) {
-        .header-icon-primary {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .header-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+        }
+
+        .stat-icon {
             width: 50px;
             height: 50px;
             font-size: 1.3rem;
         }
 
-        .stat-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 1.1rem;
+        .stat-content h3 {
+            font-size: 1.5rem;
         }
 
-        .order-card .card-header {
-            padding: 1rem;
+        .orders-table {
+            display: block;
         }
 
-        .info-icon {
-            width: 35px;
-            height: 35px;
-            font-size: 0.9rem;
-        }
+            .orders-table thead {
+                display: none;
+            }
+
+            .orders-table tbody tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid #dee2e6;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+
+            .orders-table td {
+                display: block;
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid #f8f9fa;
+                position: relative;
+                padding-left: 45%;
+            }
+
+                .orders-table td:before {
+                    content: attr(data-label);
+                    position: absolute;
+                    left: 1rem;
+                    width: 40%;
+                    padding-right: 1rem;
+                    font-weight: 600;
+                    color: #495057;
+                    font-size: 0.85rem;
+                }
+
+                .orders-table td:last-child {
+                    border-bottom: none;
+                }
     }
 </style>
 
@@ -502,32 +592,14 @@
     private List<StatusDelivery> statuses = new();
     protected override async Task OnInitializedAsync()
     {
-        orders = await context.Orders
-         .Include(o => o.Clients)
-             .ThenInclude(c => c.IndividualClients)
-         .Include(o => o.Clients)
-             .ThenInclude(c => c.CompanyClients)
-         .Include(o => o.OriginTown)
-         .Include(o => o.DestinationTown)
-         .Include(o => o.DeliveryType)
-         .Include(o => o.Template)
-         .Include(o => o.Trackings)
-                .ThenInclude(t => t.Status)
-         .ToListAsync();
-        statuses = await context.StatusDeliveries.ToListAsync();
-    }
-    private int GetStatusCount(string statusName)
-    {
-        return orders.Count(o => o.Trackings
-            .OrderByDescending(t => t.UpdateDate)
-            .FirstOrDefault()?.Status?.StatusName == statusName);
+        orders = await OrderQueryService.GetOrdersWithDetailsAsync();
+        statuses = await OrderQueryService.GetStatusesAsync();
     }
 
-    private StatusDelivery? GetCurrentStatus(Order order)
+   
+    private void NavigateToOrder(int orderId)
     {
-        return order.Trackings
-            .OrderByDescending(t => t.UpdateDate)
-            .FirstOrDefault()?.Status;
+        NavigationManager.NavigateTo($"/orders/details/{orderId}");
     }
 
 } 

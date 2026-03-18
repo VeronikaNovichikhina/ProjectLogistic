@@ -1,0 +1,581 @@
+﻿@page "/orders/payment-edit/{OrdersId::int}"
+@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.DTO
+@using LogisticCompany.Db
+@using LogisticCompany.Domain.Entities.Orders
+@using LogisticCompany.Domain.Entities.Tracking
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbContextFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@inject IOrderService OrderService
+
+<div class="office-manager-page bg-light min-vh-100">
+    @if(order == null)
+    {
+        <div class="card order-detail-card">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <h4 class="text-muted">Загрузка данных заказа...</h4>
+            </div>
+        </div>
+    }
+    else
+    {
+    <div class="container py-3">
+        <div class="row">
+            <!-- Основной контент -->
+            <div class="col-lg-8">
+                    <div class="col-md-4">
+                        <div class="action-buttons">
+                            <NavLink href="/ordersList" class="action-btn" title="Назад к списку">
+                                <i class="fas fa-arrow-left"></i>
+                            </NavLink>
+                        </div>
+                    </div>
+                <div class="d-flex align-items-center mb-3">
+                    <div class="status-badge bg-warning text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                         style="width: 36px; height: 36px; font-size: 14px;">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div>
+                        <h1 class="h5 fw-bold mb-1">Редактирование заказа перед оплатой</h1>
+                        <p class="text-muted small mb-0">Проверьте и обновите информацию о заказе #@order?.OrderNumber</p>
+                    </div>
+                    
+                </div>
+
+                @if (!string.IsNullOrEmpty(alertMessage))
+                {
+                    <div class="alert @(isAlertSuccess ? "alert-success" : "alert-danger") d-flex align-items-center mb-3 py-2" role="alert">
+                        <i class="fas @(isAlertSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2" style="font-size: 14px;"></i>
+                        <span class="small flex-grow-1">@alertMessage</span>
+                        <button class="btn-close btn-sm" @onclick="ClearAlert" style="font-size: 10px;"></button>
+                    </div>
+                }
+
+                @if (order == null)
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center py-4">
+                            <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <h5 class="text-muted" style="font-size: 14px;">Загрузка данных заказа...</h5>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <EditForm Model="orderEditModel" OnValidSubmit="SaveOrder" FormName="paymentEdit">
+                        <DataAnnotationsValidator />
+                        <!-- Информация о получателе -->
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white border-bottom py-2">
+                                <h6 class="fw-semibold mb-0 d-flex align-items-center">
+                                    <i class="fas fa-user-tag text-primary me-2" style="font-size: 14px;"></i>
+                                    Данные получателя
+                                </h6>
+                            </div>
+                            <div class="card-body p-3">
+                                <div class="row g-3">
+                                    <!-- ФИО получателя -->
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label fw-semibold mb-2 d-flex align-items-center"
+                                                   style="font-size: 14px; color: #495057;">
+                                                <i class="fas fa-user text-muted me-2" style="font-size: 13px;"></i>
+                                                Фамилия *
+                                                <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                    <i class="fas fa-user text-muted" style="font-size: 14px;"></i>
+                                                </span>
+                                                <InputText @bind-Value="orderEditModel.LastRecepientName"
+                                                           class="form-control border-start-0 py-1"
+                                                           style="font-size: 14px;"
+                                                           placeholder="Иванов" />
+                                            </div>
+                                            <ValidationMessage For="() => orderEditModel.LastRecepientName" class="text-danger" style="font-size: 12px;" />
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
+                                                Имя *
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                    <i class="fas fa-user text-muted" style="font-size: 14px;"></i>
+                                                </span>
+                                                <InputText @bind-Value="orderEditModel.FirstRecepientName"
+                                                           class="form-control border-start-0 py-1"
+                                                           style="font-size: 14px;"
+                                                           placeholder="Иван" />
+                                            </div>
+                                            <ValidationMessage For="() => orderEditModel.FirstRecepientName" class="text-danger" style="font-size: 12px;" />
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
+                                                Отчество
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                    <i class="fas fa-user text-muted" style="font-size: 14px;"></i>
+                                                </span>
+                                                <InputText @bind-Value="orderEditModel.MiddleRecepientName"
+                                                           class="form-control border-start-0 py-1"
+                                                           style="font-size: 14px;"
+                                                           placeholder="Иванович" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Контакты получателя -->
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label fw-semibold mb-2 d-flex align-items-center"
+                                                   style="font-size: 14px; color: #495057;">
+                                                <i class="fas fa-phone text-muted me-2" style="font-size: 13px;"></i>
+                                                Телефон *
+                                                <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                    <i class="fas fa-mobile-alt text-muted" style="font-size: 14px;"></i>
+                                                </span>
+                                                <InputText @bind-Value="orderEditModel.PhoneRecepient"
+                                                           class="form-control border-start-0 py-1"
+                                                           style="font-size: 14px;"
+                                                           placeholder="+7 (XXX) XXX-XX-XX" />
+                                            </div>
+                                            <ValidationMessage For="() => orderEditModel.PhoneRecepient" class="text-danger" style="font-size: 12px;" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white border-bottom py-2">
+                                <h6 class="fw-semibold mb-0 d-flex align-items-center">
+                                    <i class="fas fa-box text-warning me-2" style="font-size: 14px;"></i>
+                                    Информация о посылке
+                                </h6>
+                            </div>
+                            <div class="card-body p-3">
+                                <!-- Описание посылки -->
+                                <div class="mb-3">
+                                    <div class="form-group">
+                                        <label class="form-label fw-semibold mb-2 d-flex align-items-center"
+                                               style="font-size: 14px; color: #495057;">
+                                            <i class="fas fa-align-left text-muted me-2" style="font-size: 13px;"></i>
+                                            Описание содержимого
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                <i class="fas fa-edit text-muted" style="font-size: 14px;"></i>
+                                            </span>
+                                            <InputTextArea @bind-Value="orderEditModel.DescriptionParcel"
+                                                           class="form-control border-start-0 py-1"
+                                                           style="font-size: 14px; min-height: 80px;"
+                                                           placeholder="Опишите содержимое посылки..." />
+                                        </div>
+                                        <div class="form-text" style="font-size: 12px;">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Для таможенного декларирования
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Габариты и вес -->
+                                @if (order.TemplateId == null)
+                                {
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
+                                                    <i class="fas fa-ruler text-muted me-2" style="font-size: 13px;"></i>
+                                                    Длина (см)
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                        <i class="fas fa-ruler-vertical text-muted" style="font-size: 14px;"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="orderEditModel.LengthCm"
+                                                                 class="form-control border-start-0 py-1"
+                                                                 style="font-size: 14px;" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
+                                                    <i class="fas fa-ruler text-muted me-2" style="font-size: 13px;"></i>
+                                                    Ширина (см)
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                        <i class="fas fa-ruler-horizontal text-muted" style="font-size: 14px;"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="orderEditModel.WidthCm"
+                                                                 class="form-control border-start-0 py-1"
+                                                                 style="font-size: 14px;" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
+                                                    <i class="fas fa-ruler text-muted me-2" style="font-size: 13px;"></i>
+                                                    Высота (см)
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                        <i class="fas fa-arrows-alt-v text-muted" style="font-size: 14px;"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="orderEditModel.HeightCm"
+                                                                 class="form-control border-start-0 py-1"
+                                                                 style="font-size: 14px;" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label fw-semibold mb-2 d-flex align-items-center"
+                                                       style="font-size: 14px; color: #495057;">
+                                                    <i class="fas fa-weight text-muted me-2" style="font-size: 13px;"></i>
+                                                    Вес (кг) *
+                                                    <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                        <i class="fas fa-balance-scale text-muted" style="font-size: 14px;"></i>
+                                                    </span>
+                                                    <InputNumber @bind-Value="orderEditModel.Weight"
+                                                                 class="form-control border-start-0 py-1"
+                                                                 style="font-size: 14px;" />
+                                                </div>
+                                                <ValidationMessage For="() => orderEditModel.Weight" class="text-danger" style="font-size: 12px;" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info border py-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-info-circle me-2" style="font-size: 14px;"></i>
+                                            <div class="small" style="font-size: 13px;">
+                                                Используется шаблон посылки: <strong>@order.Template?.TemplateName</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (order.DeliveryTypeId == 1)
+                        {
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-white border-bottom py-2">
+                                    <h6 class="fw-semibold mb-0 d-flex align-items-center">
+                                        <i class="fas fa-map-marker-alt text-danger me-2" style="font-size: 14px;"></i>
+                                        Адрес курьерской доставки
+                                    </h6>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="form-group">
+                                        <label class="form-label fw-semibold mb-2 d-flex align-items-center"
+                                               style="font-size: 14px; color: #495057;">
+                                            <i class="fas fa-home text-muted me-2" style="font-size: 13px;"></i>
+                                            Адрес доставки *
+                                            <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                <i class="fas fa-map-pin text-muted" style="font-size: 14px;"></i>
+                                            </span>
+                                            <InputText @bind-Value="orderEditModel.CourierDestAddress"
+                                                       class="form-control border-start-0 py-1"
+                                                       style="font-size: 14px;"
+                                                       placeholder="ул. Ленина, д. 10, кв. 25" />
+                                        </div>
+                                        <ValidationMessage For="() => orderEditModel.CourierDestAddress" class="text-danger" style="font-size: 12px;" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Панель действий -->
+                        <div class="action-panel bg-white border rounded p-3 shadow-sm">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-8">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <span class="badge bg-warning rounded-pill py-1 px-2" style="font-size: 12px;">
+                                                <i class="fas fa-edit me-1"></i>
+                                                Редактирование
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                            <button type="submit"
+                                                class="btn btn-success px-3"
+                                                disabled="@isSaving"
+                                                style="font-size: 14px; padding: 6px 12px;">
+                                            @if (isSaving)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                <span>Сохранение...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-credit-card me-1"></i>
+                                                <span>К оплате</span>
+                                            }
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+
+            <!-- Боковая панель -->
+            <div class="col-lg-4">
+                <div class="sticky-top" style="top: 15px;">
+                    <!-- Сводка заказа -->
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-white border-bottom py-2">
+                            <h6 class="fw-semibold mb-0" style="font-size: 14px;">
+                                <i class="fas fa-clipboard-check me-2 text-primary" style="font-size: 13px;"></i>
+                                Сводка заказа
+                            </h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <!-- Маршрут -->
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-route text-primary me-2" style="font-size: 14px;"></i>
+                                    <span class="fw-semibold small" style="font-size: 13px;">Маршрут</span>
+                                </div>
+                                <div class="ms-4">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="fas fa-circle text-success me-2" style="font-size: 8px;"></i>
+                                        <span class="small" style="font-size: 13px;">@order.OriginTown?.TownName, @order.OriginTown?.Country?.CountryName</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-circle text-danger me-2" style="font-size: 8px;"></i>
+                                        <span class="small" style="font-size: 13px;">@order?.DestinationTown?.TownName, @order?.DestinationTown?.Country?.CountryName</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Тип доставки -->
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-truck text-info me-2" style="font-size: 14px;"></i>
+                                    <span class="fw-semibold small" style="font-size: 13px;">Тип доставки</span>
+                                </div>
+                                <div class="ms-4">
+                                    <span class="badge bg-info" style="font-size: 12px;">@order?.DeliveryType?.NameDeliveryType</span>
+                                </div>
+                            </div>
+                            <!-- Сумма к оплате -->
+                            @if (order.Payments.Any())
+                            {
+                                var payment = order.Payments.First();
+                                <div class="mt-3 pt-3 border-top">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-semibold small" style="font-size: 13px;">Сумма к оплате:</span>
+                                        <span class="h6 fw-bold text-success mb-0">@payment.Amount.ToString()</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+</div>
+
+<style>
+    .office-manager-page {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+    }
+
+    .form-control {
+        font-size: 14px;
+        padding: 6px 12px;
+        height: 36px;
+    }
+
+    .input-group-text {
+        font-size: 14px;
+        padding: 6px 12px;
+        height: 36px;
+    }
+
+    .form-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .btn {
+        font-size: 14px;
+        padding: 6px 12px;
+        height: 36px;
+    }
+
+    .btn-sm {
+        font-size: 13px;
+        padding: 5px 10px;
+        height: 32px;
+    }
+
+    .action-panel {
+        position: sticky;
+        bottom: 15px;
+        z-index: 1000;
+        margin-top: 15px;
+        font-size: 14px;
+    }
+
+    .status-badge {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+        font-size: 13px;
+    }
+
+    .card-header {
+        padding: 8px 16px;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    .alert {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .badge {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    input.form-control:focus,
+    select.form-control:focus,
+    textarea.form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+        outline: none;
+    }
+
+    .small {
+        font-size: 12px !important;
+    }
+
+    .h5 {
+        font-size: 1.1rem;
+    }
+
+    .h6 {
+        font-size: 1rem;
+    }
+
+    textarea.form-control {
+        min-height: 80px;
+        resize: vertical;
+    }
+</style>
+
+@code {
+    [Parameter] public int OrdersId { get; set; }
+    private Order? order;
+    private OrderEditModel orderEditModel = new();
+    private bool isSaving = false;
+    private string alertMessage = "";
+    private bool isAlertSuccess = false;
+
+
+    private void NavigateToPayment()
+    {
+        Navigation.NavigateTo($"/orders/payment/{OrdersId}");
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        orderEditModel = await OrderService.GetOrderForEditAsync(OrdersId);
+    }
+    
+    private void ClearAlert()
+    {
+        alertMessage = "";
+        StateHasChanged();
+    }
+ 
+
+    private void CancelEdit()
+    {
+        Navigation.NavigateTo($"/orders/details/{OrdersId}");
+    }
+
+    private async Task SaveOrder()
+    {
+        isSaving = true;
+        alertMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            bool result = await OrderService.SaveOrderAsync(OrdersId, orderEditModel);
+
+            if (!result)
+            {
+                alertMessage = "Заказ не найден!";
+                isAlertSuccess = false;
+                return;
+            }
+
+            alertMessage = "Данные заказа сохранены";
+            isAlertSuccess = true;
+
+            Navigation.NavigateTo($"/orders/payment/{OrdersId}");
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Ошибка сохранения: {ex.Message}";
+            isAlertSuccess = false;
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+}

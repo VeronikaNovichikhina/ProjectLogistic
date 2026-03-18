@@ -1,5 +1,8 @@
 ﻿@page "/profile"
 @using System.ComponentModel.DataAnnotations
+@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.Application.Services
+@using LogisticCompany.DTO
 @using LogisticCompany.Db
 @using LogisticCompany.Domain.Entities.Employee
 @using LogisticCompany.Domain.Entities.Location
@@ -12,7 +15,10 @@
 @inject NavigationManager Navigation
 
 @rendermode InteractiveServer
-
+@inject IClientService ClientService
+@inject IUserService UserService
+@inject IOrderService OrderService
+@inject IEmployeeService EmployeeService
 
 <div class="account-container min-vh-100">
     @if (showPasswordChangeDialog)
@@ -97,13 +103,18 @@
                                 <h5 class="fw-bold text-white mb-1">
                                     @(isManager ? "Кабинет сотрудника" : "Личный кабинет")
                                 </h5>
-                                <small class="text-white-50 opacity-75">@(isManager ? currentUser?.Email : client.Email)</small>
+                                @if (isManager)
+                                {
+                                    <small class="text-white-50 opacity-75">@(adminEmployee?.Email ?? "")</small>
+                                }
+
                                 @if (isManager && adminEmployee != null)
                                 {
                                     <small class="text-warning fw-semibold d-block mt-1">
                                         <i class="fas fa-star me-1"></i>@adminEmployee.FirstName @adminEmployee.LastName
                                     </small>
                                 }
+
                             </div>
                         </div>
                     </div>
@@ -289,14 +300,8 @@
                                                     <label class="form-label fw-semibold text-dark mb-3">
                                                         <i class="fas fa-envelope text-primary me-2"></i>Email
                                                     </label>
-                                                    @if (isManager)
-                                                    {
-                                                        <input class="form-control form-control-lg" value="@(currentUser?.Email ?? "")" disabled />
-                                                    }
-                                                    else
-                                                    {
-                                                        <InputText class="form-control form-control-lg" @bind-Value="client.Email" Disabled="true" />
-                                                    }
+                                                    <input class="form-control"
+                                                           value="@(isManager? adminEmployee?.Email : client?.Email)" />
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
@@ -476,7 +481,7 @@
                                             <h4 class="fw-bold text-dark mb-0">
                                                 <i class="fas fa-box me-2 text-success"></i>Мои посылки
                                             </h4>
-                                            <NavLink href="/create-order" class="btn btn-primary">
+                                            <NavLink href="/create/order/for/user" class="btn btn-primary">
                                                 <i class="fas fa-plus-circle me-2"></i>Создать заказ
                                             </NavLink>
                                         </div>
@@ -498,7 +503,7 @@
                                                     {
                                                         <tr class="package-row">
                                                             <td>
-                                                                <strong class="text-primary">#@order.OrdersId</strong>
+                                                                <strong class="text-primary">#@order.OrderNumber</strong>
                                                             </td>
                                                             <td>
                                                                 <div class="package-description">
@@ -515,23 +520,49 @@
                                                                 </div>
                                                             </td>
                                                             <td>
-                                                                @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
+                                                                @if (order.Template != null)
                                                                 {
-                                                                    <span>@order.LengthCm × @order.WidthCm × @order.HeightCm см</span>
+                                                                    <div class="package-type">
+                                                                        <i class="fas fa-box text-primary me-1"></i>
+                                                                        @order.Template.TemplateName
+                                                                    </div>
                                                                 }
                                                                 else
                                                                 {
-                                                                    <span class="text-muted">—</span>
+                                                                    <div class="package-weight text-muted">
+                                                                        <i class="fas fa-weight-hanging me-1"></i>
+                                                                        --
+                                                                    </div>
+                                                                }
+                                                                @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
+                                                                {
+                                                                    <div class="package-size text-muted">
+                                                                        <i class="fas fa-ruler-combined me-1"></i>
+                                                                        @order.LengthCm × @order.WidthCm × @order.HeightCm
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="package-weight text-muted">
+                                                                        <i class="fas fa-weight-hanging me-1"></i>
+                                                                        --
+                                                                    </div>
                                                                 }
                                                             </td>
                                                             <td>
-                                                                @if (order.Weight > 0)
+                                                                @if (order.Weight != null && order.Weight > 0)
                                                                 {
-                                                                    <span>@order.Weight кг</span>
+                                                                    <div class="package-weight text-muted">
+                                                                        <i class="fas fa-weight-hanging me-1"></i>
+                                                                        @order.Weight
+                                                                    </div>
                                                                 }
                                                                 else
                                                                 {
-                                                                    <span class="text-muted">—</span>
+                                                                    <div class="package-weight text-muted">
+                                                                        <i class="fas fa-weight-hanging me-1"></i>
+                                                                        --
+                                                                    </div>
                                                                 }
                                                             </td>
                                                             <td class="text-end">
@@ -556,9 +587,9 @@
                                             <i class="fas fa-box-open fa-4x text-muted mb-4"></i>
                                             <h5 class="text-muted mb-3">У вас пока нет посылок</h5>
                                             <p class="text-muted mb-4">Все ваши заказы будут отображаться здесь</p>
-                                            <button class="btn btn-primary btn-lg">
-                                                <i class="fas fa-plus me-2"></i>Создать первый заказ
-                                            </button>
+                                            <NavLink href="/create/order/for/user" class="btn btn-primary btn-lg">
+                                                <i class="fas fa-plus me-2"></i>Создать заказ
+                                            </NavLink>
                                         </div>
                                     </div>
                                 </div>
@@ -705,7 +736,7 @@
                             <i class="fas fa-box-open fa-lg"></i>
                         </div>
                         <div class="flex-grow-1">
-                            <h5 class="modal-title fw-bold mb-0">Детали заказа #@selectedOrder.OrdersId</h5>
+                            <h5 class="modal-title fw-bold mb-0">Детали заказа #@selectedOrder.OrderNumber</h5>
                             <small class="opacity-75">Полная информация о посылке</small>
                         </div>
                         <button type="button" class="btn-close btn-close-white" @onclick="CloseOrderDetails"></button>
@@ -767,13 +798,19 @@
                                     <div class="info-item mb-3">
                                         <label class="fw-semibold text-muted">Размеры:</label>
                                         <p class="mb-0">
+                                            @if (selectedOrder.Template != null)
+                                            {
+                                                <div class="package-type">
+                                                    <i class="fas fa-box text-primary me-1"></i>
+                                                    @selectedOrder.Template.TemplateName
+                                                </div>
+                                            }
                                             @if (selectedOrder.LengthCm > 0 && selectedOrder.WidthCm > 0 && selectedOrder.HeightCm > 0)
                                             {
-                                                @($"{selectedOrder.LengthCm} × {selectedOrder.WidthCm} × {selectedOrder.HeightCm} см")
-                                            }
-                                            else
-                                            {
-                                                @("Не указаны")
+                                                <div class="package-size text-muted">
+                                                    <i class="fas fa-ruler-combined me-1"></i>
+                                                    @selectedOrder.LengthCm × @selectedOrder.WidthCm × @selectedOrder.HeightCm
+                                                </div>
                                             }
                                         </p>
                                     </div>
@@ -781,13 +818,12 @@
                                     <div class="info-item">
                                         <label class="fw-semibold text-muted">Вес:</label>
                                         <p class="mb-0">
-                                            @if (selectedOrder.Weight > 0)
+                                            @if (selectedOrder.Weight != null && selectedOrder.Weight > 0)
                                             {
-                                                @($"{selectedOrder.Weight} кг")
-                                            }
-                                            else
-                                            {
-                                                @("Не указан")
+                                                <div class="package-weight text-muted">
+                                                    <i class="fas fa-weight-hanging me-1"></i>
+                                                    @selectedOrder.Weight
+                                                </div>
                                             }
                                         </p>
                                     </div>
@@ -859,9 +895,10 @@
 
                                                         @if (latestTracking?.Status != null)
                                                         {
-                                                            <span class="badge @(GetStatusBadgeClass(latestTracking.Status.StatusName))">
+                                                            <span class="">
                                                                 @latestTracking.Status.StatusName
                                                             </span>
+
                                                             <small class="text-muted d-block mt-1">
                                                                 <i class="fas fa-clock me-1"></i>
                                                                 @latestTracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
@@ -965,6 +1002,7 @@
 }
 
 
+
 @code {
     [SupplyParameterFromForm]
     private Client client { get; set; } = new();
@@ -974,30 +1012,9 @@
     private List<Order> orders = new List<Order>();
     private Order selectedOrder = null;
     private List<StatusDelivery> statusDelivery = new();
-    private string GetStatusBadgeClass(string statusName)
-    {
-        if (string.IsNullOrEmpty(statusName))
-            return "bg-secondary";
-
-        return statusName.ToLower() switch
-        {
-            "создан" or "ожидает обработки" => "bg-info",
-            "принят" or "в обработке" => "bg-primary",
-            "передан в доставку" or "в пути" => "bg-warning",
-            "на складе" or "доставляется" => "bg-info",
-            "у курьера" or "вручение" => "bg-primary",
-            "доставлен" or "получен" => "bg-success",
-            "отменен" or "отклонен" => "bg-danger",
-            "возврат" or "возвращен" => "bg-dark",
-            "проблема" or "задержка" => "bg-warning",
-            _ => "bg-secondary"
-        };
-    }
+   
     [Inject]
     private IJSRuntime JS { get; set; }
-
-    [Inject]
-    private IDbContextFactory<AppDbContext> DbContextFactory { get; set; }
 
     private ElementReference phoneInput;
     private int selectedClientTypeId;
@@ -1027,156 +1044,76 @@
     private bool isFirstLogin = false;
     private bool isTempPassword = false;
 
-    public class ChangePasswordModel
-    {
-        [Required(ErrorMessage = "Текущий пароль обязателен")]
-        [Display(Name = "Текущий пароль")]
-        public string CurrentPassword { get; set; } = "";
-
-        [Required(ErrorMessage = "Новый пароль обязателен")]
-        [MinLength(6, ErrorMessage = "Пароль должен содержать минимум 6 символов")]
-        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$",
-            ErrorMessage = "Пароль должен содержать заглавные и строчные буквы, а также цифры")]
-        [Display(Name = "Новый пароль")]
-        public string NewPassword { get; set; } = "";
-
-        [Required(ErrorMessage = "Подтверждение пароля обязательно")]
-        [Compare("NewPassword", ErrorMessage = "Пароли не совпадают")]
-        [Display(Name = "Подтверждение пароля")]
-        public string ConfirmPassword { get; set; } = "";
-    }
-
     protected override async Task OnInitializedAsync()
     {
-        using var db = await DbContextFactory.CreateDbContextAsync();
-        await DetermineUserType();
+        var email = GetCurrentUserEmail();
+        if (string.IsNullOrEmpty(email)) return;
 
-        statusDelivery = await db.StatusDeliveries.ToListAsync();
-        if (isManager)
+        // Проверка временного пароля
+        isTempPassword = await UserService.IsTemporaryPasswordAsync(email);
+        showPasswordChangeDialog = isTempPassword;
+
+
+
+        adminEmployee = await EmployeeService.GetEmployeeWithBranchAsync(email);
+        if (adminEmployee != null)
         {
-            await LoadAdminData();
+            isManager = true;
+            orders = await OrderService.GetOrdersForAdminAsync(adminEmployee.Branch.BranchesId);
         }
         else
         {
-            await LoadClientData();
+            isManager = false;
+            client = await ClientService.GetClientByEmailAsync(email) ?? new Client { Email = email };
+            selectedClientTypeId = client.ClientTypeId;
+            if (client.ClientTypeId == 1)
+                individualClient = client.IndividualClients.FirstOrDefault() ?? new IndividualClient();
+            else if (client.ClientTypeId == 2)
+                companyClient = client.CompanyClients.FirstOrDefault() ?? new CompanyClient();
+
+            orders = await OrderService.GetOrdersForClientAsync(client.ClientsId);
         }
-       
-        await CheckFirstLogin();
+        statusDelivery = await OrderService.GetStatusDeliveriesAsync();
+    }
+
+
+    private string? GetCurrentUserEmail()
+    {
+        return HttpContextAccessor.HttpContext?.User?.Identity?.Name;
     }
 
     private async Task CheckFirstLogin()
     {
         try
         {
-            var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
+            var email = GetCurrentUserEmail();
+            if (string.IsNullOrEmpty(email)) return;
 
-            if (!string.IsNullOrEmpty(userEmail))
-            {
-                // Проверяем куки
-                var hasChangedPassword = await JS.InvokeAsync<string>("eval",
-                    $"document.cookie.replace(/(?:(?:^|.*;\\s*)userPasswordChanged\\s*\\=\\s*([^;]*).*$)|^.*$/, '$1')");
+            bool hasChangedPassword = await UserService.HasChangedPasswordCookieAsync();
+            isTempPassword = await UserService.IsTemporaryPasswordAsync(email);
 
-                // ПРОВЕРЯЕМ ВРЕМЕННЫЙ ПАРОЛЬ
-                isTempPassword = await IsTemporaryPassword(userEmail);
+            showPasswordChangeDialog = isTempPassword && !hasChangedPassword;
 
-                Console.WriteLine($"Debug: hasChangedPassword='{hasChangedPassword}', isTempPassword={isTempPassword}"); // ДЛЯ ОТЛАДКИ
-
-                // ПОКАЗЫВАЕМ ДИАЛОГ ТОЛЬКО ЕСЛИ ПАРОЛЬ ВРЕМЕННЫЙ И КУКИ НЕ УСТАНОВЛЕН
-                if (isTempPassword)
-                {
-                    showPasswordChangeDialog = true;
-                    StateHasChanged();
-                }
-                else
-                {
-                    showPasswordChangeDialog = false;
-                }
-            }
+            StateHasChanged();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Ошибка при проверке первого входа: {ex.Message}");
         }
     }
-    private async Task<bool> IsTemporaryPassword(string email)
-    {
-        try
-        {
-            using var context = DbContextFactory.CreateDbContext();
-
-            var user = await context.Users
-                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
-
-            return user?.IsTemporaryPassword == true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+   
     private async Task ChangePassword()
     {
-        isChangingPassword = true;
-        passwordChangeMessage = "";
-        StateHasChanged();
-
         try
         {
-            var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
-            if (string.IsNullOrEmpty(userEmail))
-            {
-                passwordChangeMessage = "Ошибка: пользователь не аутентифицирован";
-                isPasswordChangeSuccess = false;
-                return;
-            }
-
-            using var context = DbContextFactory.CreateDbContext();
-
-            var user = await context.Users
-                .FirstOrDefaultAsync(u => u.Email.ToLower() == userEmail.ToLower());
-
-            if (user == null)
-            {
-                passwordChangeMessage = "Ошибка: пользователь не найден";
-                isPasswordChangeSuccess = false;
-                return;
-            }
-
-            if (!BCrypt.Net.BCrypt.Verify(changePasswordModel.CurrentPassword, user.PasswordHash))
-            {
-                passwordChangeMessage = "Ошибка: текущий пароль указан неверно";
-                isPasswordChangeSuccess = false;
-                return;
-            }
-
-            var newPasswordHash = BCrypt.Net.BCrypt.HashPassword(changePasswordModel.NewPassword);
-            user.PasswordHash = newPasswordHash;
-
-            await context.SaveChangesAsync();
-
-            // Устанавливаем куки на 1 год
-            await JS.InvokeVoidAsync("eval",
-                $"document.cookie = 'userPasswordChanged=true; max-age=31536000; path=/'");
-
-            passwordChangeMessage = "Пароль успешно изменен!";
-            isPasswordChangeSuccess = true;
-            changePasswordModel = new ChangePasswordModel();
-
-            // Закрываем диалог
+            var email = client.Email;
+            await UserService.ChangePasswordAsync(email, changePasswordModel.CurrentPassword, changePasswordModel.NewPassword);
             showPasswordChangeDialog = false;
-
-            await SendPasswordChangeNotification(userEmail);
+            await JS.InvokeVoidAsync("alert", "Пароль успешно изменен");
         }
         catch (Exception ex)
         {
-            passwordChangeMessage = $"Ошибка при смене пароля: {ex.Message}";
-            isPasswordChangeSuccess = false;
-            Console.WriteLine($"Ошибка смены пароля: {ex.Message}");
-        }
-        finally
-        {
-            isChangingPassword = false;
-            StateHasChanged();
+            await JS.InvokeVoidAsync("alert", ex.Message);
         }
     }
 
@@ -1186,7 +1123,6 @@
 
         if (!string.IsNullOrEmpty(userEmail))
         {
-            // Устанавливаем куки, чтобы больше не показывать
             await JS.InvokeVoidAsync("eval",
                 $"document.cookie = 'userPasswordChanged=dismissed; max-age=31536000; path=/'");
         }
@@ -1195,181 +1131,17 @@
         StateHasChanged();
     }
 
-    private async Task DetermineUserType()
-    {
-        var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
-
-        if (!string.IsNullOrEmpty(userEmail))
-        {
-            using var context = DbContextFactory.CreateDbContext();
-
-            // Проверяем, является ли пользователь сотрудником
-            var employee = await context.Employees
-                .Include(e => e.User)
-                .FirstOrDefaultAsync(e => e.User != null && e.User.Email.ToLower() == userEmail.ToLower());
-
-            if (employee != null)
-            {
-                isManager = true;
-                currentUser = employee.User;
-                adminEmployee = employee;
-            }
-            else
-            {
-                isManager = false;
-            }
-        }
-    }
-    
-   
-    private async Task LoadAdminData()
-    {
-        if (currentUser == null) return;
-
-        using var context = DbContextFactory.CreateDbContext();
-
-        // Загружаем полные данные сотрудника с филиалом
-        adminEmployee = await context.Employees
-            .Include(e => e.Branch)
-                .ThenInclude(b => b.Town)
-                .ThenInclude(t => t.Country)
-            .Include(e => e.User)
-            .FirstOrDefaultAsync(e => e.UserId == currentUser.Id);
-
-        if (adminEmployee?.Branch != null)
-        {
-            adminBranch = adminEmployee.Branch;
-            adminTown = adminBranch.Town;
-            adminCountry = adminTown?.Country;
-        }
-
-        // Загружаем заказы для админа (заказы его филиала)
-        if (adminBranch != null)
-        {
-            orders = await context.Orders
-                .Include(o => o.Template)
-                .Include(o => o.DeliveryType)
-                .Include(o => o.TransportType)
-                .Include(o => o.OriginTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.DestinationTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.Clients)
-                .Where(o => o.PickupBranchesId == adminBranch.BranchesId ||
-                           o.DestinationBranchId == adminBranch.BranchesId)
-                .OrderByDescending(o => o.OrdersId)
-                .ToListAsync();
-        }
-    }
-
-    private async Task LoadClientData()
-    {
-        var userEmail = HttpContextAccessor.HttpContext?.User?.Identity?.Name;
-
-        if (!string.IsNullOrEmpty(userEmail))
-        {
-            using var context = DbContextFactory.CreateDbContext();
-
-            client = await context.Clients
-                .Include(c => c.IndividualClients)
-                .Include(c => c.CompanyClients)
-                .FirstOrDefaultAsync(c => c.Email == userEmail);
-
-            if (client == null)
-            {
-                client = new Client { Email = userEmail };
-            }
-            else
-            {
-                // Загружаем посылки клиента
-                orders = await context.Orders
-                    .Include(o => o.Template)
-                    .Include(o => o.DeliveryType)
-                    .Include(o => o.TransportType)
-                    .Include(o => o.OriginTown)
-                        .ThenInclude(t => t.Country)
-                    .Include(o => o.DestinationTown)
-                        .ThenInclude(t => t.Country)
-                    .Where(o => o.ClientsId == client.ClientsId)
-                    .OrderByDescending(o => o.OrdersId)
-                    .ToListAsync();
-
-                if (client.ClientTypeId == 1 && client.IndividualClients?.Any() == true)
-                {
-                    individualClient = client.IndividualClients.First();
-                    selectedClientTypeId = 1;
-                }
-                else if (client.ClientTypeId == 2 && client.CompanyClients?.Any() == true)
-                {
-                    companyClient = client.CompanyClients.First();
-                    selectedClientTypeId = 2;
-                }
-            }
-        }
-    }
-
-
-    private async Task SendPasswordChangeNotification(string email)
-    {
-        try
-        {
-            var message = $@"
-                Уважаемый пользователь,
-
-                Пароль для вашего аккаунта был успешно изменен.
-                Если это были не вы, немедленно свяжитесь со службой поддержки.
-
-                С уважением,
-                Служба доставки Logistic Company";
-
-            Console.WriteLine($"Уведомление о смене пароля отправлено на {email}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка отправки уведомления: {ex.Message}");
-        }
-    }
 
     private async Task ShowOrderDetails(int orderId)
     {
-        try
-        {
-            using var context = DbContextFactory.CreateDbContext();
-
-            selectedOrder = await context.Orders
-                .Include(o => o.Template)
-                .Include(o => o.DeliveryType)
-                .Include(o => o.TransportType)
-                .Include(o => o.OriginTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.DestinationTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.PickupBranches)
-                .Include(o => o.Clients)
-                .Include(o => o.Trackings)
-                     .ThenInclude( t => t.Status)
-                .FirstOrDefaultAsync(o => o.OrdersId == orderId);
-
-            if (selectedOrder == null)
-            {
-                await JS.InvokeVoidAsync("alert", "Заказ не найден");
-                return;
-            }
-            showOrderDetailsModal = true;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка при загрузке заказа: {ex.Message}");
-            await JS.InvokeVoidAsync("alert", "Ошибка при загрузке данных заказа");
-        }
+        selectedOrder = await OrderService.GetOrderDetailsAsync(orderId);
+        if (selectedOrder != null) showOrderDetailsModal = true;
     }
 
     private void CloseOrderDetails()
     {
         showOrderDetailsModal = false;
         selectedOrder = null;
-        StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -1384,41 +1156,8 @@
     {
         try
         {
-            using var context = DbContextFactory.CreateDbContext();
-
-            client.ClientTypeId = selectedClientTypeId;
-
-            if (client.ClientsId == 0)
-            {
-                context.Clients.Add(client);
-            }
-            else
-            {
-                context.Clients.Update(client);
-            }
-
-            if (selectedClientTypeId == 1)
-            {
-                individualClient.Clients = client;
-
-                if (individualClient.IndividualId == 0)
-                    context.IndividualClients.Add(individualClient);
-                else
-                    context.IndividualClients.Update(individualClient);
-            }
-            else if (selectedClientTypeId == 2)
-            {
-                companyClient.Clients = client;
-
-                if (companyClient.CompanyId == 0)
-                    context.CompanyClients.Add(companyClient);
-                else
-                    context.CompanyClients.Update(companyClient);
-            }
-
-            await context.SaveChangesAsync();
+            await ClientService.SaveClientAsync(client, individualClient, companyClient);
             await JS.InvokeVoidAsync("alert", "Данные успешно сохранены!");
-            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -1433,66 +1172,22 @@
     
     private async Task SaveEmployee()
     {
-        using var context = DbContextFactory.CreateDbContext();
         isSaving = true;
         saveMessage = "";
         StateHasChanged();
 
         try
         {
-            // Валидация обязательных полей
-            if (string.IsNullOrWhiteSpace(adminEmployee.FirstName))
-            {
-                saveMessage = "Имя обязательно для заполнения";
-                isSaveSuccess = false;
-                isSaving = false;
-                StateHasChanged();
-                return;
-            }
+            adminEmployee = await EmployeeService.SaveEmployeeAsync(adminEmployee);
+            saveMessage = "Данные успешно сохранены!";
+            isSaveSuccess = true;
 
-            if (string.IsNullOrWhiteSpace(adminEmployee.LastName))
-            {
-                saveMessage = "Фамилия обязательна для заполнения";
-                isSaveSuccess = false;
-                isSaving = false;
-                StateHasChanged();
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(adminEmployee.Phone))
-            {
-                saveMessage = "Телефон обязателен для заполнения";
-                isSaveSuccess = false;
-                isSaving = false;
-                StateHasChanged();
-                return;
-            }
-
-            // Обновляем только разрешенные поля
-            var employeeToUpdate = await context.Employees
-                .FirstOrDefaultAsync(e => e.EmployeeId == adminEmployee.EmployeeId);
-
-            if (employeeToUpdate != null)
-            {
-                // Обновляем только те поля, которые можно изменять
-                employeeToUpdate.FirstName = adminEmployee.FirstName;
-                employeeToUpdate.LastName = adminEmployee.LastName;
-                employeeToUpdate.PatronymicName = adminEmployee.PatronymicName;
-                employeeToUpdate.Phone = adminEmployee.Phone;
-
-                await context.SaveChangesAsync();
-
-                saveMessage = "Данные успешно сохранены!";
-                isSaveSuccess = true;
-
-                // Обновляем локальную копию
-                adminEmployee = employeeToUpdate;
-            }
-            else
-            {
-                saveMessage = "Сотрудник не найден";
-                isSaveSuccess = false;
-            }
+            _ = HideMessageAfterDelay();
+        }
+        catch (ArgumentException ex)
+        {
+            saveMessage = ex.Message;
+            isSaveSuccess = false;
         }
         catch (Exception ex)
         {
@@ -1503,12 +1198,6 @@
         {
             isSaving = false;
             StateHasChanged();
-
-            // Автоматически скрываем сообщение через 5 секунд
-            if (isSaveSuccess)
-            {
-                _ = HideMessageAfterDelay();
-            }
         }
     }
 
@@ -1521,6 +1210,8 @@
     
 
 }
+
+
 
 <style>
     .tracking-timeline {

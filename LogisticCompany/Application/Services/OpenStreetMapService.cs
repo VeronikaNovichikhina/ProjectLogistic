@@ -1,12 +1,13 @@
-﻿namespace LogisticCompany.Services
+﻿namespace LogisticCompany.Application.Services
 {
     using System.Globalization;
     using System.Text.Json;
 
     using System.Globalization;
     using System.Text.Json;
+    using LogisticCompany.Application.Interfaces;
 
-    public class OpenStreetMapService
+    public class OpenStreetMapService: IMapService
     {
         private readonly HttpClient _httpClient;
 
@@ -17,26 +18,22 @@
             _httpClient.Timeout = TimeSpan.FromSeconds(10);
         }
 
-        public async Task<decimal> GetDistanceAsync(string fromCity, string toCity, int transportTypeId)
+        public async Task<decimal> GetDistanceAsync(string fromCity,
+            string toCity, int isAirTransport)
         {
             try
             {
                 Console.WriteLine($"Расчет расстояния: {fromCity} -> {toCity}");
-                Console.WriteLine($" Тип транспорта: {(IsAirTransport(transportTypeId) ? "Авиа ✈" : "Наземный ")}");
-
-                // Для авиа используем расстояние по прямой
-                if (IsAirTransport(transportTypeId))
-                {
+              
+                if (IsAirTransport(isAirTransport))
                     return await GetAirDistanceAsync(fromCity, toCity);
-                }
 
-                // Для наземного используем расчет с учетом дорог
                 return await GetRoadDistanceAsync(fromCity, toCity);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($" Ошибка: {ex.Message}");
-                return 500; // значение по умолчанию при ошибке
+                return 500;
             }
         }
 
@@ -158,6 +155,8 @@
             // Проверьте какой ID у авиа транспорта в вашей БД
             return transportTypeId == 2; // Настройте под вашу БД
         }
+
+        
     }
 
     public class NominatimResponse

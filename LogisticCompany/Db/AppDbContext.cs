@@ -336,6 +336,12 @@ public partial class AppDbContext : DbContext
               .HasDefaultValueSql("CURRENT_TIMESTAMP")
               .HasColumnType("datetime")
               .HasColumnName("create_Date");
+            entity.Property(e => e.OrderNumber)
+              .HasMaxLength(20)
+              .HasColumnName("order_number");
+            entity.Property(e => e.CalculatedPrice)
+              .HasPrecision(10, 2)
+             .HasColumnName("calculate_price");
         });
 
 
@@ -537,7 +543,9 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<DeliveryTariff>(entity =>
         {
-            entity.HasKey(e => e.TariffId);
+            entity.HasKey(e => e.TariffId).HasName("PRIMARY");
+
+           
         });
         OnModelCreatingPartial(modelBuilder);
     }

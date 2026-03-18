@@ -1,4 +1,6 @@
 ﻿@page "/employees"
+@using LogisticCompany.Application.DTO
+@using LogisticCompany.Application.Interfaces
 @using LogisticCompany.DTO
 @using LogisticCompany.Db
 @using LogisticCompany.Domain.Entities.Employee
@@ -7,6 +9,15 @@
 @inject AppDbContext DbContext
 @inject IJSRuntime JS
 @rendermode InteractiveServer
+
+@inject IClientService ClientService
+@inject ILocationService LocationService
+@inject IDeliveryDictionaryService DeliveryDictionaryService
+@inject IPriceCalculatorService PriceCalculator
+@inject IOrderService OrderService
+@inject IEmployeeService EmployeeService
+@inject IEmployeeService EmployeeService
+
 
 <div class="page-container">
     <div class="container-fluid">
@@ -97,18 +108,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="filter-group">
-                        <label class="filter-label">
-                            <i class="fas fa-search me-2"></i>Поиск
-                        </label>
-                        <div class="search-input-container">
-                            <i class="fas fa-search search-icon"></i>
-                            <input @bind="searchTerm" @oninput="OnSearch" class="form-control search-input"
-                                   placeholder="Поиск сотрудников..." />
-                        </div>
-                    </div>
-                </div>
+                
                 <div class="col-md-4">
                     <div class="filter-group">
                         <label class="filter-label">
@@ -270,7 +270,7 @@
                                         <span class="detail-position @GetPositionBadgeClass(selectedEmployee.Position)">
                                             @selectedEmployee.Position
                                         </span>
-                                        <span class="detail-id">ID: #@selectedEmployee.EmployeeId</span>
+                                        
                                     </div>
                                 </div>
                             </div>
@@ -557,6 +557,8 @@
 
 
 @code {
+    [SupplyParameterFromForm]
+    private OrdersDTO order { get; set; } = new();
     private List<Employee> employees = new();
     private List<Branch> branches = new();
     private List<Town> town = new();
@@ -569,255 +571,133 @@
     private string selectedPosition = "";
     private bool showDetailsModal = false;
     private Employee selectedEmployee = null;
+
     
     protected override async Task OnInitializedAsync()
     {
-        await LoadBranches();
-        await LoadEmployees();
-        await LoadTown();
-        await LoadCountry();
-    }
+		await LoadEmployees();
+        branches = await LocationService.GetAllBranchesAsync();
+        town = await LocationService.GetAllTownAsync();
+        country = await LocationService.GetAllCountriesAsync();
 
-    private async Task LoadBranches()
-    {
-        branches = await DbContext.Branches
-            .Include(b => b.Town)
-            .OrderBy(b => b.NameBranches)
-            .ToListAsync();
     }
-    private async Task LoadTown()
-    {
-        town = await DbContext.Towns
-            .Include(t => t.Country)
-            .OrderBy(t => t.TownName)
-            .ToListAsync();
-    }
-    private async Task LoadCountry()
-    {
-        country = await DbContext.Countries.ToListAsync();
-    }
-
-    private IEnumerable<Town> FilteredTowns =>
-       town?.Where(t => t.CountryId == employeeDto.CountryId) ?? Enumerable.Empty<Town>();
-
-    private IEnumerable<Branch> FilteredBranches =>
-        branches?.Where(b => b.TownId == employeeDto.TownId) ?? Enumerable.Empty<Branch>();
-
     private async Task LoadEmployees()
     {
-        var query = DbContext.Employees
-            .Include(e => e.Branch)
-            .ThenInclude(b => b.Town)
-            .AsQueryable();
-
-        if (selectedBranchId > 0)
-        {
-            query = query.Where(e => e.BranchId == selectedBranchId);
-        }
-
-        if (!string.IsNullOrEmpty(selectedPosition))
-        {
-            query = query.Where(e => e.Position == selectedPosition);
-        }
-
-        if (!string.IsNullOrEmpty(searchTerm))
-        {
-            query = query.Where(e => 
-                e.FirstName.Contains(searchTerm) ||
-                e.LastName.Contains(searchTerm) ||
-                e.PatronymicName.Contains(searchTerm) ||
-                e.Email.Contains(searchTerm) ||
-                e.Phone.Contains(searchTerm) ||
-                e.Branch.NameBranches.Contains(searchTerm));
-        }
-
-        employees = await query
-            .OrderBy(e => e.LastName)
-            .ThenBy(e => e.FirstName)
-            .ToListAsync();
+        employees = await EmployeeService.GetEmployeesAsync(
+            selectedBranchId,
+            selectedPosition,
+            searchTerm);
     }
+    private IEnumerable<Town> FilteredTowns => LocationService.GetTownsByCountry(employeeDto.CountryId, town);
+    private IEnumerable<Branch> FilteredBranches => LocationService.GetBranchesByTown(employeeDto.TownId, branches);
+   
 
     private async Task OnBranchChanged()
     {
         await LoadEmployees();
     }
 
-    private async Task OnSearch()
-    {
-        await Task.Delay(300);
-        await LoadEmployees();
-    }
-
-    private void ShowCreateModal()
-    {
-        employeeDto = new EmployeeDTO();
-        isEditing = false;
-        showModal = true;
-    }
-
-    private async Task EditEmployee(int employeeId)
-    {
-        var employee = await DbContext.Employees
-            .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
-
-        if (employee != null)
-        {
-            employeeDto = new EmployeeDTO
-            {
-                EmployeeId = employee.EmployeeId,
-                FirstName = employee.FirstName,
-                LastName = employee.LastName,
-                PatronymicName = employee.PatronymicName,
-                Email = employee.Email,
-                Phone = employee.Phone,
-                Position = employee.Position,
-                BranchId = employee.BranchId
-            };
-            isEditing = true;
-            showModal = true;
-        }
-    }
-
     private async Task SaveEmployee()
     {
         try
         {
+            CreateEmployeeResult? result = null;
+
             if (isEditing)
             {
-                // Редактирование существующего сотрудника
-                var employee = await DbContext.Employees
-                     .Include(e => e.User)
-                    .FirstOrDefaultAsync(e => e.EmployeeId == employeeDto.EmployeeId);
-
-                if (employee != null)
-                {
-                    employee.FirstName = employeeDto.FirstName;
-                    employee.LastName = employeeDto.LastName;
-                    employee.PatronymicName = employeeDto.PatronymicName;
-                    employee.Phone = employeeDto.Phone;
-
-                    string oldPosition = employee.Position;
-                    employee.Position = employeeDto.Position;
-                    employee.BranchId = employeeDto.BranchId;
-                    if (employee.UserId.HasValue && oldPosition != employeeDto.Position)
-                    {
-                        string newRole = GetRoleByPosition(employeeDto.Position);
-                        if (employee.User != null)
-                        {
-                            employee.User.Role = newRole;
-                        }
-                    }
-                    DbContext.Employees.Update(employee);
-                }
+                await EmployeeService.UpdateAsync(employeeDto);
             }
             else
             {
-                // Создание нового сотрудника
-                // Проверяем уникальность email
-                var emailExists = await DbContext.Employees
+                result = await EmployeeService.CreateAsync(employeeDto);
 
-                    .AnyAsync(e => e.Email == employeeDto.Email);
-
-                if (emailExists)
+                if (result.UserCreated && !string.IsNullOrEmpty(result.TemporaryPassword))
                 {
-                    await JS.InvokeVoidAsync("alert", "Сотрудник с таким email уже существует");
-                    return;
+                    await JS.InvokeVoidAsync(
+                        "alert",
+                        $"Сотрудник создан!\n\nДанные для входа:\n" +
+                        $"Логин: {employeeDto.Email}\n" +
+                        $"Пароль: {result.TemporaryPassword}"
+                    );
                 }
-
-                // Проверяем уникальность телефона
-                var phoneExists = await DbContext.Employees
-                    .AnyAsync(e => e.Phone == employeeDto.Phone);
-
-                if (phoneExists)
-                {
-                    await JS.InvokeVoidAsync("alert", "Сотрудник с таким телефоном уже существует");
-                    return;
-                }
-
-                var employee = new Employee
-                {
-                    FirstName = employeeDto.FirstName,
-                    LastName = employeeDto.LastName,
-                    PatronymicName = employeeDto.PatronymicName,
-                    Email = employeeDto.Email,
-                    Phone = employeeDto.Phone,
-                    Position = employeeDto.Position,
-                    BranchId = employeeDto.BranchId,
-
-                };
-
-                if (employeeDto.CreateUserAccount)
-                {
-                    var password = GenerateTemporaryPassword();
-                    string userRole = GetRoleByPosition(employeeDto.Position);
-
-                    var user = new User
-                    {
-                        Email = employeeDto.Email,
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                        Role = userRole, 
-                        IsTemporaryPassword = true
-                    };
-
-                    DbContext.Users.Add(user);
-                    await DbContext.SaveChangesAsync(); 
-
-                    employee.UserId = user.Id;
-
-                    await JS.InvokeVoidAsync("alert", 
-                        $"Сотрудник создан!\n\nДанные для входа:\nЛогин: {employeeDto.Email}\nПароль: {password}");
-                }
-
-                DbContext.Employees.Add(employee);
             }
 
-            await DbContext.SaveChangesAsync();
             await LoadEmployees();
             CloseModal();
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", ex.Message);
         }
     }
-    private string GetRoleByPosition(string position)
+    private async Task EditEmployee(int employeeId)
     {
-        return position?.ToLower() switch
+        var employee = await EmployeeService.GetByIdAsync(employeeId);
+
+        if (employee == null)
+            return;
+
+        employeeDto = new EmployeeDTO
         {
-            "администратор" => "Admin",
-            "менеджер" => "Manager",
-            _ => "User" 
+            EmployeeId = employee.EmployeeId,
+            FirstName = employee.FirstName,
+            LastName = employee.LastName,
+            PatronymicName = employee.PatronymicName,
+            Email = employee.Email,
+            Phone = employee.Phone,
+            Position = employee.Position,
+            BranchId = employee.BranchId
         };
+
+        isEditing = true;
+        showModal = true;
     }
+    private async Task DeleteEmployee(int employeeId)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>(
+       "confirm",
+       "Вы уверены, что хотите удалить сотрудника?\nЭто действие нельзя отменить."
+   );
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            await EmployeeService.DeleteAsync(employeeId);
+
+            await LoadEmployees();
+
+            await JS.InvokeVoidAsync("alert", "Сотрудник успешно удалён");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+    
     private async Task ToggleEmployeeStatus(int employeeId)
     {
-        var employee = await DbContext.Employees
-            .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
-
-        if (employee != null)
+        try
         {
-
-            DbContext.Employees.Update(employee);
-            await DbContext.SaveChangesAsync();
+            await EmployeeService.ToggleEmployeeStatusAsync(employeeId);
             await LoadEmployees();
         }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", ex.Message);
+        }
     }
-
     private async Task ShowEmployeeDetails(int employeeId)
     {
         try
         {
-            // Показываем спиннер загрузки
             showDetailsModal = true;
             selectedEmployee = null;
             StateHasChanged();
 
-            // Загружаем данные сотрудника
-            selectedEmployee = await DbContext.Employees
-                .Include(e => e.Branch)
-                .ThenInclude(b => b.Town)
-                .Include(e => e.User)
-                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+            selectedEmployee = await EmployeeService.GetEmployeeDetailsAsync(employeeId);
 
             if (selectedEmployee == null)
             {
@@ -825,8 +705,6 @@
                 CloseDetailsModal();
                 return;
             }
-
-            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -835,36 +713,14 @@
             CloseDetailsModal();
         }
     }
-
-    private void CloseDetailsModal()
-    {
-        showDetailsModal = false;
-        selectedEmployee = null;
-        StateHasChanged();
-    }
-
     private async Task EditEmployeeFromDetails(int employeeId)
     {
         CloseDetailsModal();
-        await Task.Delay(300); // Небольшая задержка для анимации
+        await Task.Delay(300); 
         await EditEmployee(employeeId);
     }
 
-
-    private void CloseModal()
-    {
-        showModal = false;
-        employeeDto = new EmployeeDTO();
-        StateHasChanged();
-    }
-
-    private string GenerateTemporaryPassword()
-    {
-        var random = new Random();
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-        return new string(Enumerable.Repeat(chars, 10)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-    }
+    //иконки
     private string GetPositionClass(string position)
     {
         return position?.ToLower() switch
@@ -873,7 +729,6 @@
             _ => "avatar-admin"
         };
     }
-
     private string GetPositionIcon(string position)
     {
         return position?.ToLower() switch
@@ -882,7 +737,6 @@
             _ => "fas fa-user"
         };
     }
-
     private string GetPositionBadgeClass(string position)
     {
         return position?.ToLower() switch
@@ -891,149 +745,28 @@
             _ => "badge-admin"
         };
     }
-
-    private async Task DeleteEmployee(int employeeId)
+    
+	//откртыие/закрытие модалок
+    private void ShowCreateModal()
     {
-        try
-        {
-            bool confirmed = await JS.InvokeAsync<bool>("confirm",
-                "Вы уверены, что хотите удалить сотрудника? Это действие нельзя отменить.\n\n");
-
-            if (!confirmed)
-                return;
-
-            var employee = await DbContext.Employees
-                .Include(e => e.User)
-                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
-
-            if (employee == null)
-            {
-                await JS.InvokeVoidAsync("alert", "Сотрудник не найден");
-                return;
-            }
-
-            using var transaction = await DbContext.Database.BeginTransactionAsync();
-
-            try
-            {
-                await DeleteEmployeeRelatedOrders(employeeId);
-
-                if (employee.UserId.HasValue)
-                {
-                    var user = await DbContext.Users
-                        .FirstOrDefaultAsync(u => u.Id == employee.UserId.Value);
-
-                    if (user != null)
-                    {
-                        DbContext.Users.Remove(user);
-                    }
-                }
-
-                DbContext.Employees.Remove(employee);
-
-                await DbContext.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                await LoadEmployees();
-
-                await JS.InvokeVoidAsync("alert", "Сотрудник успешно удален");
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw new Exception($"Ошибка при удалении сотрудника: {ex.Message}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка удаления сотрудника: {ex.Message}");
-            await JS.InvokeVoidAsync("alert", $"Ошибка при удалении сотрудника: {ex.Message}");
-        }
+        employeeDto = new EmployeeDTO();
+        isEditing = false;
+        showModal = true;
+    }
+    private void CloseDetailsModal()
+    {
+        showDetailsModal = false;
+        selectedEmployee = null;
+        StateHasChanged();
+    }
+    private void CloseModal()
+    {
+        showModal = false;
+        employeeDto = new EmployeeDTO();
+        StateHasChanged();
     }
 
-    // Метод для удаления связанных заказов (если в вашей системе сотрудники связаны с заказами)
-    private async Task DeleteEmployeeRelatedOrders(int employeeId)
-    {
-        try
-        {
-            // Пример: если у вас есть связь сотрудник-заказы
-            // var relatedOrders = await DbContext.Orders
-            //     .Where(o => o.EmployeeId == employeeId)
-            //     .ToListAsync();
-            //
-            // if (relatedOrders.Any())
-            // {
-            //     DbContext.Orders.RemoveRange(relatedOrders);
-            // }
-
-            // Или если нужно обнулить ссылку на сотрудника вместо удаления заказов:
-            // var relatedOrders = await DbContext.Orders
-            //     .Where(o => o.EmployeeId == employeeId)
-            //     .ToListAsync();
-            //
-            // foreach (var order in relatedOrders)
-            // {
-            //     order.EmployeeId = null;
-            // }
-
-            // Адаптируйте этот метод под вашу структуру базы данных
-            await Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Ошибка при удалении связанных заказов: {ex.Message}");
-        }
-    }
-
-    // Дополнительный метод для "мягкого" удаления (если хотите сделать архив вместо полного удаления)
-    private async Task SoftDeleteEmployee(int employeeId)
-    {
-        try
-        {
-            bool confirmed = await JS.InvokeAsync<bool>("confirm",
-                "Вы уверены, что хотите архивировать сотрудника? Данные будут сохранены в архиве.");
-
-            if (!confirmed)
-                return;
-
-            var employee = await DbContext.Employees
-                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
-
-            if (employee == null)
-            {
-                await JS.InvokeVoidAsync("alert", "Сотрудник не найден");
-                return;
-            }
-
-            // Добавляем поле IsDeleted (нужно добавить в модель Employee)
-            // employee.IsDeleted = true;
-            // employee.DeletedAt = DateTime.Now;
-
-            // Деактивируем учетную запись пользователя
-            if (employee.UserId.HasValue)
-            {
-                var user = await DbContext.Users
-                    .FirstOrDefaultAsync(u => u.Id == employee.UserId.Value);
-
-                if (user != null)
-                {
-                    // Можно добавить поле IsActive в модель User
-                    // user.IsActive = false;
-                }
-            }
-
-            DbContext.Employees.Update(employee);
-            await DbContext.SaveChangesAsync();
-            await LoadEmployees();
-
-            await JS.InvokeVoidAsync("alert", "Сотрудник перемещен в архив");
-        }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("alert", $"Ошибка при архивировании сотрудника: {ex.Message}");
-        }
-    }
+  
 }
 
 

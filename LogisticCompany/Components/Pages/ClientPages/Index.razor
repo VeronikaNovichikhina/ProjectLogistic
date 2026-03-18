@@ -1,10 +1,11 @@
 ﻿ @page "/clientList"
+@using LogisticCompany.Application.Interfaces
 @using LogisticCompany.Db
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<LogisticCompany.Db.AppDbContext> db
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
-
+@inject IClientService ClientService
 
 <div class="page-container">
     <div class="container-fluid">
@@ -217,39 +218,23 @@
 
     private async Task LoadClients()
     {
-        // Ваш код загрузки клиентов
-        clients = await context.Clients
-            .Include(c => c.ClientType)
-            .Include(c => c.IndividualClients)
-            .Include(c => c.CompanyClients)
-            .OrderBy(c => c.ClientsId)
-            .ToListAsync();
-
-        filteredClients = clients;
+        clients = await ClientService.GetAllClientAsync();
+        filteredClients = new List<Client>(clients);
     }
-
 
     private void EditClient(int clientId)
     {
         Navigation.NavigateTo($"/clients/edit/{clientId}");
     }
+
     private void ShowClientDetails(int clientId)
     {
         Navigation.NavigateTo($"/clients/details/{clientId}");
-	}
-    protected override void OnInitialized()
-    {
-        context = db.CreateDbContext();
-
-        clients = context.Clients
-        .Include(c => c.ClientType)
-        .Include(c => c.IndividualClients)
-        .Include(c => c.CompanyClients)
-        .ToList();
-
     }
 
 } 
+
+
 
 <style>
     .page-container {

@@ -1,4 +1,5 @@
 ﻿@page "/clients/create"
+@using LogisticCompany.Application.Interfaces
 @using LogisticCompany.DTO
 @using LogisticCompany.Db
 @using Microsoft.EntityFrameworkCore
@@ -6,123 +7,304 @@
 @inherits ClientBaseComponent
 @inject IJSRuntime JS
 @rendermode InteractiveServer
+@inject IClientService ClientService
 
-<div class="page-bg min-vh-100 py-5">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12 col-md-8 col-lg-6 col-xl-5">
-                <!-- Header Card -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white py-4">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-circle bg-success me-3">
-                                <i class="fas fa-user-plus text-white"></i>
-                            </div>
-                            <div>
-                                <h1 class="h4 fw-bold text-dark mb-1">Добавление клиента</h1>
-                                <p class="text-muted mb-0">Заполните основную информацию о клиенте</p>
-                            </div>
-                        </div>
+<div class="office-manager-page bg-light min-vh-100">
+    <!-- Хлебные крошки для навигации -->
+    <div class="container-fluid py-2 border-bottom bg-white">
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="#" class="text-decoration-none " @onclick="GoBack">
+                            <i class="fas fa-chevron-left me-1"></i>Клиенты
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active " aria-current="page">Новый клиент</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container py-3">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="status-badge bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                         style="width: 36px; height: 36px; font-size: 20px;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div>
+                        <h1 class="h5 fw-bold mb-1">Добавление нового клиента</h1>
+                        <p class="text-muted small mb-0">Шаг 1 из 3 • Основные контактные данные</p>
                     </div>
                 </div>
 
                 @if (!string.IsNullOrEmpty(ErrorMessage))
                 {
-                    <div class="alert alert-danger">@ErrorMessage</div>
+                    <div class="alert alert-danger d-flex align-items-center mb-3 py-2" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2" style="font-size: 20px;"></i>
+                        <div class="small">@ErrorMessage</div>
+                    </div>
                 }
 
                 <EditForm Model="createDto" OnValidSubmit="() => HandleAsync(CreateClient)" FormName="createClient">
                     <DataAnnotationsValidator />
-                    
-                    <!-- Contact Information Card -->
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-white">
-                            <div class="d-flex align-items-center">
-                                <div class="icon-circle-sm bg-primary me-3">
-                                    <i class="fas fa-address-card text-white"></i>
-                                </div>
-                                <h5 class="fw-bold text-dark mb-0">Контактная информация</h5>
-                            </div>
+
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-white border-bottom py-2">
+                            <h6 class="fw-semibold mb-0 d-flex align-items-center">
+                                <i class="fas fa-user-circle text-primary me-2" style="font-size: 20px;"></i>
+                                Контактная информация
+                            </h6>
                         </div>
-                        <div class="card-body">
-                            <!-- Phone Field -->
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold text-dark">
-                                    <i class="fas fa-mobile-alt text-muted me-2"></i>Телефон *
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-phone text-muted"></i>
-                                    </span>
-                                    <input @bind="createDto.Phone" @ref="phoneInput"
-                                               class="form-control border-start-0"
-                                               placeholder="+7 (XXX) XXX-XX-XX" />
-                                </div>
-                                <ValidationMessage For="() => createDto.Phone" class="text-danger small mt-1" />
-                            </div>
 
-                            <!-- Email Field -->
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold text-dark">
-                                    <i class="fas fa-envelope text-muted me-2"></i>Email адрес *
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-at text-muted"></i>
-                                    </span>
-                                    <InputText @bind-Value="createDto.Email"
-                                               class="form-control border-start-0"
-                                               placeholder="example@mail.ru" />
-                                </div>
-                                <ValidationMessage For="() => createDto.Email" class="text-danger small mt-1" />
-                            </div>
-
-                            <!-- Client Type Field -->
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-dark">
-                                    <i class="fas fa-users text-muted me-2"></i>Тип клиента *
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0">
-                                        <i class="fas fa-user-tag text-muted"></i>
-                                    </span>
-                                    <InputSelect @bind-Value="createDto.ClientTypeId" class="form-control border-start-0">
-                                        <option value="">Выберите тип клиента</option>
-                                        @foreach (var ct in clientTypes)
-                                        {
-                                            <option value="@ct.ClientTypeId">@ct.TypeName</option>
-                                        }
-                                    </InputSelect>
-                                </div>
-                                <ValidationMessage For="() => createDto.ClientTypeId" class="text-danger small mt-1" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body">
+                        <div class="card-body p-3">
                             <div class="row g-3">
+                                <!-- Телефон -->
                                 <div class="col-md-6">
-                                    <button type="submit" class="btn btn-success w-100 py-3" disabled="@Loading">
-                                        <i class="fas fa-arrow-right me-2"></i>
-                                        @(Loading ? "Создание..." : "Продолжить")
+                                    <div class="form-group">
+                                        <label class="form-label fw-semibold mb-1 d-flex align-items-center ">
+                                            <i class="fas fa-mobile-alt text-muted me-1" style="font-size: 16px;"></i>
+                                            Телефон *
+                                            <span class="ms-1 badge bg-light text-muted" style="font-size: 12px;">Обязательно</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                <i class="fas fa-phone text-muted" style="font-size: 14px;"></i>
+                                            </span>
+                                            <input @bind="createDto.Phone" @ref="phoneInput"
+                                                   class="form-control border-start-0 py-1"
+                                                   placeholder="+7 (___) ___-__-__"
+                                                   style="font-size: 16px;" />
+                                        </div>
+                                        <div class="mt-1">
+                                            <ValidationMessage For="() => createDto.Phone" class="text-danger" style="font-size: 12px;" />
+                                            <div class="form-text" style="font-size: 12px;">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Формат: +7 (XXX) XXX-XX-XX
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label fw-semibold mb-1 d-flex align-items-center ">
+                                            <i class="fas fa-envelope text-muted me-1" style="font-size: 16px;"></i>
+                                            Email *
+                                            <span class="ms-1 badge bg-light text-muted" style="font-size: 12px;">Обязательно</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                <i class="fas fa-at text-muted" style="font-size: 14px;"></i>
+                                            </span>
+                                            <InputText @bind-Value="createDto.Email"
+                                                       class="form-control border-start-0 py-1"
+                                                       placeholder="ivanov@company.ru"
+                                                       style="font-size: 16px;" />
+                                        </div>
+                                        <div class="mt-1">
+                                            <ValidationMessage For="() => createDto.Email" class="text-danger" style="font-size: 12px;" />
+                                            <div class="form-text" style="font-size: 12px;">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Для уведомлений и рассылок
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Тип клиента -->
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label fw-semibold mb-1 d-flex align-items-center ">
+                                            <i class="fas fa-tag text-muted me-1" style="font-size: 16px;"></i>
+                                            Тип клиента *
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white border-end-0 py-1 px-2">
+                                                <i class="fas fa-user-tag text-muted" style="font-size: 14px;"></i>
+                                            </span>
+                                            <InputSelect @bind-Value="createDto.ClientTypeId"
+                                                         class="form-control border-start-0 py-1"
+                                                         style="font-size: 14px;">
+                                                <option value="">Выберите из списка...</option>
+                                                @foreach (var ct in clientTypes)
+                                                {
+                                                    <option value="@ct.ClientTypeId">@ct.TypeName</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary px-3"
+                                            @onclick="GoBack"
+                                            disabled="@Loading"
+                                            style="font-size: 14px; padding: 6px 12px;">
+                                        <i class="fas fa-times me-1"></i>
+                                        Отмена
+                                    </button>
+                                    <button type="submit"
+                                            class="btn btn-primary px-3"
+                                            disabled="@Loading"
+                                            style="font-size: 14px; padding: 6px 12px;">
+                                        @if (Loading)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            <span>Создание...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-save me-1"></i>
+                                            <span>Сохранить</span>
+                                        }
                                     </button>
                                 </div>
-                                <div class="col-md-6">
-                                    <button type="button" class="btn btn-outline-secondary w-100 py-3"
-                                            @onclick="GoBack" disabled="@Loading">
-                                        <i class="fas fa-arrow-left me-2"></i>Назад
-                                    </button>
-                                </div>
+                               
                             </div>
                         </div>
                     </div>
+                    
                 </EditForm>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="sticky-top" style="top: 15px;">
+
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-white border-bottom py-2">
+                            <h6 class="fw-semibold mb-0" style="font-size: 14px;">
+                                <i class="fas fa-tips me-2 text-primary" style="font-size: 20px;"></i>
+                                Советы по заполнению
+                            </h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2 d-flex">
+                                    <i class="fas fa-check-circle text-success me-2 mt-1" style="font-size: 20px;"></i>
+                                    <span class="small" style="font-size: 12px;">Проверяйте корректность телефона</span>
+                                </li>
+                                <li class="mb-2 d-flex">
+                                    <i class="fas fa-check-circle text-success me-2 mt-1" style="font-size: 20px;"></i>
+                                    <span class="small" style="font-size: 12px;">Указывайте рабочие email для документов</span>
+                                </li>
+                                <li class="mb-2 d-flex">
+                                    <i class="fas fa-check-circle text-success me-2 mt-1" style="font-size: 20px;"></i>
+                                    <span class="small" style="font-size: 12px;">Правильный тип клиента = система скидок</span>
+                                </li>
+                                <li class="d-flex">
+                                    <i class="fas fa-check-circle text-success me-2 mt-1" style="font-size: 20px;"></i>
+                                    <span class="small" style="font-size: 12px;">Остальное можно добавить позже</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .office-manager-page {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+    }
+
+    .form-control {
+        font-size: 14px;
+        padding: 6px 12px;
+        height: 36px;
+    }
+
+    .input-group-text {
+        font-size: 14px;
+        padding: 6px 12px;
+        height: 36px;
+    }
+
+    .form-label {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .btn {
+        font-size: 14px;
+        padding: 6px 12px;
+        height: 36px;
+    }
+
+    .btn-lg {
+        font-size: 14px;
+        padding: 8px 16px;
+        height: 40px;
+    }
+
+    .action-panel {
+        position: sticky;
+        bottom: 15px;
+        z-index: 1000;
+        margin-top: 15px;
+        font-size: 14px;
+    }
+
+    .status-badge {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+        font-size: 13px;
+    }
+
+    .card-header {
+        padding: 8px 16px;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    .alert {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .badge {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    input.form-control:focus,
+    select.form-control:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+        outline: none;
+    }
+
+    .small {
+        font-size: 12px !important;
+    }
+
+    .h5 {
+        font-size: 1.1rem;
+    }
+
+    .h6 {
+        font-size: 1rem;
+    }
+</style>
 
 @code {
     private CreateClientDto createDto = new();
@@ -149,7 +331,7 @@
     {
         try
         {
-            clientTypes = await Db.ClientTypes.ToListAsync();
+            clientTypes = await ClientService.GetClientTypesAsync();
         }
         catch (Exception ex)
         {
@@ -161,23 +343,15 @@
     {
         try
         {
-            var client = new Client
-            {
-                Phone = createDto.Phone,
-                Email = createDto.Email,
-                ClientTypeId = createDto.ClientTypeId
-            };
+            var result = await ClientService.CreateAsync(createDto);
 
-            Db.Clients.Add(client);
-            await Db.SaveChangesAsync();
-
-            if (client.ClientTypeId == 1)
+            if (result.ClientTypeId == 1)
             {
-                Navigation.NavigateTo($"/clients/create-individual/{client.ClientsId}");
+                Navigation.NavigateTo($"/clients/create-individual/{result.ClientId}");
             }
-            else if (client.ClientTypeId == 2)
+            else if (result.ClientTypeId == 2)
             {
-                Navigation.NavigateTo($"/clients/create-company/{client.ClientsId}");
+                Navigation.NavigateTo($"/clients/create-company/{result.ClientId}");
             }
         }
         catch (Exception ex)
@@ -189,99 +363,5 @@
 }
 
 
-<style>
-    .page-bg {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    .icon-circle {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-    }
-
-    .icon-circle-sm {
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-    }
-
-    .card {
-        border-radius: 15px;
-        overflow: hidden;
-    }
-
-    .card-header {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    .form-control, .input-group-text {
-        border-radius: 10px;
-        transition: all 0.3s ease;
-    }
-
-    .input-group-text {
-        background-color: #f8f9fa;
-        border-color: #e9ecef;
-    }
-
-    .form-control:focus {
-        border-color: #28a745;
-        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
-    }
-
-    .btn {
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-success {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        border: none;
-    }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
-        }
-
-    .btn-outline-secondary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(108, 117, 125, 0.2);
-    }
-
-    .form-label {
-        font-weight: 600;
-        color: #495057;
-        margin-bottom: 0.5rem;
-    }
-
-    .alert-danger {
-        border-radius: 10px;
-        border: none;
-        background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
-    }
-
-    .input-group .form-control:not(:first-child) {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-    }
-
-    .input-group .input-group-text:not(:last-child) {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
-    }
-
-</style>
 
 

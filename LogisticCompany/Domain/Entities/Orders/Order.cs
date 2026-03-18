@@ -9,6 +9,7 @@ using System.Collections.Generic;
 public partial class Order
 {
     public int OrdersId { get; set; }
+    public string? OrderNumber { get; set; } 
 
     public int ClientsId { get; set; }
 
@@ -42,6 +43,7 @@ public partial class Order
     public decimal? WidthCm { get; set; }
     public decimal? HeightCm { get; set; }
     public decimal? Weight { get; set; }
+    public decimal? CalculatedPrice { get; set; }
 
     public DateTime? CreatedDate { get; set; } = DateTime.Now;
     public virtual Client Clients { get; set; } = null!;

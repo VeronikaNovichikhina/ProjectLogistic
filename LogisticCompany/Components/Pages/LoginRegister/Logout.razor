@@ -8,7 +8,6 @@
     protected override async Task OnInitializedAsync()
     {
         HttpContextAccessor.HttpContext?.Response.Cookies.Delete(".AspNetCore.Cookies");
-
        
         await Task.Delay(100);
         Navigation.NavigateTo("/", true);

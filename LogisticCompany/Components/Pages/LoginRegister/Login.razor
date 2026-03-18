@@ -2,17 +2,19 @@
 @inject AppDbContext DbContext
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
+@using LogisticCompany.Application.Services
+@using LogisticCompany.DTO
 @using LogisticCompany.Db
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
+@inject AuthService AuthService
 
 <div class="login-page min-vh-100">
     <div class="container-fluid h-100 p-0">
         <div class="row g-0 h-100">
-            <!-- Left Side - Background -->
             <div class="col-lg-6 d-none d-lg-block login-background">
                 <div class="d-flex flex-column justify-content-center align-items-center h-100 text-white p-5">
                     <div class="text-center">
@@ -111,14 +113,9 @@
                                                 <i class="fas fa-lock"></i>
                                             </span>
                                             <InputText @bind-Value="loginModel.Password"
-                                                       type="@(showPassword ? "text" : "password")"
+                                                       type="password"
                                                        class="form-control password-input"
                                                        placeholder="Введите ваш пароль" />
-                                            <button class="btn btn-outline-secondary password-toggle-btn"
-                                                    type="button"
-                                                    @onclick="TogglePasswordVisibility">
-                                                <i class="@(showPassword ? "fas fa-eye-slash" : "fas fa-eye")"></i>
-                                            </button>
                                         </div>
                                     </div>
                                     <ValidationMessage For="() => loginModel.Password" class="text-danger small mt-2" />
@@ -172,69 +169,37 @@
     </div>
 }
 
-
-
-
 @code {
     [SupplyParameterFromForm]
     private LoginModel loginModel { get; set; } = new();
     private string message;
     private bool isLoading = false;
 
-    public class LoginModel
-    {
-        public string Email { get; set; } = string.Empty; // Инициализируйте свойства
-        public string Password { get; set; } = string.Empty;
-    }
-    private bool showPassword = false;
-
-
-    private void TogglePasswordVisibility()
-    {
-        try
-        {
-            showPassword = !showPassword;
-
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in TogglePasswordVisibility: {ex.Message}");
-        }
-    }
+    
+    
     private async Task HandleLogin()
     {
-      
-    var user = await DbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == loginModel.Email);
+        isLoading = true;
+        message = null;
 
-        if (user != null && BCrypt.Net.BCrypt.Verify(loginModel.Password, user.PasswordHash))
+        var result = await AuthService.LoginAsync(
+            loginModel.Email,
+            loginModel.Password);
+
+        isLoading = false;
+
+        if (!result.IsSuccess)
         {
-            // создаём claims
-            var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.Name, user.Email),
-        new Claim(ClaimTypes.Role, user.Role)
-    };
-
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
-            await HttpContextAccessor.HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity),
-                new AuthenticationProperties
-                    {
-                        IsPersistent = true,
-                        ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30)
-                    });
-
-            if (user.Role == "Admin")
-                Navigation.NavigateTo("/admin-home");
-            else if (user.Role == "Manager")
-                Navigation.NavigateTo("/profile");
-            else
-                Navigation.NavigateTo("/profile");
+            message = result.Error!;
+            return;
         }
+
+        Navigation.NavigateTo(
+            result.Role == "Admin"
+                ? "/admin-home"
+                : "/profile");
     }
+
 }
 
 <style>
