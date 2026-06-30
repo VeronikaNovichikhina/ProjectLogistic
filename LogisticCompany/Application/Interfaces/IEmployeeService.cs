@@ -1,6 +1,5 @@
 ﻿using LogisticCompany.Application.DTO;
 using LogisticCompany.Domain.Entities.Employee;
-using LogisticCompany.DTO;
 using System.Security.Claims;
 
 namespace LogisticCompany.Application.Interfaces

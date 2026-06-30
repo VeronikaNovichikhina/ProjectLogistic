@@ -94,7 +94,7 @@
         {
             try
             {
-                await Task.Delay(1000); // Уважаем лимиты API
+                await Task.Delay(1000); 
 
                 var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(cityName)}&format=json&limit=1";
 
@@ -152,8 +152,8 @@
 
         private bool IsAirTransport(int transportTypeId)
         {
-            // Проверьте какой ID у авиа транспорта в вашей БД
-            return transportTypeId == 2; // Настройте под вашу БД
+           
+            return transportTypeId == 2;
         }
 
         

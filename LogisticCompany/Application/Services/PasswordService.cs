@@ -1,17 +1,19 @@
-﻿using System.Security.Cryptography;
+﻿using LogisticCompany.Application.Interfaces;
+using System.Security.Cryptography;
 
 namespace LogisticCompany.Application.Services
 {
-    public class PasswordService
+    public class PasswordService : IPasswordService
     {
-         const string сhars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-
-        public string Generate(int length = 5)
+        private const string Chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        public string Generate(int length = 8)
         {
-            var random = new Random();
-            return new string(Enumerable.Repeat(сhars, length)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
+            var result = new char[length];
+            var bytes = new byte[length];
+            RandomNumberGenerator.Fill(bytes);
+            for (int i = 0; i < length; i++)
+                result[i] = Chars[bytes[i] % Chars.Length];
+            return new string(result);
         }
     }
-
 }

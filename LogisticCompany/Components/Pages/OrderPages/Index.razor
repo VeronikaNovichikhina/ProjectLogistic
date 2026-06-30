@@ -1,595 +1,214 @@
 ﻿ @page "/ordersList"
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
-@using LogisticCompany.Domain.Entities.Orders
-@using Microsoft.AspNetCore.Components.QuickGrid
-@using Microsoft.EntityFrameworkCore
-@inject AppDbContext context
 @inject NavigationManager NavigationManager
 @inject IOrderQueryService OrderQueryService
 @rendermode InteractiveServer
 
-<div class="page-container">
-    <div class="container-fluid">
-        <!-- Header -->
-        <div class="page-header glass-card">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <div class="d-flex align-items-center">
-                        <div class="header-icon me-3">
-                            <i class="fas fa-clipboard-list"></i>
-                        </div>
-                        <div>
-                            <h1 class="page-title">Управление заказами</h1>
-                            <p class="page-subtitle">Администрирование всех заказов доставки</p>
-                        </div>
-                    </div>
+<div class="ol-page">
+    <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
+
+    <div class="ol-wrap">
+
+        <!-- Заголовок -->
+        <div class="pg-hd">
+            <div class="pg-hd-left">
+                <div class="pg-hd-ico" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                    </svg>
                 </div>
-                <div class="col-md-4 text-end">
-                    <NavLink href="/admin-home" class="btn btn-secondary btn-lg me-2">
-                        <i class="fas fa-arrow-left me-2"></i>Назад
-                    </NavLink>
-                    <NavLink href="/orders/create" class="btn btn-primary btn-lg shadow-sm">
-                        <i class="fas fa-plus-circle me-2"></i>Создать заказ
-                    </NavLink>
+                <div>
+                    <div class="pg-hd-title">Управление заказами</div>
+                    <div class="pg-hd-sub">Администрирование всех заказов доставки</div>
                 </div>
+            </div>
+            <div class="pg-hd-btns">
+                <NavLink href="/admin-home" class="ol-btn ol-btn-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    Назад
+                </NavLink>
+                <NavLink href="/orders/create" class="ol-btn ol-btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    Создать заказ
+                </NavLink>
             </div>
         </div>
 
-       
-
+        <!-- Состояния / таблица -->
         @if (orders == null)
         {
-            <!-- Loading State -->
-            <div class="main-card glass-card">
-                <div class="card-body text-center py-5">
-                    <div class="loading-spinner">
-                        <i class="fas fa-boxes fa-3x text-primary mb-3"></i>
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Загрузка...</span>
-                        </div>
-                        <h5 class="text-muted">Загрузка данных заказов...</h5>
+            <div class="tbl-card">
+                <div class="state-box">
+                    <div class="state-ico" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        </svg>
                     </div>
+                    <span class="lc-spinner" role="status"></span>
+                    <div class="state-title">Загрузка данных заказов...</div>
                 </div>
             </div>
         }
         else if (!orders.Any())
         {
-            <!-- Empty State -->
-            <div class="main-card glass-card">
-                <div class="card-body text-center py-5">
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fas fa-box-open"></i>
-                        </div>
-                        <h4 class="empty-title">Заказы не найдены</h4>
-                        <p class="empty-description">Создайте первый заказ для начала работы</p>
-                        <NavLink href="/orders/create" class="btn btn-primary btn-lg">
-                            <i class="fas fa-plus-circle me-2"></i>Создать заказ
-                        </NavLink>
+            <div class="tbl-card">
+                <div class="state-box">
+                    <div class="state-ico" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
                     </div>
+                    <div class="state-title">Заказы не найдены</div>
+                    <div class="state-sub">Создайте первый заказ для начала работы</div>
+                    <NavLink href="/orders/create" class="ol-btn ol-btn-primary" style="width: auto; margin-top: .5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        Создать заказ
+                    </NavLink>
                 </div>
             </div>
         }
         else
         {
-            <!-- Orders Table -->
-            <div class="main-card glass-card">
-                <div class="card-body">
-                    <div class="table-container">
-                        <table class="orders-table">
-                            <thead>
-                                <tr>
-                                    <th class="order-id">№</th>
-                                    <th class="order-number">Заказ</th>
-                                    <th class="order-client">Клиент</th>
-                                    <th class="order-route">Маршрут</th>
-                                    <th class="order-package">Посылка</th>
-                                    <th class="order-status">Статус</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var (order, index) in orders.Select((value, i) => (value, i)))
-                                {
-                                    <tr class="order-row" @onclick="() => NavigateToOrder(order.OrdersId)">
-                                        <td class="order-id">
-                                            @(index + 1)
-                                        </td>
-                                        <td class="order-number">
-                                            <div class="order-details">
-                                                <div class="order-title">
-                                                    <i class="fas fa-hashtag text-primary me-1"></i>
-                                                    #@order.OrderNumber
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="order-client">
-                                            @if (order.Clients.ClientTypeId == 1 && order.Clients.IndividualClients.Any())
-                                            {
-                                                var individual = order.Clients.IndividualClients.First();
-                                                <div class="client-info">
-                                                    <div class="client-name">@individual.LastName @individual.FirstName</div>
-                                                    <div class="client-contact">
-                                                        <i class="fas fa-phone text-success me-1"></i>
-                                                        @order.Clients.Phone
-                                                    </div>
-                                                </div>
-                                            }
-                                            else if (order.Clients.ClientTypeId == 2 && order.Clients.CompanyClients.Any())
-                                            {
-                                                var company = order.Clients.CompanyClients.First();
-                                                <div class="client-info">
-                                                    <div class="client-name">@company.CompanyName</div>
-                                                    <div class="client-contact">
-                                                        <i class="fas fa-id-card text-warning me-1"></i>
-                                                        ИНН: @company.Inn
-                                                    </div>
-                                                </div>
-                                            }
-                                        </td>
-                                        <td class="order-route">
-                                            <div class="route-info">
-                                                <div class="route-from">
-                                                    <i class="fas fa-map-marker-alt text-danger me-1"></i>
-                                                    @order.OriginTown.TownName
-                                                </div>
-                                                <div class="route-arrow">
-                                                    <i class="fas fa-arrow-right text-muted"></i>
-                                                </div>
-                                                <div class="route-to">
-                                                    <i class="fas fa-flag-checkered text-success me-1"></i>
-                                                    @order.DestinationTown.TownName
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="order-package">
-                                            <div class="package-info">
-                                                @if (order.Template != null)
-                                                {
-                                                    <div class="package-type">
-                                                        <i class="fas fa-box text-primary me-1"></i>
-                                                        @order.Template.TemplateName
-                                                    </div>
-                                                }
-                                                @if (order.Weight != null && order.Weight > 0)
-                                                {
-                                                    <div class="package-weight text-muted">
-                                                        <i class="fas fa-weight-hanging me-1"></i>
-                                                        @order.Weight 
-                                                    </div>
-                                                }
-
-                                                @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
-                                                {
-                                                    <div class="package-size text-muted">
-                                                        <i class="fas fa-ruler-combined me-1"></i>
-                                                        @order.LengthCm × @order.WidthCm × @order.HeightCm 
-                                                    </div>
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="order-status">
-                                            @{
-                                                var lastTracking = order.Trackings.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
-                                            }
-                                           <OrderStatusBadge  Status="@lastTracking?.Status" />
-                                           
-                                            @if (lastTracking != null)
-                                            {
-                                                <div class="tracking-info">
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-map-marker-alt me-1"></i>
-                                                        @lastTracking.LocationTrackings
-                                                    </small>
-                                                </div>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+            <div class="tbl-card">
+                <div class="tbl-hd">
+                    <div class="tbl-hd-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                             style="color: #1C3A5E;" aria-hidden="true">
+                            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                        Список заказов
                     </div>
+                    <span class="tbl-count">@orders.Count() записей</span>
                 </div>
+                <table class="ord-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">№</th>
+                            <th>Заказ</th>
+                            <th>Клиент</th>
+                            <th>Маршрут</th>
+                            <th>Посылка</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (order, index) in orders.Select((value, i) => (value, i)))
+                        {
+                            <tr @onclick="() => NavigateToOrder(order.OrdersId)">
+                                <td class="row-num">@(index + 1)</td>
+                                <td>
+                                    <div class="ord-num">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                             style="color: #1C3A5E;" aria-hidden="true">
+                                            <line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/>
+                                            <line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>
+                                        </svg>
+                                        #@order.OrderNumber
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (order.Clients.ClientTypeId == 1 && order.Clients.IndividualClients.Any())
+                                    {
+                                        var individual = order.Clients.IndividualClients.First();
+                                        <div class="cl-name">@individual.LastName @individual.FirstName</div>
+                                        <div class="cl-contact">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0F6E56" aria-hidden="true"><path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/></svg>
+                                            @order.Clients.Phone
+                                        </div>
+                                    }
+                                    else if (order.Clients.ClientTypeId == 2 && order.Clients.CompanyClients.Any())
+                                    {
+                                        var company = order.Clients.CompanyClients.First();
+                                        <div class="cl-name">@company.CompanyName</div>
+                                        <div class="cl-contact">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#D98E10" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                                            ИНН: @company.Inn
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="route-row">
+                                        <span class="route-pt">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#C0463A" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                            @order.OriginTown.TownName
+                                        </span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#B0A898" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                        <span class="route-pt">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0F6E56" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 1-1h11l-1 4 1 4H6"/></svg>
+                                            @order.DestinationTown.TownName
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="pkg-col">
+                                        @if (order.Template != null)
+                                        {
+                                            <div class="pkg-type">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#1C3A5E" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                                @order.Template.TemplateName
+                                            </div>
+                                        }
+                                        @if (order.Weight != null && order.Weight > 0)
+                                        {
+                                            <div class="pkg-sub">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.46A2 2 0 0 0 17.48 8Z"/></svg>
+                                                @order.Weight кг
+                                            </div>
+                                        }
+                                        @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
+                                        {
+                                            <div class="pkg-sub">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" y1="6" x2="3" y2="6"/><line x1="17" y1="12" x2="3" y2="12"/><line x1="13" y1="18" x2="3" y2="18"/></svg>
+                                                @order.LengthCm × @order.WidthCm × @order.HeightCm
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @{
+                                        var lastTracking = order.Trackings.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
+                                    }
+                                    <OrderStatusBadge Status="@lastTracking?.Status?.StatusName" />
+                                    @if (lastTracking != null)
+                                    {
+                                        <div class="tracking-sub">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                            @lastTracking.LocationTrackings
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         }
+
     </div>
 </div>
 
-<style>
-    .page-container {
-        min-height: 100vh;
-        background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
-        padding: 2rem 0;
-    }
-
-    .page-header {
-        background: white;
-        border-radius: 20px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        border: 1px solid rgba(0,0,0,0.05);
-    }
-
-    .header-icon {
-        width: 60px;
-        height: 60px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.8rem;
-    }
-
-    .page-title {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-    }
-
-    .page-subtitle {
-        color: #6c757d;
-        font-size: 1rem;
-        margin-bottom: 0;
-    }
-
-    /* Statistics Cards */
-    .stat-card {
-        background: white;
-        border-radius: 15px;
-        padding: 1.5rem;
-        display: flex;
-        align-items: center;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.06);
-        transition: all 0.3s ease;
-        border: 1px solid transparent;
-    }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-        }
-
-        .stat-card.stat-total {
-            border-top: 4px solid #667eea;
-        }
-
-        .stat-card.stat-new {
-            border-top: 4px solid #fd7e14;
-        }
-
-        .stat-card.stat-in-transit {
-            border-top: 4px solid #0dcaf0;
-        }
-
-        .stat-card.stat-delivered {
-            border-top: 4px solid #198754;
-        }
-
-    .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: white;
-        margin-right: 1rem;
-        flex-shrink: 0;
-    }
-
-    .stat-card.stat-total .stat-icon {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    .stat-card.stat-new .stat-icon {
-        background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
-    }
-
-    .stat-card.stat-in-transit .stat-icon {
-        background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%);
-    }
-
-    .stat-card.stat-delivered .stat-icon {
-        background: linear-gradient(135deg, #198754 0%, #146c43 100%);
-    }
-
-    .stat-content h3 {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
-        color: #2c3e50;
-    }
-
-    .stat-content p {
-        color: #6c757d;
-        margin-bottom: 0;
-        font-size: 0.9rem;
-    }
-
-    /* Main Card */
-    .main-card {
-        background: white;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        border: 1px solid rgba(0,0,0,0.05);
-        overflow: hidden;
-    }
-
-    .table-container {
-        overflow-x: auto;
-        border-radius: 15px;
-    }
-
-    /* Orders Table */
-    .orders-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-        .orders-table thead {
-            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-        }
-
-        .orders-table th {
-            padding: 1.25rem 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: #495057;
-            border-bottom: 2px solid #e9ecef;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .orders-table tbody tr {
-            transition: all 0.2s ease;
-            border-bottom: 1px solid #f8f9fa;
-            cursor: pointer;
-        }
-
-            .orders-table tbody tr:hover {
-                background-color: rgba(13, 110, 253, 0.05);
-                transform: scale(1.01);
-            }
-
-        .orders-table td {
-            padding: 1rem;
-            vertical-align: top;
-        }
-
-    /* Column styles */
-    .order-id {
-        width: 60px;
-        font-weight: 600;
-        color: #495057;
-        text-align: center;
-    }
-
-    .order-number {
-        width: 180px;
-    }
-
-    .order-client {
-        width: 220px;
-    }
-
-    .order-route {
-        width: 200px;
-    }
-
-    .order-package {
-        width: 150px;
-    }
-
-    .order-status {
-        width: 180px;
-    }
-
-    .order-amount {
-        width: 140px;
-    }
-
-    /* Content styles */
-    .order-details {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .order-title {
-        font-weight: 600;
-        color: #2c3e50;
-        font-size: 1.1rem;
-    }
-
-    .order-date {
-        font-size: 0.85rem;
-        color: #6c757d;
-    }
-
-    .client-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .client-name {
-        font-weight: 500;
-        color: #2c3e50;
-    }
-
-    .client-contact {
-        font-size: 0.85rem;
-        color: #6c757d;
-    }
-
-    .route-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .route-from, .route-to {
-        display: flex;
-        align-items: center;
-        font-size: 0.9rem;
-    }
-
-    .route-arrow {
-        text-align: center;
-        color: #adb5bd;
-    }
-
-    .package-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .package-detail {
-        display: flex;
-        align-items: center;
-        font-size: 0.9rem;
-        color: #495057;
-    }
-
-    .tracking-info {
-        margin-top: 0.5rem;
-        font-size: 0.8rem;
-    }
-
-    .amount-info {
-        text-align: right;
-    }
-
-    .amount-value {
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    .payment-method {
-        font-size: 0.8rem;
-    }
-
-    /* Loading and Empty States */
-    .loading-spinner {
-        text-align: center;
-    }
-
-        .loading-spinner i.fa-3x {
-            opacity: 0.5;
-        }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-    }
-
-    .empty-icon {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #667eea;
-        font-size: 2.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .empty-title {
-        font-size: 1.5rem;
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-    }
-
-    .empty-description {
-        color: #6c757d;
-        margin-bottom: 2rem;
-    }
-
-    /* Responsive */
-    @@media (max-width: 768px) {
-        .page-header {
-            padding: 1.5rem;
-        }
-
-        .header-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 1.5rem;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-        }
-
-        .stat-card {
-            padding: 1rem;
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 1.3rem;
-        }
-
-        .stat-content h3 {
-            font-size: 1.5rem;
-        }
-
-        .orders-table {
-            display: block;
-        }
-
-            .orders-table thead {
-                display: none;
-            }
-
-            .orders-table tbody tr {
-                display: block;
-                margin-bottom: 1rem;
-                border: 1px solid #dee2e6;
-                border-radius: 10px;
-                overflow: hidden;
-            }
-
-            .orders-table td {
-                display: block;
-                padding: 0.75rem 1rem;
-                border-bottom: 1px solid #f8f9fa;
-                position: relative;
-                padding-left: 45%;
-            }
-
-                .orders-table td:before {
-                    content: attr(data-label);
-                    position: absolute;
-                    left: 1rem;
-                    width: 40%;
-                    padding-right: 1rem;
-                    font-weight: 600;
-                    color: #495057;
-                    font-size: 0.85rem;
-                }
-
-                .orders-table td:last-child {
-                    border-bottom: none;
-                }
-    }
-</style>
 
 @code {
     private List<Order>? orders;
     private List<StatusDelivery> statuses = new();
+    
     protected override async Task OnInitializedAsync()
     {
         orders = await OrderQueryService.GetOrdersWithDetailsAsync();
@@ -603,3 +222,325 @@
     }
 
 } 
+
+<style>
+    /* ============================================================
+       OrdersList.razor.css — тёмно-синий + бежевый + оранжевый
+       ============================================================ */
+
+    .lc-stripe {
+        height: 4px;
+        background: #1C3A5E;
+    }
+
+    .lc-stripe-inner {
+        height: 100%;
+        width: 35%;
+        background: #F5A623;
+        border-radius: 0 3px 3px 0;
+    }
+
+    .ol-page {
+        min-height: 100vh;
+        background: #F5F3EF;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        color: #1C2B3A;
+    }
+
+    .ol-wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 1.25rem 1rem 3rem;
+    }
+
+    /* ── Заголовок ───────────────────────────────────────────── */
+    .pg-hd {
+        background: #fff;
+        border: 1px solid #E2DBCF;
+        border-radius: 14px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .pg-hd-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .pg-hd-ico {
+        width: 40px;
+        height: 40px;
+        background: #1C3A5E;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #F5A623;
+        flex-shrink: 0;
+    }
+
+    .pg-hd-title {
+        font-size: 16px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .pg-hd-sub {
+        font-size: 12px;
+        color: #8A8070;
+        margin-top: 1px;
+    }
+
+    .pg-hd-btns {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    /* ── Кнопки ──────────────────────────────────────────────── */
+    .ol-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+        border: none;
+        white-space: nowrap;
+    }
+
+    .ol-btn-outline {
+        border: 1px solid #D5CCBC;
+        background: #fff;
+        color: #1C2B3A;
+    }
+
+        .ol-btn-outline:hover {
+            background: #F5F3EF;
+            border-color: #B0A898;
+        }
+
+    .ol-btn-primary {
+        background: #1C3A5E;
+        color: #fff;
+    }
+
+        .ol-btn-primary:hover {
+            background: #154E8C;
+            color: #fff;
+        }
+
+    /* ── Карточка таблицы ────────────────────────────────────── */
+    .tbl-card {
+        background: #fff;
+        border: 1px solid #E2DBCF;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .tbl-hd {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: .75rem 1rem;
+        border-bottom: 1px solid #EDE8E0;
+        background: #FDFCF9;
+    }
+
+    .tbl-hd-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: #1C2B3A;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .tbl-count {
+        font-size: 11px;
+        font-weight: 500;
+        padding: 2px 9px;
+        border-radius: 100px;
+        background: #E8F0F9;
+        color: #1C3A5E;
+    }
+
+    /* ── Таблица ─────────────────────────────────────────────── */
+    .ord-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+        .ord-table th {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #8A8070;
+            font-weight: 500;
+            padding: .55rem .85rem;
+            border-bottom: 1px solid #EDE8E0;
+            text-align: left;
+            background: #FDFCF9;
+        }
+
+        .ord-table td {
+            padding: .65rem .85rem;
+            border-bottom: 1px solid #F0EDE8;
+            vertical-align: middle;
+        }
+
+        .ord-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .ord-table tbody tr {
+            cursor: pointer;
+            transition: background 0.12s;
+        }
+
+            .ord-table tbody tr:hover td {
+                background: #FDFCF9;
+            }
+
+    .row-num {
+        color: #8A8070;
+        font-size: 12px;
+    }
+
+    .ord-num {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    /* ── Клиент ──────────────────────────────────────────────── */
+    .cl-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .cl-contact {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        color: #8A8070;
+        margin-top: 2px;
+    }
+
+    /* ── Маршрут ─────────────────────────────────────────────── */
+    .route-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .route-pt {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #1C2B3A;
+    }
+
+    /* ── Посылка ─────────────────────────────────────────────── */
+    .pkg-col {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .pkg-type {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .pkg-sub {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        color: #8A8070;
+    }
+
+    /* ── Статус / трекинг ────────────────────────────────────── */
+    .tracking-sub {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        color: #8A8070;
+        margin-top: 4px;
+    }
+
+    /* ── Состояния (загрузка / пусто) ────────────────────────── */
+    .state-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        text-align: center;
+        gap: .5rem;
+    }
+
+    .state-ico {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: #F5F3EF;
+        border: 1px solid #E2DBCF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #C8BFB0;
+        margin-bottom: .35rem;
+    }
+
+    .state-title {
+        font-size: 15px;
+        font-weight: 500;
+        color: #8A8070;
+    }
+
+    .state-sub {
+        font-size: 12px;
+        color: #B0A898;
+    }
+
+    /* ── Спиннер ─────────────────────────────────────────────── */
+    .lc-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(28, 58, 94, 0.15);
+        border-top-color: #1C3A5E;
+        border-radius: 50%;
+        animation: ol-spin .7s linear infinite;
+    }
+    @@keyframes ol-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>

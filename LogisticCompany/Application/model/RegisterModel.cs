@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace LogisticCompany.DTO
+namespace LogisticCompany.Application.model
 {
     public class RegisterModel
     {

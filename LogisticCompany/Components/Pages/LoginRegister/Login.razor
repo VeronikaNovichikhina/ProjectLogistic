@@ -1,173 +1,204 @@
 ﻿@page "/login"
-@inject AppDbContext DbContext
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
-@using LogisticCompany.Application.Services
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
+@using LogisticCompany.Application.Interfaces
+@using LogisticCompany.Application.model
 @using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.EntityFrameworkCore
-@using System.Security.Claims
-@inject AuthService AuthService
+@inject IAuthService AuthService
 
-<div class="login-page min-vh-100">
-    <div class="container-fluid h-100 p-0">
-        <div class="row g-0 h-100">
-            <div class="col-lg-6 d-none d-lg-block login-background">
-                <div class="d-flex flex-column justify-content-center align-items-center h-100 text-white p-5">
-                    <div class="text-center">
-                        <div class="logo-container mb-4">
-                            <div class="logo-icon mb-3">
-                                <i class="fas fa-shipping-fast"></i>
-                            </div>
-                            <h1 class="fw-bold display-4 mb-3">Logistic Company</h1>
-                        </div>
-                        <p class="lead mb-5 opacity-75">Инновационная система управления доставкой</p>
-                        <div class="features-list">
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-bolt"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h6 class="fw-bold mb-1">Мгновенное отслеживание</h6>
-                                    <small class="opacity-75">Реальное время положение посылок</small>
-                                </div>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-chart-line"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h6 class="fw-bold mb-1">Аналитика в реальном времени</h6>
-                                    <small class="opacity-75">Полная статистика доставок</small>
-                                </div>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-robot"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h6 class="fw-bold mb-1">Автоматизация процессов</h6>
-                                    <small class="opacity-75">Умная маршрутизация</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
+
+<div class="login-page">
+
+    <!-- Декоративная полоска -->
+    <div class="lc-stripe">
+        <div class="lc-stripe-inner"></div>
+    </div>
+
+    <div class="login-grid">
+
+        <!-- Левая панель — брендинг -->
+        <div class="login-left">
+            <div class="login-left-inner">
+
+                <div class="brand-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3" />
+                        <rect x="9" y="11" width="14" height="10" rx="2" />
+                        <circle cx="12" cy="21" r="1" />
+                        <circle cx="20" cy="21" r="1" />
+                    </svg>
                 </div>
-            </div>
+                <div class="brand-name">Logistic Company</div>
+                <div class="brand-sub">Инновационная система управления доставкой</div>
 
-            <!-- Right Side - Login Form -->
-            <div class="col-lg-6 d-flex align-items-center justify-content-center">
-                <div class="login-content w-100">
-                    <div class="card login-form-card border-0">
-                        <div class="card-body p-4 p-md-5">
-                            <!-- Header -->
-                            <div class="text-center mb-4">
-                                <div class="login-icon-container mb-3">
-                                    <div class="login-icon-circle">
-                                        <i class="fas fa-lock-open"></i>
-                                    </div>
-                                </div>
-                                <h2 class="fw-bold text-black mb-2" style="color: #000 !important; background: none !important; -webkit-text-fill-color: #000 !important;">
-                                    С возвращением!
-                                </h2>
-                                <p class="text-muted">Войдите в свою учетную запись</p>
-                            </div>
+                <div class="feat-list">
 
-                            <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="login">
-                                <DataAnnotationsValidator />
-                                <ValidationSummary class="alert alert-danger rounded-3 border-0" />
-
-                                <!-- Email Field -->
-                                <div class="mb-4">
-                                    <label class="form-label fw-semibold text-dark mb-3">
-                                        <i class="fas fa-envelope me-2"></i>Email адрес
-                                    </label>
-                                    <div class="input-group input-group-lg">
-                                        <span class="input-group-text">
-                                            <i class="fas fa-at"></i>
-                                        </span>
-                                        <InputText @bind-Value="loginModel.Email"
-                                                   type="email"
-                                                   class="form-control"
-                                                   placeholder="your.email@example.com" />
-                                    </div>
-                                    <ValidationMessage For="() => loginModel.Email" class="text-danger small mt-2" />
-                                </div>
-
-                                <!-- Password Field -->
-                                <div class="mb-4">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <label class="form-label fw-semibold text-dark mb-0">
-                                            <i class="fas fa-key me-2"></i>Пароль
-                                        </label>
-                                        <NavLink href="/forgot-password" class="text-decoration-none small forgot-password">
-                                            Забыли пароль?
-                                        </NavLink>
-                                    </div>
-                                    <div class="password-field">
-                                        <div class="input-group input-group-lg">
-                                            <span class="input-group-text">
-                                                <i class="fas fa-lock"></i>
-                                            </span>
-                                            <InputText @bind-Value="loginModel.Password"
-                                                       type="password"
-                                                       class="form-control password-input"
-                                                       placeholder="Введите ваш пароль" />
-                                        </div>
-                                    </div>
-                                    <ValidationMessage For="() => loginModel.Password" class="text-danger small mt-2" />
-                                </div>
-
-                                <!-- Submit Button -->
-                                <button type="submit" class="btn btn-login w-100 py-3 fw-bold rounded-3 login-btn">
-                                    <i class="fas fa-sign-in-alt me-2"></i>Войти в систему
-                                </button>
-                            </EditForm>
-
-                            <!-- Divider -->
-                            <div class="position-relative my-4">
-                                <hr class="my-4" />
-                                <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small">
-                                    или
-                                </span>
-                            </div>
-
-                            <!-- Registration Link -->
-                            <div class="text-center">
-                                <p class="text-muted mb-3">Еще нет аккаунта?</p>
-                                <NavLink href="/register" class="btn btn-outline-register w-100 py-3 rounded-3">
-                                    <i class="fas fa-user-plus me-2"></i>Создать аккаунт
-                                </NavLink>
-                            </div>
-
-                            <!-- Security Info -->
-                            <div class="mt-4 p-3 security-info rounded-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-shield-alt me-2 text-primary"></i>
-                                    <small class="text-muted">Ваши данные защищены современными методами шифрования</small>
-                                </div>
-                            </div>
+                    <div class="feat-item">
+                        <div class="feat-ico" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="feat-title">Мгновенное отслеживание</div>
+                            <div class="feat-desc">Реальное время положение посылок</div>
                         </div>
                     </div>
+
+                    <div class="feat-item">
+                        <div class="feat-ico" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="20" x2="18" y2="10" />
+                                <line x1="12" y1="20" x2="12" y2="4" />
+                                <line x1="6" y1="20" x2="6" y2="14" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="feat-title">Аналитика в реальном времени</div>
+                            <div class="feat-desc">Полная статистика доставок</div>
+                        </div>
+                    </div>
+
+                    <div class="feat-item">
+                        <div class="feat-ico" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="10" rx="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                <circle cx="12" cy="16" r="1" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="feat-title">Автоматизация процессов</div>
+                            <div class="feat-desc">Умная маршрутизация</div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
+
+        <!-- Правая панель — форма -->
+        <div class="login-right">
+            <div class="form-box">
+
+                <div class="form-top">
+                    <div class="form-top-ico" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="10" rx="2" />
+                            <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                        </svg>
+                    </div>
+                    <div class="form-title">С возвращением!</div>
+                    <div class="form-sub">Войдите в свою учётную запись</div>
+                </div>
+
+                <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="login">
+                    <DataAnnotationsValidator />
+
+                    <!-- Email -->
+                    <div class="field">
+                        <div class="field-label-row">
+                            <span class="field-label">Email адрес</span>
+                        </div>
+                        <div class="inp-wrap">
+                            <div class="inp-ico" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                    <polyline points="22,6 12,13 2,6" />
+                                </svg>
+                            </div>
+                            <InputText @bind-Value="loginModel.Email"
+                                       type="email"
+                                       class="lc-inp"
+                                       placeholder="your.email@example.com" />
+                        </div>
+                        <ValidationMessage For="() => loginModel.Email" class="lc-validation-msg" />
+                    </div>
+
+                    <!-- Пароль -->
+                    <div class="field">
+                        <div class="field-label-row">
+                            <span class="field-label">Пароль</span>
+                            <NavLink href="/forgot-password" class="forgot-link">Забыли пароль?</NavLink>
+                        </div>
+                        <div class="inp-wrap">
+                            <div class="inp-ico" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                </svg>
+                            </div>
+                            <InputText @bind-Value="loginModel.Password"
+                                       type="password"
+                                       class="lc-inp"
+                                       placeholder="Введите ваш пароль" />
+                        </div>
+                        <ValidationMessage For="() => loginModel.Password" class="lc-validation-msg" />
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                            <polyline points="10 17 15 12 10 7" />
+                            <line x1="15" y1="12" x2="3" y2="12" />
+                        </svg>
+                        Войти в систему
+                    </button>
+                </EditForm>
+
+                <div class="divider"><span>или</span></div>
+
+                <NavLink href="/register" class="reg-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <line x1="19" y1="8" x2="19" y2="14" />
+                        <line x1="22" y1="11" x2="16" y2="11" />
+                    </svg>
+                    Создать аккаунт
+                </NavLink>
+
+                <div class="sec-note">
+                    <span class="sec-ico" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                    </span>
+                    <span class="sec-text">Ваши данные защищены современными методами шифрования</span>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 </div>
 
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3" role="alert" style="z-index: 1050;">
-        <div class="d-flex align-items-center">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <span>@message</span>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="lc-toast" role="alert">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>@message</span>
     </div>
 }
+
+
+
 
 @code {
     [SupplyParameterFromForm]
@@ -175,8 +206,6 @@
     private string message;
     private bool isLoading = false;
 
-    
-    
     private async Task HandleLogin()
     {
         isLoading = true;
@@ -203,330 +232,394 @@
 }
 
 <style>
-    .login-page {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
-        background-size: 400% 400%;
-        animation: gradientShift 15s ease infinite;
+
+    /* ── Полоска ─────────────────────────────────────────────── */
+    .lc-stripe {
+        height: 4px;
+        background: #1C3A5E;
     }
 
-    .login-background {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%), url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80');
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
+    .lc-stripe-inner {
+        height: 100%;
+        width: 35%;
+        background: #F5A623;
+        border-radius: 0 3px 3px 0;
+    }
+
+    /* ── Страница ────────────────────────────────────────────── */
+    .login-page {
+        min-height: 100vh;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    .login-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: calc(100vh - 4px);
+    }
+
+    @@media (max-width: 768px) {
+        .login-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .login-left {
+            display: none !important;
+        }
+    }
+
+    /* ── Левая панель ────────────────────────────────────────── */
+    .login-left {
+        background: #1C3A5E;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 3rem 2.5rem;
         position: relative;
         overflow: hidden;
     }
 
-        .login-background::before {
+        .login-left::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
-            animation: float 6s ease-in-out infinite;
+            top: -80px;
+            right: -80px;
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background: rgba(245, 166, 35, 0.1);
+            pointer-events: none;
         }
 
-    .logo-icon {
-        width: 100px;
-        height: 100px;
-        background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
-        border-radius: 50%;
+        .login-left::after {
+            content: '';
+            position: absolute;
+            bottom: -60px;
+            left: -60px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+            pointer-events: none;
+        }
+
+    .login-left-inner {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .brand-icon {
+        width: 58px;
+        height: 58px;
+        background: #F5A623;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 3rem;
-        margin: 0 auto;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+        margin: 0 auto 1rem;
     }
 
-    .features-list {
-        max-width: 400px;
-        margin: 0 auto;
+    .brand-name {
+        font-size: 22px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 4px;
     }
 
-    .feature-item {
+    .brand-sub {
+        font-size: 12px;
+        color: #A8C4DE;
+        margin-bottom: 2.25rem;
+        line-height: 1.5;
+    }
+
+    /* ── Фичи ────────────────────────────────────────────────── */
+    .feat-list {
         display: flex;
-        align-items: center;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        background: rgba(255,255,255,0.1);
-        border-radius: 16px;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.2);
-        transition: all 0.3s ease;
+        flex-direction: column;
+        gap: 14px;
+        text-align: left;
     }
 
-        .feature-item:hover {
-            transform: translateX(10px);
-            background: rgba(255,255,255,0.15);
-        }
+    .feat-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
 
-    .feature-icon {
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        border-radius: 12px;
+    .feat-ico {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: rgba(245, 166, 35, 0.15);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.2rem;
-        margin-right: 1rem;
+        color: #F5A623;
         flex-shrink: 0;
     }
 
-    .login-content {
-        max-width: 450px;
-        padding: 2rem;
+    .feat-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
     }
 
-    .login-form-card {
-        border-radius: 24px;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255,255,255,0.3);
-        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-        overflow: hidden;
+    .feat-desc {
+        font-size: 11px;
+        color: #A8C4DE;
+        margin-top: 2px;
     }
 
-        .login-form-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-    .login-icon-circle {
-        width: 90px;
-        height: 90px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* ── Правая панель ───────────────────────────────────────── */
+    .login-right {
+        background: #F5F3EF;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
-        margin: 0 auto;
-        color: white;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        transition: all 0.3s ease;
+        padding: 2.5rem 1.5rem;
     }
 
-        .login-icon-circle:hover {
-            transform: scale(1.05) rotate(5deg);
+    /* ── Карточка формы ──────────────────────────────────────── */
+    .form-box {
+        background: #fff;
+        border: 1px solid #E2DBCF;
+        border-radius: 16px;
+        padding: 2rem;
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .form-top {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-top-ico {
+        width: 46px;
+        height: 46px;
+        background: #E8F0F9;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #1C3A5E;
+        margin: 0 auto .75rem;
+    }
+
+    .form-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1C2B3A;
+        margin-bottom: 4px;
+    }
+
+    .form-sub {
+        font-size: 12px;
+        color: #8A8070;
+    }
+
+    /* ── Поля ────────────────────────────────────────────────── */
+    .field {
+        margin-bottom: 1rem;
+    }
+
+    .field-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: .4rem;
+    }
+
+    .field-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .forgot-link {
+        font-size: 11px;
+        color: #1C3A5E;
+        text-decoration: none;
+        transition: color 0.15s;
+    }
+
+        .forgot-link:hover {
+            color: #F5A623;
+            text-decoration: underline;
         }
 
-    .input-group-lg {
-        margin-bottom: 0.5rem;
-    }
-
-    .input-group-text {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: 2px solid #e9ecef;
-        border-right: none;
-        border-radius: 12px 0 0 12px !important;
-        color: #667eea;
-        font-size: 1.1rem;
-    }
-
-    .form-control {
-        border: 2px solid #e9ecef;
-        border-left: none;
-        border-radius: 0 12px 12px 0 !important;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        background: white;
-    }
-
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
-            background: white;
-        }
-
-    .input-group:focus-within .input-group-text {
-        border-color: #667eea;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-
-    .btn-login {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        color: white;
-        transition: all 0.3s ease;
-        position: relative;
+    .inp-wrap {
+        display: flex;
+        border: 1px solid #D5CCBC;
+        border-radius: 8px;
         overflow: hidden;
+        transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-        .btn-login::before {
+        .inp-wrap:focus-within {
+            border-color: #1C3A5E;
+            box-shadow: 0 0 0 3px rgba(28, 58, 94, 0.1);
+        }
+
+    .inp-ico {
+        width: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #FAF8F4;
+        color: #8A8070;
+        flex-shrink: 0;
+        border-right: 1px solid #E2DBCF;
+    }
+
+    .lc-inp {
+        flex: 1;
+        font-size: 13px;
+        padding: 9px 10px;
+        border: none;
+        background: #FAF8F4;
+        color: #1C2B3A;
+        outline: none;
+    }
+
+        .lc-inp::placeholder {
+            color: #B0A898;
+        }
+
+    .lc-validation-msg {
+        font-size: 12px;
+        color: #b91c1c;
+        margin-top: 4px;
+        display: block;
+    }
+
+    .lc-alert-danger {
+        font-size: 13px;
+        background: #FEF2F2;
+        color: #B91C1C;
+        border: 1px solid #FECACA;
+        border-radius: 8px;
+        padding: 9px 12px;
+        margin-bottom: 1rem;
+    }
+
+    /* ── Кнопки ──────────────────────────────────────────────── */
+    .submit-btn {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        background: #1C3A5E;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin-top: .25rem;
+    }
+
+        .submit-btn:hover {
+            background: #154E8C;
+        }
+
+    .divider {
+        position: relative;
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+        .divider::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #EDE8E0;
         }
 
-        .btn-login:hover::before {
-            left: 100%;
+        .divider span {
+            position: relative;
+            background: #fff;
+            padding: 0 12px;
+            font-size: 11px;
+            color: #8A8070;
         }
 
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    .reg-btn {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #D5CCBC;
+        background: #fff;
+        color: #1C2B3A;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        text-decoration: none;
+    }
+
+        .reg-btn:hover {
+            background: #F5F3EF;
+            border-color: #B0A898;
+            color: #1C2B3A;
         }
 
-    .btn-outline-register {
-        border: 2px solid #667eea;
-        color: #667eea;
-        background: transparent;
-        transition: all 0.3s ease;
+    /* ── Заметка о безопасности ──────────────────────────────── */
+    .sec-note {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #F5F3EF;
+        border: 1px solid #EDE8E0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-top: 1rem;
     }
 
-        .btn-outline-register:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
-        }
-
-    .forgot-password {
-        color: #667eea !important;
-        transition: all 0.3s ease;
+    .sec-ico {
+        color: #1C3A5E;
+        flex-shrink: 0;
+        display: flex;
     }
 
-        .forgot-password:hover {
-            color: #764ba2 !important;
-            text-decoration: underline !important;
-        }
-
-    .security-info {
-        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-        border: 1px solid #e6e8ff;
+    .sec-text {
+        font-size: 11px;
+        color: #8A8070;
+        line-height: 1.4;
     }
 
-    .alert-danger {
-        border-radius: 12px;
-        border: none;
-        background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
-        color: #d63031;
-        box-shadow: 0 5px 15px rgba(214, 48, 49, 0.1);
+    /* ── Toast-уведомление ───────────────────────────────────── */
+    .lc-toast {
+        position: fixed;
+        top: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #FEF2F2;
+        color: #B91C1C;
+        border: 1px solid #FECACA;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+        z-index: 1050;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     }
-
-    /* Анимации */
-    @@keyframes gradientShift {
-        0%
-
-    {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
-
-    }
-
-    @@keyframes float {
-        0%, 100%
-
-    {
-        transform: translateY(0px);
-    }
-
-    50% {
-        transform: translateY(-20px);
-    }
-
-    }
-
-    .login-form-card {
-        animation: slideInRight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
-
-    @@keyframes slideInRight {
-        from
-
-    {
-        opacity: 0;
-        transform: translateX(50px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    }
-
-    /* Адаптивность */
-    @@media (max-width: 991.98px) {
-        .login-background
-
-    {
-        display: none !important;
-    }
-
-    .login-content {
-        max-width: 100%;
-        padding: 1rem;
-    }
-
-    .login-form-card {
-        margin: 0;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    }
-
-    }
-
-    @@media (max-width: 575.98px) {
-        .card-body
-
-    {
-        padding: 2rem 1.5rem !important;
-    }
-
-    .login-icon-circle {
-        width: 70px;
-        height: 70px;
-        font-size: 1.5rem;
-    }
-
-    .feature-item {
-        padding: 1rem;
-    }
-
-    .feature-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
-    }
-
-    }
-
-    /* Улучшенная типографика */
-    h1, h2 {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .text-muted {
-        color: #6c757d !important;
-    }
-
 </style>

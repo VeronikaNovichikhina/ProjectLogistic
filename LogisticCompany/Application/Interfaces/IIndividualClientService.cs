@@ -1,4 +1,4 @@
-﻿using LogisticCompany.DTO;
+﻿using LogisticCompany.Application.DTO;
 
 namespace LogisticCompany.Application.Interfaces
 {

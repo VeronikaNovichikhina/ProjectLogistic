@@ -1,7 +1,6 @@
 ﻿using LogisticCompany.Application.DTO;
 using LogisticCompany.Domain.Entities.Location;
 using LogisticCompany.Domain.Entities.Orders;
-using LogisticCompany.DTO;
 
 namespace LogisticCompany.Application.Interfaces
 {

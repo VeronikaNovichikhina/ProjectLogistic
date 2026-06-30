@@ -3,7 +3,6 @@ using LogisticCompany.Application.Interfaces;
 using LogisticCompany.Db;
 using LogisticCompany.Domain.Entities.Location;
 using LogisticCompany.Domain.Entities.Orders;
-using LogisticCompany.DTO;
 using Microsoft.EntityFrameworkCore;
 
 namespace LogisticCompany.Application.Services

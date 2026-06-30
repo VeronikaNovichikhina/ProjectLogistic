@@ -1,6 +1,6 @@
 ﻿using LogisticCompany.Application.DTO;
+using LogisticCompany.Application.model;
 using LogisticCompany.Domain.Entities.Orders;
-using LogisticCompany.DTO;
 
 namespace LogisticCompany.Application.Interfaces
 {

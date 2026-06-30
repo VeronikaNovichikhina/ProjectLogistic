@@ -1,9 +1,9 @@
 ﻿using LogisticCompany.Application.DTO;
 using LogisticCompany.Application.Interfaces;
+using LogisticCompany.Application.model;
 using LogisticCompany.Db;
 using LogisticCompany.Domain.Entities.Orders;
 using LogisticCompany.Domain.Entities.Tracking;
-using LogisticCompany.DTO;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
@@ -15,47 +15,33 @@ namespace LogisticCompany.Application.Services
     public class OrderService : IOrderService
     {
         private readonly AppDbContext _db;
-        private readonly IJSRuntime JS;
+        private readonly IPasswordService _passwordService;
 
-        public OrderService(AppDbContext db, IJSRuntime jsRuntime)
+        public OrderService(AppDbContext db, IPasswordService passwordService)
         {
             _db = db;
-            JS = jsRuntime;
+            _passwordService = passwordService;
         }
 
-        private async Task<string> GetTownName(int townId)
+        private async Task<string> GetTownNameAsync(int townId)
         {
             var town = await _db.Towns.FirstOrDefaultAsync(t => t.TownId == townId);
             return town?.TownName ?? "Неизвестно";
         }
         public async Task<CreateOrderResult> CreateOrderAsync(CreateOrderRequest r, string? newClientEmail = null)
         {
-            if (r.OriginTownId <= 0)
-                throw new Exception("Не выбран город отправления");
+            ValidateOrderRequest(r);
 
-            if (r.DestinationTownId <= 0)
-                throw new Exception("Не выбран город назначения");
-
-            if (r.PickupBranchId <= 0)
-                throw new Exception("Не выбран пункт отправления");
-
-            if (r.DeliveryTypeId == 2 && r.DestinationBranchId <= 0)
-                throw new Exception("Не выбран пункт назначения");
-
-            if (r.DeliveryTypeId == 1 && string.IsNullOrWhiteSpace(r.CourierAddress))
-                throw new Exception("Не указан адрес доставки");
-            
-           
             await using var transaction = await _db.Database.BeginTransactionAsync();
-
-
             try
             {
-                var client = await _db.Clients.FirstOrDefaultAsync(c => c.ClientsId == r.ClientId);
-                if (client == null) throw new Exception("Клиент не найден");
+                var client = await _db.Clients.FirstOrDefaultAsync(c => c.ClientsId == r.ClientId)
+                    ?? throw new Exception("Клиент не найден");
+
                 string? generatedPassword = null;
                 bool isNewUserCreated = false;
                 User? user = null;
+
                 if (!string.IsNullOrWhiteSpace(newClientEmail))
                 {
                     var normalizedEmail = newClientEmail.ToLower();
@@ -63,8 +49,7 @@ namespace LogisticCompany.Application.Services
 
                     if (user == null)
                     {
-                        generatedPassword = GenerateSecurePassword();
-
+                        generatedPassword = _passwordService.Generate();
                         user = new User
                         {
                             Email = normalizedEmail,
@@ -72,12 +57,11 @@ namespace LogisticCompany.Application.Services
                             Role = "User",
                             IsTemporaryPassword = true
                         };
-
                         _db.Users.Add(user);
                         await _db.SaveChangesAsync();
-
                         isNewUserCreated = true;
                     }
+
                     if (client.UserId != user.Id)
                     {
                         client.UserId = user.Id;
@@ -86,62 +70,34 @@ namespace LogisticCompany.Application.Services
                     }
                 }
 
-            
-                var order = new Order
-                {
-                    ClientsId = r.ClientId,
-                    CourierDestAddress = r.CourierAddress,
-                    FirstRecepientName = r.FirstName,
-                    MiddleRecepientName = r.MiddleName,
-                    LastRecepientName = r.LastName,
-                    PhoneRecepient = r.Phone,
-                    TemplateId = r.ParcelTemplateId,
-                    DescriptionParcel = r.Description,
-                    OriginTownId = r.OriginTownId,
-                    DestinationTownId = r.DestinationTownId,
-                    PickupBranchesId = r.PickupBranchId,
-                    DestinationBranchId = r.DestinationBranchId,
-                    DeliveryTypeId = r.DeliveryTypeId,
-                    TransportTypeId = r.TransportTypeId,
-                    LengthCm = r.LengthCm,
-                    WidthCm = r.WidthCm,
-                    HeightCm = r.HeightCm,
-                    Weight = r.Weight
-
-                };
-
+                var order = BuildOrder(r);
                 _db.Orders.Add(order);
                 await _db.SaveChangesAsync();
+
+                // Generate order number using DB id - single save after number assignment
                 order.OrderNumber = $"ORD-{DateTime.Now:yyMMdd}-{order.OrdersId:D6}";
-                _db.Orders.Update(order);
-                await _db.SaveChangesAsync();
 
                 if (r.PaymentMethodId <= 0)
-                {
                     throw new Exception("Выберите способ оплаты");
-                }
 
-                var payment = new Payment
+                _db.Payments.Add(new Payment
                 {
                     Orders = order,
                     PaymentMethodId = r.PaymentMethodId,
                     Amount = r.Amount,
                     PaymentDate = DateTime.Now
-                };
-                _db.Payments.Add(payment);
+                });
 
-                var tracking = new Tracking
+                _db.Trackings.Add(new Tracking
                 {
                     OrdersId = order.OrdersId,
-                    LocationTrackings = await GetTownName(order.OriginTownId),
+                    LocationTrackings = await GetTownNameAsync(order.OriginTownId),
                     UpdateDate = DateTime.Now,
-                    StatusId = 2, 
+                    StatusId = 2,
                     BranchesId = order.PickupBranchesId
-                };
-                _db.Trackings.Add(tracking);
+                });
 
                 await _db.SaveChangesAsync();
-
                 await transaction.CommitAsync();
 
                 return new CreateOrderResult
@@ -150,7 +106,6 @@ namespace LogisticCompany.Application.Services
                     Email = isNewUserCreated ? user!.Email : null,
                     TemporaryPassword = isNewUserCreated ? generatedPassword : null
                 };
-
             }
             catch
             {
@@ -159,88 +114,34 @@ namespace LogisticCompany.Application.Services
             }
         }
 
-     
-
-        private string GenerateSecurePassword(int length = 8)
-        {
-
-            var random = new Random();
-            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-            return new string(Enumerable.Repeat(chars, length)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
-        }
-
-
 
         public async Task<int> CreateOrderByUserAsync(CreateOrderRequest r)
         {
-            if (r.OriginTownId <= 0)
-                throw new Exception("Не выбран город отправления");
-
-            if (r.DestinationTownId <= 0)
-                throw new Exception("Не выбран город назначения");
-
-            if (r.PickupBranchId <= 0)
-                throw new Exception("Не выбран пункт отправления");
-
-            if (r.DeliveryTypeId == 2 && r.DestinationBranchId <= 0)
-                throw new Exception("Не выбран пункт назначения");
-
-            if (r.DeliveryTypeId == 1 && string.IsNullOrWhiteSpace(r.CourierAddress))
-                throw new Exception("Не указан адрес доставки");
+            ValidateOrderRequest(r);
 
             await using var transaction = await _db.Database.BeginTransactionAsync();
-
             try
             {
-                var client = await _db.Clients
-                    .FirstOrDefaultAsync(c => c.ClientsId == r.ClientId);
+                var client = await _db.Clients.FirstOrDefaultAsync(c => c.ClientsId == r.ClientId)
+                    ?? throw new Exception("Клиент не найден");
 
-                if (client == null)
-                    throw new Exception("Клиент не найден");
-
-                var order = new Order
-                {
-                    ClientsId = r.ClientId,
-                    CourierDestAddress = r.CourierAddress,
-                    FirstRecepientName = r.FirstName,
-                    MiddleRecepientName = r.MiddleName,
-                    LastRecepientName = r.LastName,
-                    PhoneRecepient = r.Phone,
-                    TemplateId = r.ParcelTemplateId,
-                    DescriptionParcel = r.Description,
-                    OriginTownId = r.OriginTownId,
-                    DestinationTownId = r.DestinationTownId,
-                    PickupBranchesId = r.PickupBranchId,
-                    DestinationBranchId = r.DestinationBranchId,
-                    DeliveryTypeId = r.DeliveryTypeId,
-                    TransportTypeId = r.TransportTypeId,
-                    LengthCm = r.LengthCm,
-                    WidthCm = r.WidthCm,
-                    HeightCm = r.HeightCm,
-                    Weight = r.Weight,
-                    CalculatedPrice = r.CalculatedPrice
-                };
-
+                var order = BuildOrder(r);
+                order.CalculatedPrice = r.CalculatedPrice;
                 _db.Orders.Add(order);
                 await _db.SaveChangesAsync();
 
-                order.OrderNumber = $"{DateTime.Now:yyyyMMdd}-{order.OrdersId}";
-                _db.Orders.Update(order);
-                await _db.SaveChangesAsync();
+                order.OrderNumber = $"ORD-{DateTime.Now:yyMMdd}-{order.OrdersId:D6}";
 
-                var tracking = new Tracking
+                _db.Trackings.Add(new Tracking
                 {
                     OrdersId = order.OrdersId,
-                    LocationTrackings = await GetTownName(order.OriginTownId),
+                    LocationTrackings = await GetTownNameAsync(order.OriginTownId),
                     UpdateDate = DateTime.Now,
-                    StatusId = 1, 
+                    StatusId = 1,
                     BranchesId = order.PickupBranchesId
-                };
+                });
 
-                _db.Trackings.Add(tracking);
                 await _db.SaveChangesAsync();
-
                 await transaction.CommitAsync();
                 return order.OrdersId;
             }
@@ -251,123 +152,84 @@ namespace LogisticCompany.Application.Services
             }
         }
 
-
-        public async Task<List<Order>> GetOrdersForManagerAsync(int branchId)
-        {
-            return await _db.Orders
-                .Include(o => o.Template)
-                .Include(o => o.DeliveryType)
-                .Include(o => o.TransportType)
-                .Include(o => o.OriginTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.DestinationTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.Clients)
+        public async Task<List<Order>> GetOrdersForManagerAsync(int branchId) =>
+            await OrdersWithDetails()
                 .Where(o => o.PickupBranchesId == branchId || o.DestinationBranchId == branchId)
                 .OrderByDescending(o => o.OrdersId)
                 .ToListAsync();
-        }
 
-        public async Task<List<Order>> GetOrdersForClientAsync(int clientId)
-        {
-            return await _db.Orders
-                .Include(o => o.Template)
-                .Include(o => o.DeliveryType)
-                .Include(o => o.TransportType)
-                .Include(o => o.OriginTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.DestinationTown)
-                    .ThenInclude(t => t.Country)
-                .Where(o => o.ClientsId == clientId)
-                .OrderByDescending(o => o.OrdersId)
-                .ToListAsync();
-        }
+        public async Task<List<Order>> GetOrdersForClientAsync(int clientId) =>
+             await OrdersWithDetails()
+                 .Where(o => o.ClientsId == clientId)
+                 .OrderByDescending(o => o.OrdersId)
+                 .ToListAsync();
 
-        public async Task<Order?> GetOrderByIdAsync(int orderId)
-        {
-            return await _db.Orders
-                .Include(o => o.Template)
-                .Include(o => o.DeliveryType)
-                .Include(o => o.TransportType)
-                .Include(o => o.OriginTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.DestinationTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.Clients)
-                .Include(o => o.Trackings)
-                    .ThenInclude(t => t.Status)
-                .FirstOrDefaultAsync(o => o.OrdersId == orderId);
-        }
-
-        public async Task<List<Order>> GetOrdersForAdminAsync(int branchId)
-        {
-            return await _db.Orders
+         public async Task<Order?> GetOrderByIdAsync(int orderId) =>
+            await _db.Orders
                 .Include(o => o.Template)
                 .Include(o => o.DeliveryType)
                 .Include(o => o.TransportType)
                 .Include(o => o.OriginTown).ThenInclude(t => t.Country)
                 .Include(o => o.DestinationTown).ThenInclude(t => t.Country)
                 .Include(o => o.Clients)
-                .Where(o => o.PickupBranchesId == branchId || o.DestinationBranchId == branchId)
-                .OrderByDescending(o => o.OrdersId)
-                .ToListAsync();
-        }
-
-        public async Task<Order?> GetOrderDetailsAsync(int orderId)
-        {
-            return await _db.Orders
-        .Include(o => o.DeliveryType)
-        .Include(o => o.TransportType)
-        .Include(o => o.OriginTown)
-            .ThenInclude(t => t.Country)
-        .Include(o => o.DestinationTown)
-            .ThenInclude(t => t.Country)
-        .Include(o => o.PickupBranches)
-        .Include(o => o.Clients)
-        .Include(o => o.Trackings)
-            .ThenInclude(t => t.Status)
-        .FirstOrDefaultAsync(o => o.OrdersId == orderId);
-        }
-
-        public async Task<List<StatusDelivery>> GetStatusDeliveriesAsync()
-        {
-            return await _db.StatusDeliveries.AsNoTracking().ToListAsync();
-        }
-
-        public async Task<Order> GetOrderForPaymentAsync(int orderId)
-        {
-            return await   _db.Orders
-                .Include(o => o.Payments)
-                    .ThenInclude(p => p.PaymentMethod)
-                .Include(o => o.Trackings)
-                    .ThenInclude(t => t.Status)
+                .Include(o => o.Trackings).ThenInclude(t => t.Status)
                 .FirstOrDefaultAsync(o => o.OrdersId == orderId);
 
-        }
-        public async Task<List<PaymentMethod>> GetPaymentMethodsAsync()
-        {
-            return await _db.PaymentMethods.ToListAsync();
-        }
+        public async Task<List<Order>> GetOrdersForAdminAsync(int branchId) =>
+         await OrdersWithDetails()
+            .Where(o => o.PickupBranchesId == branchId || o.DestinationBranchId == branchId)
+            .OrderByDescending(o => o.OrdersId)
+            .ToListAsync();
+
+        public async Task<Order?> GetOrderDetailsAsync(int orderId) =>
+          await _db.Orders
+              .Include(o => o.DeliveryType)
+              .Include(o => o.TransportType)
+              .Include(o => o.OriginTown).ThenInclude(t => t.Country)
+              .Include(o => o.DestinationTown).ThenInclude(t => t.Country)
+              .Include(o => o.PickupBranches)
+              .Include(o => o.Clients)
+              .Include(o => o.Trackings).ThenInclude(t => t.Status)
+              .FirstOrDefaultAsync(o => o.OrdersId == orderId);
+
+        public async Task<List<StatusDelivery>> GetStatusDeliveriesAsync() =>
+          await _db.StatusDeliveries.AsNoTracking().ToListAsync();
+
+        public async Task<Order> GetOrderForPaymentAsync(int orderId) =>
+            await _db.Orders
+                .Include(o => o.Payments).ThenInclude(p => p.PaymentMethod)
+                .Include(o => o.Trackings).ThenInclude(t => t.Status)
+                .FirstOrDefaultAsync(o => o.OrdersId == orderId)
+            ?? throw new Exception("Заказ не найден");
+
+        public async Task<List<PaymentMethod>> GetPaymentMethodsAsync() =>
+                await _db.PaymentMethods.ToListAsync();
 
         public async Task<OrderEditModel?> GetOrderForEditAsync(int orderId)
         {
-            
             var order = await _db.Orders
-                .Include(o => o.OriginTown)
-                    .ThenInclude(t => t.Country)
-                .Include(o => o.DestinationTown)
-                    .ThenInclude(t => t.Country)
+                .Include(o => o.OriginTown).ThenInclude(t => t.Country)
+                .Include(o => o.DestinationTown).ThenInclude(t => t.Country)
                 .Include(o => o.DeliveryType)
                 .Include(o => o.Template)
                 .Include(o => o.Payments)
                 .FirstOrDefaultAsync(o => o.OrdersId == orderId);
 
-            if (order == null)
-                return null;
+            if (order == null) return null;
 
             return new OrderEditModel
             {
                 OrdersId = order.OrdersId,
+                OriginTownId = order.OriginTownId,
+                DestinationTownId = order.DestinationTownId,
+                DeliveryTypeId = order.DeliveryTypeId,
+                TemplateId = order.TemplateId,
+                OriginTownName = order.OriginTown?.TownName,
+                OriginCountryName = order.OriginTown?.Country?.CountryName,
+                DestinationTownName = order.DestinationTown?.TownName,
+                DestinationCountryName = order.DestinationTown?.Country?.CountryName,
+                DeliveryTypeName = order.DeliveryType?.NameDeliveryType,
+                TotalAmount = order.Payments?.FirstOrDefault()?.Amount,
                 LastRecepientName = order.LastRecepientName,
                 FirstRecepientName = order.FirstRecepientName,
                 MiddleRecepientName = order.MiddleRecepientName,
@@ -377,42 +239,81 @@ namespace LogisticCompany.Application.Services
                 WidthCm = order.WidthCm,
                 HeightCm = order.HeightCm,
                 Weight = order.Weight,
-                CourierDestAddress = order.CourierDestAddress,
+                CourierDestAddress = order.CourierDestAddress
             };
         }
 
+
         public async Task<bool> SaveOrderAsync(int orderId, OrderEditModel editModel)
         {
-           
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.OrdersId == orderId);
+            if (order == null) return false;
 
-            var orderToUpdate = await _db.Orders
-                .FirstOrDefaultAsync(o => o.OrdersId == orderId);
+            order.LastRecepientName = editModel.LastRecepientName;
+            order.FirstRecepientName = editModel.FirstRecepientName;
+            order.MiddleRecepientName = editModel.MiddleRecepientName;
+            order.PhoneRecepient = editModel.PhoneRecepient;
+            order.DescriptionParcel = editModel.DescriptionParcel;
 
-            if (orderToUpdate == null)
-                return false;
-
-            // Обновляем данные заказа
-            orderToUpdate.LastRecepientName = editModel.LastRecepientName;
-            orderToUpdate.FirstRecepientName = editModel.FirstRecepientName;
-            orderToUpdate.MiddleRecepientName = editModel.MiddleRecepientName;
-            orderToUpdate.PhoneRecepient = editModel.PhoneRecepient;
-            orderToUpdate.DescriptionParcel = editModel.DescriptionParcel;
-
-            if (orderToUpdate.TemplateId == null)
+            if (order.TemplateId == null)
             {
-                orderToUpdate.LengthCm = editModel.LengthCm;
-                orderToUpdate.WidthCm = editModel.WidthCm;
-                orderToUpdate.HeightCm = editModel.HeightCm;
-                orderToUpdate.Weight = editModel.Weight;
+                order.LengthCm = editModel.LengthCm;
+                order.WidthCm = editModel.WidthCm;
+                order.HeightCm = editModel.HeightCm;
+                order.Weight = editModel.Weight;
             }
 
-            if (orderToUpdate.DeliveryTypeId == 1)
-            {
-                orderToUpdate.CourierDestAddress = editModel.CourierDestAddress;
-            }
+            if (order.DeliveryTypeId == 1)
+                order.CourierDestAddress = editModel.CourierDestAddress;
 
             await _db.SaveChangesAsync();
             return true;
         }
+
+        private static void ValidateOrderRequest(CreateOrderRequest r)
+        {
+            if (r.OriginTownId <= 0)
+                throw new Exception("Не выбран город отправления");
+            if (r.DestinationTownId <= 0)
+                throw new Exception("Не выбран город назначения");
+            if (r.PickupBranchId <= 0)
+                throw new Exception("Не выбран пункт отправления");
+            if (r.DeliveryTypeId == 2 && r.DestinationBranchId <= 0)
+                throw new Exception("Не выбран пункт назначения");
+            if (r.DeliveryTypeId == 1 && string.IsNullOrWhiteSpace(r.CourierAddress))
+                throw new Exception("Не указан адрес доставки");
+        }
+
+        private static Order BuildOrder(CreateOrderRequest r) => new()
+        {
+            ClientsId = r.ClientId,
+            CourierDestAddress = r.CourierAddress,
+            FirstRecepientName = r.FirstName,
+            MiddleRecepientName = r.MiddleName,
+            LastRecepientName = r.LastName,
+            PhoneRecepient = r.Phone,
+            TemplateId = r.ParcelTemplateId,
+            DescriptionParcel = r.Description,
+            OriginTownId = r.OriginTownId,
+            DestinationTownId = r.DestinationTownId,
+            PickupBranchesId = r.PickupBranchId,
+            DestinationBranchId = r.DestinationBranchId,
+            DeliveryTypeId = r.DeliveryTypeId,
+            TransportTypeId = r.TransportTypeId,
+            LengthCm = r.LengthCm,
+            WidthCm = r.WidthCm,
+            HeightCm = r.HeightCm,
+            Weight = r.Weight
+        };
+
+        private IQueryable<Order> OrdersWithDetails() =>
+          _db.Orders
+              .Include(o => o.Template)
+              .Include(o => o.DeliveryType)
+              .Include(o => o.TransportType)
+              .Include(o => o.OriginTown).ThenInclude(t => t.Country)
+              .Include(o => o.DestinationTown).ThenInclude(t => t.Country)
+              .Include(o => o.Clients);
+
     }
 }

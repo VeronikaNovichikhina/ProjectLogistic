@@ -38,5 +38,5 @@ public class ClientBaseComponent : ComponentBase
     }
 
     protected void NavigateTo(string url) => Navigation.NavigateTo(url);
-    protected void GoBack() => Navigation.NavigateTo("/clients");
+    protected void GoBack() => Navigation.NavigateTo("/clientList");
 }

@@ -1,215 +1,290 @@
 ﻿ @page "/clientList"
 @using LogisticCompany.Application.Interfaces
 @using LogisticCompany.Db
-@using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<LogisticCompany.Db.AppDbContext> db
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @inject IClientService ClientService
 
-<div class="page-container">
-    <div class="container-fluid">
-        <!-- Header -->
-        <div class="page-header glass-card">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <div class="d-flex align-items-center">
-                        <div class="header-icon me-3">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div>
-                            <h1 class="page-title">Управление клиентами</h1>
-                            <p class="page-subtitle">Администрирование клиентской базы компании</p>
-                        </div>
-                    </div>
+
+<div class="cl-page">
+    <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
+
+    <div class="cl-wrap">
+
+        <!-- Заголовок -->
+        <div class="pg-hd">
+            <div class="pg-hd-left">
+                <div class="pg-hd-ico" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
                 </div>
-                <div class="col-md-4 text-end">
-                    <NavLink href="/admin-home" class="btn btn-secondary btn-lg me-2">
-                        <i class="fas fa-arrow-left me-2"></i>Назад
-                    </NavLink>
-                    <NavLink href="/clients/create" class="btn btn-primary btn-lg shadow-sm">
-                        <i class="fas fa-plus-circle me-2"></i>Добавить клиента
-                    </NavLink>
+                <div>
+                    <div class="pg-hd-title">Управление клиентами</div>
+                    <div class="pg-hd-sub">Администрирование клиентской базы компании</div>
+                </div>
+            </div>
+            <div class="pg-hd-btns">
+                <NavLink href="/admin-home" class="cl-btn cl-btn-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    Назад
+                </NavLink>
+                <NavLink href="/clients/create" class="cl-btn cl-btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    Добавить клиента
+                </NavLink>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-ico ico-total" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-val">@clients?.Count.ToString()</div>
+                    <div class="stat-lbl">Всего клиентов</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-ico ico-indiv" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-val">@(clients?.Count(c => c.ClientTypeId == 1).ToString() ?? "0")</div>
+                    <div class="stat-lbl">Физические лица</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-ico ico-comp" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="7" width="20" height="14" rx="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-val">@(clients?.Count(c => c.ClientTypeId == 2).ToString() ?? "0")</div>
+                    <div class="stat-lbl">Компании</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-ico ico-act" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                        <polyline points="16 11 18 13 22 9"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-val">@(clients?.Count(c => !string.IsNullOrEmpty(c.Phone)).ToString() ?? "0")</div>
+                    <div class="stat-lbl">С контактами</div>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="stat-card stat-total">
-                    <div class="stat-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">@clients?.Count.ToString()</h3>
-                        <p class="stat-label">Всего клиентов</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card stat-individual">
-                    <div class="stat-icon">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">@(clients?.Count(c => c.ClientTypeId == 1).ToString() ?? "0")</h3>
-                        <p class="stat-label">Физические лица</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card stat-company">
-                    <div class="stat-icon">
-                        <i class="fas fa-building"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">@(clients?.Count(c => c.ClientTypeId == 2).ToString() ?? "0")</h3>
-                        <p class="stat-label">Компании</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card stat-active">
-                    <div class="stat-icon">
-                        <i class="fas fa-user-check"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-value">@(clients?.Count(c => !string.IsNullOrEmpty(c.Phone)).ToString() ?? "0")</h3>
-                        <p class="stat-label">С контактами</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        
-
+        <!-- Таблица / состояния -->
         @if (clients == null)
         {
-            <!-- Loading State -->
-            <div class="main-card glass-card">
-                <div class="card-body text-center py-5">
-                    <div class="loading-spinner">
-                        <i class="fas fa-users fa-3x text-primary mb-3"></i>
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Загрузка...</span>
-                        </div>
-                        <h5 class="text-muted">Загрузка данных клиентов...</h5>
+            <div class="tbl-card">
+                <div class="state-box">
+                    <div class="state-ico" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
                     </div>
+                    <span class="lc-spinner" role="status"></span>
+                    <div class="state-title">Загрузка данных клиентов...</div>
                 </div>
             </div>
         }
         else if (!clients.Any())
         {
-            <!-- Empty State -->
-            <div class="main-card glass-card">
-                <div class="card-body text-center py-5">
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h4 class="empty-title">Клиенты не найдены</h4>
-                        <p class="empty-description">Добавьте первого клиента для начала работы</p>
-                        <NavLink href="/clients/create" class="btn btn-primary btn-lg">
-                            <i class="fas fa-plus-circle me-2"></i>Добавить клиента
-                        </NavLink>
+            <div class="tbl-card">
+                <div class="state-box">
+                    <div class="state-ico" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
                     </div>
+                    <div class="state-title">Клиенты не найдены</div>
+                    <div class="state-sub">Добавьте первого клиента для начала работы</div>
+                    <NavLink href="/clients/create" class="cl-btn cl-btn-primary" style="width: auto; margin-top: .5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        Добавить клиента
+                    </NavLink>
                 </div>
             </div>
         }
         else
         {
-            <!-- Clients Table -->
-            <div class="main-card glass-card">
-                <div class="card-body">
-                    <div class="table-container">
-                        <table class="clients-table">
-                            <thead>
-                                <tr>
-                                    <th class="client-id">№</th>
-                                    <th class="client-info">Клиент</th>
-                                    <th class="client-contacts">Контактная информация</th>
-                                    <th class="client-type">Тип</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var (c, index) in filteredClients.Select((value, i) => (value, i)))
-                                {
-                                    <tr class="client-row" @onclick="() => ShowClientDetails(c.ClientsId)">
-                                        <td class="client-id">
-                                            @(index + 1)
-                                        </td>
-                                        <td class="client-info">
-                                            <div class="d-flex align-items-center">
-                                                <div class="client-avatar me-3">
-                                                    @if (c.ClientTypeId == 1)
-                                                    {
-                                                        <div class="avatar-circle avatar-individual">
-                                                            <i class="fas fa-user text-white"></i>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="avatar-circle avatar-company">
-                                                            <i class="fas fa-building text-white"></i>
-                                                        </div>
-                                                    }
-                                                </div>
-                                                <div class="client-details">
-                                                    @if (c.ClientTypeId == 1 && c.IndividualClients.Any())
-                                                    {
-                                                        var i = c.IndividualClients.First();
-                                                        <div class="client-name">@i.LastName @i.FirstName @i.PatronymicName</div>
-                                                        <div class="client-id">Паспорт: @i.PassportNumber</div>
-                                                    }
-                                                    else if (c.ClientTypeId == 2 && c.CompanyClients.Any())
-                                                    {
-                                                        var co = c.CompanyClients.First();
-                                                        <div class="client-name">@co.CompanyName</div>
-                                                        <div class="client-id">ИИН: @co.Inn</div>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="client-contacts">
-                                            <div class="contact-info">
-                                                @if (!string.IsNullOrEmpty(c.Phone))
-                                                {
-                                                    <div class="contact-item">
-                                                        <i class="fas fa-phone text-success me-2"></i>
-                                                        <span>@c.Phone</span>
-                                                    </div>
-                                                }
-                                                @if (!string.IsNullOrEmpty(c.Email))
-                                                {
-                                                    <div class="contact-item">
-                                                        <i class="fas fa-envelope text-primary me-2"></i>
-                                                        <span>@c.Email</span>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="client-type">
-                                            <span class="type-badge @(c.ClientTypeId == 1 ? "badge-individual" : "badge-company")">
-                                                <i class="fas @(c.ClientTypeId == 1 ? "fa-user" : "fa-building") me-1"></i>
-                                                @c.ClientType.TypeName
-                                            </span>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+            <div class="tbl-card">
+                <div class="tbl-hd">
+                    <div class="tbl-hd-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                             style="color: #1C3A5E;" aria-hidden="true">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                        Список клиентов
                     </div>
+                    <span class="tbl-count">@filteredClients.Count() записей</span>
                 </div>
+                <table class="cl-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">№</th>
+                            <th>Клиент</th>
+                            <th>Контактная информация</th>
+                            <th>Тип</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (c, index) in filteredClients.Select((value, i) => (value, i)))
+                        {
+                            <tr @onclick="() => ShowClientDetails(c.ClientsId)">
+                                <td class="row-num">@(index + 1)</td>
+                                <td>
+                                    <div class="cl-info-row">
+                                        <div class="cl-av @(c.ClientTypeId == 1 ? "av-indiv" : "av-comp")" aria-hidden="true">
+                                            @if (c.ClientTypeId == 1)
+                                            {
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                    <circle cx="12" cy="7" r="4"/>
+                                                </svg>
+                                            }
+                                            else
+                                            {
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="2" y="7" width="20" height="14" rx="2"/>
+                                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                                                </svg>
+                                            }
+                                        </div>
+                                        <div>
+                                            @if (c.ClientTypeId == 1 && c.IndividualClients.Any())
+                                            {
+                                                var i = c.IndividualClients.First();
+                                                <div class="cl-name">@i.LastName @i.FirstName @i.PatronymicName</div>
+                                                <div class="cl-sub">Паспорт: @i.PassportNumber</div>
+                                            }
+                                            else if (c.ClientTypeId == 2 && c.CompanyClients.Any())
+                                            {
+                                                var co = c.CompanyClients.First();
+                                                <div class="cl-name">@co.CompanyName</div>
+                                                <div class="cl-sub">ИИН: @co.Inn</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="contact-col">
+                                        @if (!string.IsNullOrEmpty(c.Phone))
+                                        {
+                                            <div class="contact-item">
+                                                <span class="ci-phone">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/>
+                                                    </svg>
+                                                </span>
+                                                @c.Phone
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(c.Email))
+                                        {
+                                            <div class="contact-item">
+                                                <span class="ci-email">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                                        <polyline points="22,6 12,13 2,6"/>
+                                                    </svg>
+                                                </span>
+                                                @c.Email
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="type-badge @(c.ClientTypeId == 1 ? "badge-indiv" : "badge-comp")">
+                                        @if (c.ClientTypeId == 1)
+                                        {
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                <circle cx="12" cy="7" r="4"/>
+                                            </svg>
+                                        }
+                                        else
+                                        {
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                                            </svg>
+                                        }
+                                        @c.ClientType.TypeName
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         }
+
     </div>
 </div>
 
-
 @code {
     private List<Client>? clients;
-    private AppDbContext context = default!;
     private List<Client> filteredClients = new List<Client>();
     protected override async Task OnInitializedAsync()
     {
@@ -235,638 +310,286 @@
 } 
 
 
-
 <style>
-    .page-container {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #ffffff 100%);
-        min-height: 100vh;
-        padding: 2rem 0;
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    }
-
-    /* Header Styles */
-    .page-header {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
-
-    .header-icon {
-        width: 70px;
-        height: 70px;
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        border-radius: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        color: white;
-        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
-    }
-
-    .page-title {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2c3e50;
-        margin: 0;
-    }
-
-    .page-subtitle {
-        color: #6c757d;
-        margin: 0.5rem 0 0 0;
-        font-size: 1.1rem;
-    }
-
-    /* Stat Cards */
-    .stat-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        display: flex;
-        align-items: center;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-    }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-        }
-
-    .stat-total {
-        border-left: 4px solid #28a745;
-    }
-
-    .stat-individual {
-        border-left: 4px solid #007bff;
-    }
-
-    .stat-company {
-        border-left: 4px solid #ffc107;
-    }
-
-    .stat-active {
-        border-left: 4px solid #17a2b8;
-    }
-
-    .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: white;
-        margin-right: 1rem;
-        flex-shrink: 0;
-    }
-
-    .stat-total .stat-icon {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    }
-
-    .stat-individual .stat-icon {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    }
-
-    .stat-company .stat-icon {
-        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-    }
-
-    .stat-active .stat-icon {
-        background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2c3e50;
-        margin: 0;
-        line-height: 1;
-    }
-
-    .stat-label {
-        color: #6c757d;
-        margin: 0.25rem 0 0 0;
-        font-size: 0.9rem;
-    }
-
-    /* Filters */
-    .filters-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-    }
-
-    .filter-group {
-        margin-bottom: 0;
-    }
-
-    .filter-label {
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-        display: block;
-        font-size: 0.9rem;
-    }
-
-    .filter-select, .search-input {
-        border-radius: 12px;
-        border: 2px solid #e9ecef;
-        padding: 0.75rem 1rem;
-        font-size: 0.95rem;
-        transition: all 0.3s ease;
-    }
-
-        .filter-select:focus, .search-input:focus {
-            border-color: #28a745;
-            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.15);
-        }
-
-    .search-input-container {
-        position: relative;
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6c757d;
-        z-index: 2;
-    }
-
-    .search-input {
-        padding-left: 3rem;
-    }
-
-    /* Main Table */
-    .main-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-
-    .table-container {
-        overflow-x: auto;
-    }
-
-    .clients-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-        .clients-table th {
-            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-            color: #2c3e50;
-            font-weight: 600;
-            padding: 1.25rem 1rem;
-            border-bottom: 2px solid #e9ecef;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .clients-table td {
-            padding: 1.25rem 1rem;
-            border-bottom: 1px solid #f8f9fa;
-            vertical-align: middle;
-        }
-
-    .client-row {
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-        .client-row:hover {
-            background: linear-gradient(90deg, rgba(40, 167, 69, 0.05), transparent);
-            transform: translateX(5px);
-        }
-
-    /* Client Cells */
-    .client-info {
-        display: flex;
-        align-items: center;
-    }
-
-    .avatar-circle {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        color: white;
-        flex-shrink: 0;
-    }
-
-    .avatar-individual {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    }
-
-    .avatar-company {
-        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-    }
-
-    .client-details {
-        position: relative;
-    }
-
-    .client-name {
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 0.25rem;
-    }
-
-    .client-id {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-bottom: 0.25rem;
-    }
-
-    .client-number {
-        position: absolute;
-        top: -5px;
-        right: -30px;
-        font-size: 0.7rem;
-        color: #6c757d;
-        font-weight: 500;
-    }
-
-    .type-badge {
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .badge-individual {
-        background: rgba(0, 123, 255, 0.1);
-        color: #007bff;
-    }
-
-    .badge-company {
-        background: rgba(255, 193, 7, 0.1);
-        color: #e67700;
-    }
-
-    .contact-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-        .contact-item:last-child {
-            margin-bottom: 0;
-        }
-
-    .action-buttons {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .btn-action {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-
-    .btn-edit {
-        background: rgba(255, 193, 7, 0.1);
-        color: #e67700;
-    }
-
-    .btn-view {
-        background: rgba(23, 162, 184, 0.1);
-        color: #17a2b8;
-    }
-
-    .btn-edit:hover {
-        background: #ffc107;
-        color: white;
-        transform: translateY(-2px);
-    }
-
-    .btn-view:hover {
-        background: #17a2b8;
-        color: white;
-        transform: translateY(-2px);
-    }
-
-    /* Table Footer */
-    .table-footer {
-        padding: 1.5rem;
-        background: #f8f9fa;
-        border-top: 1px solid #e9ecef;
-    }
-
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-    }
-
-    .empty-icon {
-        width: 100px;
-        height: 100px;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5rem;
-        color: #6c757d;
-        margin: 0 auto 2rem;
-    }
-
-    .empty-title {
-        color: #2c3e50;
-        margin-bottom: 1rem;
-        font-weight: 600;
-    }
-
-    .empty-description {
-        color: #6c757d;
-        margin-bottom: 2rem;
-        font-size: 1.1rem;
-    }
-
-    /* Loading State */
-    .loading-spinner {
-        padding: 3rem 0;
-    }
-
-    /* Modal Styles */
-    .glass-modal {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 20px;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-    }
-
-    .modal-title-section {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .modal-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-        color: white;
-    }
-
-    .bg-individual {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    }
-
-    .bg-company {
-        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-    }
-
-    .modal-title {
-        font-weight: 600;
-        color: #2c3e50;
-        margin: 0;
-    }
-
-    .modal-subtitle {
-        color: #6c757d;
-        margin: 0.25rem 0 0 0;
-        font-size: 0.9rem;
-    }
-
-    /* Client Details */
-    .client-details {
-        padding: 0.5rem;
-    }
-
-    .detail-header {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-        border-radius: 16px;
-        margin-bottom: 2rem;
-    }
-
-    .detail-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        color: white;
-        flex-shrink: 0;
-    }
-
-    .detail-name {
-        font-weight: 700;
-        color: #2c3e50;
-        margin: 0 0 0.5rem 0;
-        font-size: 1.5rem;
-    }
-
-    .detail-meta {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .detail-type {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 500;
-        text-transform: uppercase;
-    }
-
-    .detail-id {
-        color: #6c757d;
-        font-size: 0.9rem;
-    }
-
-    .detail-card {
-        background: white;
-        border-radius: 16px;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-    }
-
-    .detail-card-header {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        padding: 1.25rem;
-        border-bottom: 1px solid #e9ecef;
-        display: flex;
-        align-items: center;
-    }
-
-        .detail-card-header h6 {
-            margin: 0;
-            color: #2c3e50;
-            font-weight: 600;
-        }
-
-    .detail-card-body {
-        padding: 1.5rem;
-    }
-
-    .detail-item {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #f8f9fa;
-    }
-
-        .detail-item:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-
-        .detail-item label {
-            font-weight: 600;
-            color: #2c3e50;
-            min-width: 140px;
-            margin: 0;
-        }
-
-        .detail-item span {
-            color: #495057;
-            flex: 1;
-        }
-
-    /* Buttons */
-    .btn {
-        border-radius: 12px;
-        font-weight: 500;
-        padding: 0.75rem 1.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        border: none;
-    }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
-        }
-
-    .btn-secondary {
-        background: #6c757d;
-        border: none;
-    }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-
-    /* Responsive */
-    @@media (max-width: 768px) {
-        .page-header {
-            padding: 1.5rem;
-        }
-
-        .header-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 1.5rem;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-        }
-
-        .stat-card {
-            padding: 1rem;
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 1.3rem;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-        }
-
-        .client-info {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
-        }
-
-        .avatar-circle {
-            width: 40px;
-            height: 40px;
-            font-size: 1rem;
-        }
-
-        .client-number {
-            position: static;
-            margin-top: 0.25rem;
-        }
-
-        .action-buttons {
-            flex-direction: column;
-        }
-
-        .btn-action {
-            width: 35px;
-            height: 35px;
-            font-size: 0.8rem;
-        }
-
-        .detail-header {
-            flex-direction: column;
-            text-align: center;
-            gap: 1rem;
-        }
-
-        .detail-item {
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-            .detail-item label {
-                min-width: auto;
-            }
-    }
+/* ── Полоска ─────────────────────────────────────────────── */
+.lc-stripe       { height: 4px; background: #1C3A5E; }
+.lc-stripe-inner { height: 100%; width: 35%; background: #F5A623; border-radius: 0 3px 3px 0; }
+
+/* ── Страница ────────────────────────────────────────────── */
+.cl-page {
+    min-height: 100vh;
+    background: #F5F3EF;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #1C2B3A;
+}
+
+.cl-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3rem;
+}
+
+/* ── Заголовок ───────────────────────────────────────────── */
+.pg-hd {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.pg-hd-left  { display: flex; align-items: center; gap: 10px; }
+
+.pg-hd-ico {
+    width: 40px;
+    height: 40px;
+    background: #1C3A5E;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #F5A623;
+    flex-shrink: 0;
+}
+
+.pg-hd-title { font-size: 16px; font-weight: 500; color: #1C2B3A; }
+.pg-hd-sub   { font-size: 12px; color: #8A8070; margin-top: 1px; }
+.pg-hd-btns  { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ── Кнопки ──────────────────────────────────────────────── */
+.cl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    border: none;
+    white-space: nowrap;
+    width: 100%;
+    justify-content: center;
+}
+
+.cl-btn-outline {
+    border: 1px solid #D5CCBC;
+    background: #fff;
+    color: #1C2B3A;
+}
+.cl-btn-outline:hover { background: #F5F3EF; border-color: #B0A898; }
+
+.cl-btn-primary {
+    background: #1C3A5E;
+    color: #fff;
+}
+.cl-btn-primary:hover { background: #154E8C; color: #fff; }
+
+/* ── Статистика ──────────────────────────────────────────── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+@@media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.stat-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    padding: .85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stat-ico {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ico-total { background: #E8F0F9; color: #1C3A5E; }
+.ico-indiv { background: #FEF0D8; color: #D98E10; }
+.ico-comp  { background: #EEEBE5; color: #5A5248; }
+.ico-act   { background: #EAF7F2; color: #0F6E56; }
+
+.stat-val { font-size: 20px; font-weight: 500; color: #1C2B3A; line-height: 1; }
+.stat-lbl { font-size: 11px; color: #8A8070; margin-top: 2px; }
+
+/* ── Карточка таблицы ────────────────────────────────────── */
+.tbl-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.tbl-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid #EDE8E0;
+    background: #FDFCF9;
+}
+
+.tbl-hd-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1C2B3A;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tbl-count {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 9px;
+    border-radius: 100px;
+    background: #E8F0F9;
+    color: #1C3A5E;
+}
+
+/* ── Таблица ─────────────────────────────────────────────── */
+.cl-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.cl-table th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #8A8070;
+    font-weight: 500;
+    padding: .55rem .85rem;
+    border-bottom: 1px solid #EDE8E0;
+    text-align: left;
+    background: #FDFCF9;
+}
+
+.cl-table td {
+    padding: .65rem .85rem;
+    border-bottom: 1px solid #F0EDE8;
+    vertical-align: middle;
+}
+
+.cl-table tr:last-child td { border-bottom: none; }
+
+.cl-table tbody tr {
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.cl-table tbody tr:hover td { background: #FDFCF9; }
+
+.row-num { color: #8A8070; font-size: 12px; }
+
+/* ── Строка клиента ──────────────────────────────────────── */
+.cl-info-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.cl-av {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.av-indiv { background: #E8F0F9; color: #1C3A5E; }
+.av-comp  { background: #EEEBE5; color: #5A5248; }
+
+.cl-name { font-size: 13px; font-weight: 500; color: #1C2B3A; }
+.cl-sub  { font-size: 11px; color: #8A8070; margin-top: 1px; }
+
+/* ── Контакты ────────────────────────────────────────────── */
+.contact-col  { display: flex; flex-direction: column; gap: 3px; }
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #1C2B3A;
+}
+
+.ci-phone { color: #0F6E56; display: flex; }
+.ci-email { color: #1C3A5E; display: flex; }
+
+/* ── Тип-бейдж ───────────────────────────────────────────── */
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 100px;
+    white-space: nowrap;
+}
+
+.badge-indiv { background: #E8F0F9; color: #1C3A5E; }
+.badge-comp  { background: #EEEBE5; color: #5A5248; }
+
+/* ── Состояния (загрузка / пусто) ────────────────────────── */
+.state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    gap: .5rem;
+}
+
+.state-ico {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: #F5F3EF;
+    border: 1px solid #E2DBCF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #C8BFB0;
+    margin-bottom: .35rem;
+}
+
+.state-title { font-size: 15px; font-weight: 500; color: #8A8070; }
+.state-sub   { font-size: 12px; color: #B0A898; }
+
+/* ── Спиннер ─────────────────────────────────────────────── */
+.lc-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(28, 58, 94, 0.15);
+    border-top-color: #1C3A5E;
+    border-radius: 50%;
+    animation: cl-spin .7s linear infinite;
+}
+
+@@keyframes cl-spin { to { transform: rotate(360deg); } }
 </style>

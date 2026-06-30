@@ -1,11 +1,12 @@
-﻿using LogisticCompany.Db;
+﻿using LogisticCompany.Application.Interfaces;
+using LogisticCompany.Db;
 using LogisticCompany.Domain.Entities.Orders;
 using LogisticCompany.Domain.Entities.Tracking;
 using Microsoft.EntityFrameworkCore;
 
 namespace LogisticCompany.Application.Services
 {
-    public class PaymentService
+    public class PaymentService : IPaymentService
     {
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
 

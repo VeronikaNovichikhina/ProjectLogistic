@@ -1,518 +1,280 @@
 ﻿@page "/orders/payment-edit/{OrdersId::int}"
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
-@using LogisticCompany.Domain.Entities.Orders
-@using LogisticCompany.Domain.Entities.Tracking
-@using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<AppDbContext> DbContextFactory
+@using LogisticCompany.Application.model
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 @inject IOrderService OrderService
 
-<div class="office-manager-page bg-light min-vh-100">
-    @if(order == null)
+<div class="pe-page">
+    <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
+
+    @if (orderEditModel == null)
     {
-        <div class="card order-detail-card">
-            <div class="card-body text-center py-5">
-                <div class="spinner-border text-primary mb-3" role="status">
-                    <span class="visually-hidden">Загрузка...</span>
+        <div class="pe-wrap">
+            <div class="pe-card">
+                <div class="state-box">
+                    <span class="lc-spinner" role="status"></span>
+                    <div class="state-title">Загрузка данных заказа...</div>
                 </div>
-                <h4 class="text-muted">Загрузка данных заказа...</h4>
             </div>
         </div>
     }
     else
     {
-    <div class="container py-3">
-        <div class="row">
-            <!-- Основной контент -->
-            <div class="col-lg-8">
-                    <div class="col-md-4">
-                        <div class="action-buttons">
-                            <NavLink href="/ordersList" class="action-btn" title="Назад к списку">
-                                <i class="fas fa-arrow-left"></i>
-                            </NavLink>
-                        </div>
-                    </div>
-                <div class="d-flex align-items-center mb-3">
-                    <div class="status-badge bg-warning text-white rounded-circle d-flex align-items-center justify-content-center me-2"
-                         style="width: 36px; height: 36px; font-size: 14px;">
-                        <i class="fas fa-edit"></i>
+        <div class="pe-layout">
+
+            <!-- Основная колонка -->
+            <div class="pe-main">
+
+                <NavLink href="/ordersList" class="pe-back-btn" title="Назад к списку">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="19" y1="12" x2="5" y2="12" />
+                        <polyline points="12 19 5 12 12 5" />
+                    </svg>
+                    Назад к списку
+                </NavLink>
+
+                <div class="pg-title-row">
+                    <div class="pg-title-ico" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
                     </div>
                     <div>
-                        <h1 class="h5 fw-bold mb-1">Редактирование заказа перед оплатой</h1>
-                        <p class="text-muted small mb-0">Проверьте и обновите информацию о заказе #@order?.OrderNumber</p>
+                        <div class="pg-title">Редактирование заказа перед оплатой</div>
+                        <div class="pg-sub">Проверьте и обновите информацию о заказе #@order?.OrderNumber</div>
                     </div>
-                    
                 </div>
 
                 @if (!string.IsNullOrEmpty(alertMessage))
                 {
-                    <div class="alert @(isAlertSuccess ? "alert-success" : "alert-danger") d-flex align-items-center mb-3 py-2" role="alert">
-                        <i class="fas @(isAlertSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2" style="font-size: 14px;"></i>
-                        <span class="small flex-grow-1">@alertMessage</span>
-                        <button class="btn-close btn-sm" @onclick="ClearAlert" style="font-size: 10px;"></button>
-                    </div>
-                }
-
-                @if (order == null)
-                {
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body text-center py-4">
-                            <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
-                                <span class="visually-hidden">Загрузка...</span>
-                            </div>
-                            <h5 class="text-muted" style="font-size: 14px;">Загрузка данных заказа...</h5>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <EditForm Model="orderEditModel" OnValidSubmit="SaveOrder" FormName="paymentEdit">
-                        <DataAnnotationsValidator />
-                        <!-- Информация о получателе -->
-                        <div class="card border-0 shadow-sm mb-3">
-                            <div class="card-header bg-white border-bottom py-2">
-                                <h6 class="fw-semibold mb-0 d-flex align-items-center">
-                                    <i class="fas fa-user-tag text-primary me-2" style="font-size: 14px;"></i>
-                                    Данные получателя
-                                </h6>
-                            </div>
-                            <div class="card-body p-3">
-                                <div class="row g-3">
-                                    <!-- ФИО получателя -->
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold mb-2 d-flex align-items-center"
-                                                   style="font-size: 14px; color: #495057;">
-                                                <i class="fas fa-user text-muted me-2" style="font-size: 13px;"></i>
-                                                Фамилия *
-                                                <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
-                                            </label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                    <i class="fas fa-user text-muted" style="font-size: 14px;"></i>
-                                                </span>
-                                                <InputText @bind-Value="orderEditModel.LastRecepientName"
-                                                           class="form-control border-start-0 py-1"
-                                                           style="font-size: 14px;"
-                                                           placeholder="Иванов" />
-                                            </div>
-                                            <ValidationMessage For="() => orderEditModel.LastRecepientName" class="text-danger" style="font-size: 12px;" />
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
-                                                Имя *
-                                            </label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                    <i class="fas fa-user text-muted" style="font-size: 14px;"></i>
-                                                </span>
-                                                <InputText @bind-Value="orderEditModel.FirstRecepientName"
-                                                           class="form-control border-start-0 py-1"
-                                                           style="font-size: 14px;"
-                                                           placeholder="Иван" />
-                                            </div>
-                                            <ValidationMessage For="() => orderEditModel.FirstRecepientName" class="text-danger" style="font-size: 12px;" />
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
-                                                Отчество
-                                            </label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                    <i class="fas fa-user text-muted" style="font-size: 14px;"></i>
-                                                </span>
-                                                <InputText @bind-Value="orderEditModel.MiddleRecepientName"
-                                                           class="form-control border-start-0 py-1"
-                                                           style="font-size: 14px;"
-                                                           placeholder="Иванович" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Контакты получателя -->
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold mb-2 d-flex align-items-center"
-                                                   style="font-size: 14px; color: #495057;">
-                                                <i class="fas fa-phone text-muted me-2" style="font-size: 13px;"></i>
-                                                Телефон *
-                                                <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
-                                            </label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                    <i class="fas fa-mobile-alt text-muted" style="font-size: 14px;"></i>
-                                                </span>
-                                                <InputText @bind-Value="orderEditModel.PhoneRecepient"
-                                                           class="form-control border-start-0 py-1"
-                                                           style="font-size: 14px;"
-                                                           placeholder="+7 (XXX) XXX-XX-XX" />
-                                            </div>
-                                            <ValidationMessage For="() => orderEditModel.PhoneRecepient" class="text-danger" style="font-size: 12px;" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card border-0 shadow-sm mb-3">
-                            <div class="card-header bg-white border-bottom py-2">
-                                <h6 class="fw-semibold mb-0 d-flex align-items-center">
-                                    <i class="fas fa-box text-warning me-2" style="font-size: 14px;"></i>
-                                    Информация о посылке
-                                </h6>
-                            </div>
-                            <div class="card-body p-3">
-                                <!-- Описание посылки -->
-                                <div class="mb-3">
-                                    <div class="form-group">
-                                        <label class="form-label fw-semibold mb-2 d-flex align-items-center"
-                                               style="font-size: 14px; color: #495057;">
-                                            <i class="fas fa-align-left text-muted me-2" style="font-size: 13px;"></i>
-                                            Описание содержимого
-                                        </label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                <i class="fas fa-edit text-muted" style="font-size: 14px;"></i>
-                                            </span>
-                                            <InputTextArea @bind-Value="orderEditModel.DescriptionParcel"
-                                                           class="form-control border-start-0 py-1"
-                                                           style="font-size: 14px; min-height: 80px;"
-                                                           placeholder="Опишите содержимое посылки..." />
-                                        </div>
-                                        <div class="form-text" style="font-size: 12px;">
-                                            <i class="fas fa-info-circle me-1"></i>
-                                            Для таможенного декларирования
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Габариты и вес -->
-                                @if (order.TemplateId == null)
-                                {
-                                    <div class="row g-3">
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
-                                                    <i class="fas fa-ruler text-muted me-2" style="font-size: 13px;"></i>
-                                                    Длина (см)
-                                                </label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                        <i class="fas fa-ruler-vertical text-muted" style="font-size: 14px;"></i>
-                                                    </span>
-                                                    <InputNumber @bind-Value="orderEditModel.LengthCm"
-                                                                 class="form-control border-start-0 py-1"
-                                                                 style="font-size: 14px;" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
-                                                    <i class="fas fa-ruler text-muted me-2" style="font-size: 13px;"></i>
-                                                    Ширина (см)
-                                                </label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                        <i class="fas fa-ruler-horizontal text-muted" style="font-size: 14px;"></i>
-                                                    </span>
-                                                    <InputNumber @bind-Value="orderEditModel.WidthCm"
-                                                                 class="form-control border-start-0 py-1"
-                                                                 style="font-size: 14px;" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold mb-2" style="font-size: 14px; color: #495057;">
-                                                    <i class="fas fa-ruler text-muted me-2" style="font-size: 13px;"></i>
-                                                    Высота (см)
-                                                </label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                        <i class="fas fa-arrows-alt-v text-muted" style="font-size: 14px;"></i>
-                                                    </span>
-                                                    <InputNumber @bind-Value="orderEditModel.HeightCm"
-                                                                 class="form-control border-start-0 py-1"
-                                                                 style="font-size: 14px;" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold mb-2 d-flex align-items-center"
-                                                       style="font-size: 14px; color: #495057;">
-                                                    <i class="fas fa-weight text-muted me-2" style="font-size: 13px;"></i>
-                                                    Вес (кг) *
-                                                    <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
-                                                </label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                        <i class="fas fa-balance-scale text-muted" style="font-size: 14px;"></i>
-                                                    </span>
-                                                    <InputNumber @bind-Value="orderEditModel.Weight"
-                                                                 class="form-control border-start-0 py-1"
-                                                                 style="font-size: 14px;" />
-                                                </div>
-                                                <ValidationMessage For="() => orderEditModel.Weight" class="text-danger" style="font-size: 12px;" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="alert alert-info border py-2">
-                                        <div class="d-flex align-items-center">
-                                            <i class="fas fa-info-circle me-2" style="font-size: 14px;"></i>
-                                            <div class="small" style="font-size: 13px;">
-                                                Используется шаблон посылки: <strong>@order.Template?.TemplateName</strong>
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-
-                        @if (order.DeliveryTypeId == 1)
-                        {
-                            <div class="card border-0 shadow-sm mb-3">
-                                <div class="card-header bg-white border-bottom py-2">
-                                    <h6 class="fw-semibold mb-0 d-flex align-items-center">
-                                        <i class="fas fa-map-marker-alt text-danger me-2" style="font-size: 14px;"></i>
-                                        Адрес курьерской доставки
-                                    </h6>
-                                </div>
-                                <div class="card-body p-3">
-                                    <div class="form-group">
-                                        <label class="form-label fw-semibold mb-2 d-flex align-items-center"
-                                               style="font-size: 14px; color: #495057;">
-                                            <i class="fas fa-home text-muted me-2" style="font-size: 13px;"></i>
-                                            Адрес доставки *
-                                            <span class="ms-1 badge bg-light text-dark border" style="font-size: 11px;">Обязательно</span>
-                                        </label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                <i class="fas fa-map-pin text-muted" style="font-size: 14px;"></i>
-                                            </span>
-                                            <InputText @bind-Value="orderEditModel.CourierDestAddress"
-                                                       class="form-control border-start-0 py-1"
-                                                       style="font-size: 14px;"
-                                                       placeholder="ул. Ленина, д. 10, кв. 25" />
-                                        </div>
-                                        <ValidationMessage For="() => orderEditModel.CourierDestAddress" class="text-danger" style="font-size: 12px;" />
-                                    </div>
-                                </div>
-                            </div>
-                        }
-
-                        <!-- Панель действий -->
-                        <div class="action-panel bg-white border rounded p-3 shadow-sm">
-                            <div class="row g-2 align-items-center">
-                                <div class="col-md-8">
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-3">
-                                            <span class="badge bg-warning rounded-pill py-1 px-2" style="font-size: 12px;">
-                                                <i class="fas fa-edit me-1"></i>
-                                                Редактирование
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                            <button type="submit"
-                                                class="btn btn-success px-3"
-                                                disabled="@isSaving"
-                                                style="font-size: 14px; padding: 6px 12px;">
-                                            @if (isSaving)
-                                            {
-                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                                <span>Сохранение...</span>
-                                            }
-                                            else
-                                            {
-                                                <i class="fas fa-credit-card me-1"></i>
-                                                <span>К оплате</span>
-                                            }
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </EditForm>
-                }
-            </div>
-
-            <!-- Боковая панель -->
-            <div class="col-lg-4">
-                <div class="sticky-top" style="top: 15px;">
-                    <!-- Сводка заказа -->
-                    <div class="card border-0 shadow-sm mb-3">
-                        <div class="card-header bg-white border-bottom py-2">
-                            <h6 class="fw-semibold mb-0" style="font-size: 14px;">
-                                <i class="fas fa-clipboard-check me-2 text-primary" style="font-size: 13px;"></i>
-                                Сводка заказа
-                            </h6>
-                        </div>
-                        <div class="card-body py-2">
-                            <!-- Маршрут -->
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-route text-primary me-2" style="font-size: 14px;"></i>
-                                    <span class="fw-semibold small" style="font-size: 13px;">Маршрут</span>
-                                </div>
-                                <div class="ms-4">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <i class="fas fa-circle text-success me-2" style="font-size: 8px;"></i>
-                                        <span class="small" style="font-size: 13px;">@order.OriginTown?.TownName, @order.OriginTown?.Country?.CountryName</span>
-                                    </div>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-circle text-danger me-2" style="font-size: 8px;"></i>
-                                        <span class="small" style="font-size: 13px;">@order?.DestinationTown?.TownName, @order?.DestinationTown?.Country?.CountryName</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Тип доставки -->
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-truck text-info me-2" style="font-size: 14px;"></i>
-                                    <span class="fw-semibold small" style="font-size: 13px;">Тип доставки</span>
-                                </div>
-                                <div class="ms-4">
-                                    <span class="badge bg-info" style="font-size: 12px;">@order?.DeliveryType?.NameDeliveryType</span>
-                                </div>
-                            </div>
-                            <!-- Сумма к оплате -->
-                            @if (order.Payments.Any())
+                    <div class="pe-alert @(isAlertSuccess ? "pe-alert-success" : "pe-alert-danger")">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            @if (isAlertSuccess)
                             {
-                                var payment = order.Payments.First();
-                                <div class="mt-3 pt-3 border-top">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="fw-semibold small" style="font-size: 13px;">Сумма к оплате:</span>
-                                        <span class="h6 fw-bold text-success mb-0">@payment.Amount.ToString()</span>
+                                <polyline points="20 6 9 17 4 12" />
+                            }
+                            else
+                            {
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            }
+                        </svg>
+                        <span style="flex:1">@alertMessage</span>
+                        <button class="pe-alert-close" @onclick="ClearAlert" aria-label="Закрыть">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                }
+
+                <EditForm Model="orderEditModel" OnValidSubmit="SaveOrder" FormName="paymentEdit">
+                    <DataAnnotationsValidator />
+
+                    <!-- Получатель -->
+                    <div class="pe-card">
+                        <div class="pe-card-hd">
+                            <div class="pe-card-ico ico-blue" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /><polyline points="16 11 18 13 22 9" /></svg>
+                            </div>
+                            <span class="pe-card-title">Данные получателя</span>
+                        </div>
+                        <div class="pe-card-body">
+                            <div class="form-row-3">
+                                <div class="field">
+                                    <span class="field-lbl">Фамилия <span class="req-tag">Обязательно</span></span>
+                                    <div class="inp-wrap">
+                                        <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg></div>
+                                        <InputText @bind-Value="orderEditModel.LastRecepientName" class="lc-inp" placeholder="Иванов" />
                                     </div>
+                                    <ValidationMessage For="() => orderEditModel.LastRecepientName" class="pe-val-msg" />
+                                </div>
+                                <div class="field">
+                                    <span class="field-lbl">Имя *</span>
+                                    <div class="inp-wrap">
+                                        <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg></div>
+                                        <InputText @bind-Value="orderEditModel.FirstRecepientName" class="lc-inp" placeholder="Иван" />
+                                    </div>
+                                    <ValidationMessage For="() => orderEditModel.FirstRecepientName" class="pe-val-msg" />
+                                </div>
+                                <div class="field">
+                                    <span class="field-lbl">Отчество</span>
+                                    <div class="inp-wrap">
+                                        <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg></div>
+                                        <InputText @bind-Value="orderEditModel.MiddleRecepientName" class="lc-inp" placeholder="Иванович" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="field" style="max-width: 60%;">
+                                <span class="field-lbl">Телефон <span class="req-tag">Обязательно</span></span>
+                                <div class="inp-wrap">
+                                    <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z" /></svg></div>
+                                    <InputText @bind-Value="orderEditModel.PhoneRecepient" class="lc-inp" placeholder="+7 (XXX) XXX-XX-XX" />
+                                </div>
+                                <ValidationMessage For="() => orderEditModel.PhoneRecepient" class="pe-val-msg" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Посылка -->
+                    <div class="pe-card">
+                        <div class="pe-card-hd">
+                            <div class="pe-card-ico ico-orange" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
+                            </div>
+                            <span class="pe-card-title">Информация о посылке</span>
+                        </div>
+                        <div class="pe-card-body">
+                            <div class="field">
+                                <span class="field-lbl">Описание содержимого</span>
+                                <div class="inp-wrap" style="align-items: flex-start;">
+                                    <div class="inp-ico" aria-hidden="true" style="padding-top:8px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg></div>
+                                    <InputTextArea @bind-Value="orderEditModel.DescriptionParcel" class="lc-textarea" placeholder="Опишите содержимое посылки..." />
+                                </div>
+                                <div class="field-hint">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                                    Для таможенного декларирования
+                                </div>
+                            </div>
+
+                            @if (orderEditModel.TemplateId == null)
+                            {
+                                <div class="form-row-4">
+                                    <div class="field">
+                                        <span class="field-lbl">Длина (см)</span>
+                                        <div class="inp-wrap">
+                                            <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4" /><line x1="4" y1="12" x2="20" y2="12" /></svg></div>
+                                            <InputNumber @bind-Value="orderEditModel.LengthCm" class="lc-inp" />
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <span class="field-lbl">Ширина (см)</span>
+                                        <div class="inp-wrap">
+                                            <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4" /><line x1="4" y1="12" x2="20" y2="12" /></svg></div>
+                                            <InputNumber @bind-Value="orderEditModel.WidthCm" class="lc-inp" />
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <span class="field-lbl">Высота (см)</span>
+                                        <div class="inp-wrap">
+                                            <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4" /><line x1="4" y1="12" x2="20" y2="12" /></svg></div>
+                                            <InputNumber @bind-Value="orderEditModel.HeightCm" class="lc-inp" />
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <span class="field-lbl">Вес (кг) <span class="req-tag">Обязательно</span></span>
+                                        <div class="inp-wrap">
+                                            <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3" /><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.46A2 2 0 0 0 17.48 8Z" /></svg></div>
+                                            <InputNumber @bind-Value="orderEditModel.Weight" class="lc-inp" />
+                                        </div>
+                                        <ValidationMessage For="() => orderEditModel.Weight" class="pe-val-msg" />
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="pe-alert pe-alert-blue">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                                    <span>Используется шаблон посылки</span>
                                 </div>
                             }
                         </div>
                     </div>
+
+                    @if (orderEditModel.DeliveryTypeId == 1)
+                    {
+                        <div class="pe-card">
+                            <div class="pe-card-hd">
+                                <div class="pe-card-ico ico-red" aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                </div>
+                                <span class="pe-card-title">Адрес курьерской доставки</span>
+                            </div>
+                            <div class="pe-card-body">
+                                <div class="field">
+                                    <span class="field-lbl">Адрес доставки <span class="req-tag">Обязательно</span></span>
+                                    <div class="inp-wrap">
+                                        <div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg></div>
+                                        <InputText @bind-Value="orderEditModel.CourierDestAddress" class="lc-inp" placeholder="ул. Ленина, д. 10, кв. 25" />
+                                    </div>
+                                    <ValidationMessage For="() => orderEditModel.CourierDestAddress" class="pe-val-msg" />
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Панель действий -->
+                    <div class="pe-action-bar">
+                        <span class="pe-edit-tag">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                            Редактирование
+                        </span>
+                        <button type="submit" class="pe-btn pe-btn-green" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="lc-spinner" role="status"></span>
+                                <span>Сохранение...</span>
+                            }
+                            else
+                            {
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+                                <span>К оплате</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+
+            <!-- Боковая панель: сводка -->
+            <div class="pe-sidebar">
+                <div class="sb-card">
+                    <div class="sb-card-hd">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                        Сводка заказа
+                    </div>
+                    <div class="sb-card-body">
+
+                        <div class="sb-block">
+                            <div class="sb-block-hd">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#1C3A5E" aria-hidden="true"><circle cx="6" cy="19" r="3" /><circle cx="18" cy="5" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /></svg>
+                                Маршрут
+                            </div>
+                            <div class="sb-route">
+                                <div class="sb-route-item"><span class="sb-dot sb-dot-green"></span>@orderEditModel.OriginTownName, @orderEditModel.OriginCountryName</div>
+                                <div class="sb-route-item"><span class="sb-dot sb-dot-red"></span>@orderEditModel.DestinationTownName, @orderEditModel.DestinationCountryName</div>
+                            </div>
+                        </div>
+
+                        <div class="sb-block">
+                            <div class="sb-block-hd">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#1C3A5E" aria-hidden="true"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
+                                Тип доставки
+                            </div>
+                            <span class="sb-tag">@orderEditModel.DeliveryTypeName</span>
+                        </div>
+
+                        @if (orderEditModel.TotalAmount != null)
+                        {
+                            @* var payment = order.Payments.First(); *@
+                            <div class="sb-amount-block">
+                                <span class="sb-amount-lbl">Сумма к оплате</span>
+                                <span class="sb-amount-val">@orderEditModel.TotalAmount</span>
+                            </div>
+                        }
+
+                    </div>
                 </div>
             </div>
+
         </div>
-    </div>
-}
+    }
 </div>
 
-<style>
-    .office-manager-page {
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        font-size: 14px;
-    }
-
-    .form-control {
-        font-size: 14px;
-        padding: 6px 12px;
-        height: 36px;
-    }
-
-    .input-group-text {
-        font-size: 14px;
-        padding: 6px 12px;
-        height: 36px;
-    }
-
-    .form-label {
-        font-size: 14px;
-        font-weight: 600;
-        color: #495057;
-        margin-bottom: 0.5rem;
-    }
-
-    .btn {
-        font-size: 14px;
-        padding: 6px 12px;
-        height: 36px;
-    }
-
-    .btn-sm {
-        font-size: 13px;
-        padding: 5px 10px;
-        height: 32px;
-    }
-
-    .action-panel {
-        position: sticky;
-        bottom: 15px;
-        z-index: 1000;
-        margin-top: 15px;
-        font-size: 14px;
-    }
-
-    .status-badge {
-        width: 36px;
-        height: 36px;
-        font-size: 14px;
-    }
-
-    .breadcrumb {
-        background: transparent;
-        padding: 0;
-        margin: 0;
-        font-size: 13px;
-    }
-
-    .card-header {
-        padding: 8px 16px;
-    }
-
-    .card-body {
-        padding: 16px;
-    }
-
-    .alert {
-        padding: 8px 12px;
-        font-size: 13px;
-    }
-
-    .badge {
-        font-size: 11px;
-        padding: 4px 8px;
-    }
-
-    input.form-control:focus,
-    select.form-control:focus,
-    textarea.form-control:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
-        outline: none;
-    }
-
-    .small {
-        font-size: 12px !important;
-    }
-
-    .h5 {
-        font-size: 1.1rem;
-    }
-
-    .h6 {
-        font-size: 1rem;
-    }
-
-    textarea.form-control {
-        min-height: 80px;
-        resize: vertical;
-    }
-</style>
 
 @code {
     [Parameter] public int OrdersId { get; set; }
@@ -579,3 +341,521 @@
         }
     }
 }
+
+<style>
+    /* ============================================================
+       OrderPaymentEdit.razor.css — тёмно-синий + бежевый + оранжевый
+       ============================================================ */
+
+    .lc-stripe {
+        height: 4px;
+        background: #1C3A5E;
+    }
+
+    .lc-stripe-inner {
+        height: 100%;
+        width: 35%;
+        background: #F5A623;
+        border-radius: 0 3px 3px 0;
+    }
+
+    .pe-page {
+        min-height: 100vh;
+        background: #F5F3EF;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        color: #1C2B3A;
+    }
+
+    .pe-wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 1.25rem 1rem 3rem;
+    }
+
+    .pe-layout {
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 1rem;
+        padding: 1.25rem 1rem 3rem;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    @@media (max-width: 800px) {
+        .pe-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ── Состояние загрузки ──────────────────────────────────── */
+    .state-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        gap: .5rem;
+        text-align: center;
+    }
+
+    .state-title {
+        font-size: 14px;
+        color: #8A8070;
+    }
+
+    /* ── Кнопка назад ────────────────────────────────────────── */
+    .pe-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid #D5CCBC;
+        background: #fff;
+        color: #1C2B3A;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.15s;
+        margin-bottom: .85rem;
+    }
+
+        .pe-back-btn:hover {
+            background: #F5F3EF;
+            border-color: #B0A898;
+            color: #1C2B3A;
+        }
+
+    /* ── Заголовок ───────────────────────────────────────────── */
+    .pg-title-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 1rem;
+    }
+
+    .pg-title-ico {
+        width: 36px;
+        height: 36px;
+        background: #1C3A5E;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #F5A623;
+        flex-shrink: 0;
+    }
+
+    .pg-title {
+        font-size: 15px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .pg-sub {
+        font-size: 12px;
+        color: #8A8070;
+        margin-top: 1px;
+    }
+
+    /* ── Алерты ──────────────────────────────────────────────── */
+    .pe-alert {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: .65rem .85rem;
+        border-radius: 8px;
+        margin-bottom: .85rem;
+        font-size: 12px;
+    }
+
+    .pe-alert-success {
+        background: #EAF7F2;
+        border: 1px solid #B8E8D8;
+        color: #0F6E56;
+    }
+
+    .pe-alert-danger {
+        background: #FEF2F2;
+        border: 1px solid #FECACA;
+        color: #B91C1C;
+    }
+
+    .pe-alert-blue {
+        background: #E8F0F9;
+        border: 1px solid #C2D9EE;
+        color: #1C3A5E;
+    }
+
+    .pe-alert-close {
+        background: transparent;
+        border: none;
+        color: inherit;
+        opacity: .6;
+        cursor: pointer;
+        display: flex;
+        flex-shrink: 0;
+        padding: 2px;
+    }
+
+        .pe-alert-close:hover {
+            opacity: 1;
+        }
+
+    /* ── Карточка ────────────────────────────────────────────── */
+    .pe-card {
+        background: #fff;
+        border: 1px solid #E2DBCF;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: .75rem;
+    }
+
+    .pe-card-hd {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: .65rem .9rem;
+        border-bottom: 1px solid #EDE8E0;
+        background: #FDFCF9;
+    }
+
+    .pe-card-ico {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .ico-blue {
+        background: #E8F0F9;
+        color: #1C3A5E;
+    }
+
+    .ico-orange {
+        background: #FEF0D8;
+        color: #D98E10;
+    }
+
+    .ico-red {
+        background: #FCE9E7;
+        color: #C0463A;
+    }
+
+    .pe-card-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .pe-card-body {
+        padding: .9rem;
+    }
+
+    /* ── Поля ────────────────────────────────────────────────── */
+    .field {
+        margin-bottom: .75rem;
+    }
+
+        .field:last-child {
+            margin-bottom: 0;
+        }
+
+    .field-lbl {
+        font-size: 12px;
+        font-weight: 500;
+        color: #1C2B3A;
+        margin-bottom: .3rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .req-tag {
+        font-size: 10px;
+        background: #F5F3EF;
+        color: #8A8070;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-weight: 400;
+    }
+
+    .form-row-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: .75rem;
+        margin-bottom: .75rem;
+    }
+
+    .form-row-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem;
+    }
+
+    @@media (max-width: 600px) {
+        .form-row-3, .form-row-4 {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .inp-wrap {
+        display: flex;
+        border: 1px solid #D5CCBC;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+        .inp-wrap:focus-within {
+            border-color: #1C3A5E;
+            box-shadow: 0 0 0 3px rgba(28,58,94,0.1);
+        }
+
+    .inp-ico {
+        width: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #FAF8F4;
+        color: #8A8070;
+        border-right: 1px solid #E2DBCF;
+        flex-shrink: 0;
+    }
+
+    .lc-inp {
+        flex: 1;
+        font-size: 13px;
+        padding: 8px 10px;
+        border: none;
+        background: #FAF8F4;
+        color: #1C2B3A;
+        outline: none;
+        width: 100%;
+    }
+
+        .lc-inp::placeholder {
+            color: #B0A898;
+        }
+
+    .lc-textarea {
+        flex: 1;
+        font-size: 13px;
+        padding: 8px 10px;
+        border: none;
+        background: #FAF8F4;
+        color: #1C2B3A;
+        outline: none;
+        width: 100%;
+        min-height: 80px;
+        resize: vertical;
+        font-family: inherit;
+    }
+
+        .lc-textarea::placeholder {
+            color: #B0A898;
+        }
+
+    .field-hint {
+        font-size: 11px;
+        color: #8A8070;
+        margin-top: 3px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .pe-val-msg {
+        font-size: 12px;
+        color: #b91c1c;
+        margin-top: 3px;
+        display: block;
+    }
+
+    /* ── Панель действий ─────────────────────────────────────── */
+    .pe-action-bar {
+        background: #fff;
+        border: 1px solid #E2DBCF;
+        border-radius: 12px;
+        padding: .85rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .pe-edit-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 4px 10px;
+        border-radius: 100px;
+        background: #FEF0D8;
+        color: #D98E10;
+    }
+
+    .pe-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 18px;
+        border-radius: 8px;
+        border: none;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .pe-btn-green {
+        background: #0F7B6C;
+        color: #fff;
+    }
+
+        .pe-btn-green:hover:not(:disabled) {
+            background: #0A5E52;
+        }
+
+    .pe-btn:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+    }
+
+    /* ── Боковая панель ──────────────────────────────────────── */
+    .pe-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+    }
+
+    .sb-card {
+        background: #fff;
+        border: 1px solid #E2DBCF;
+        border-radius: 12px;
+        overflow: hidden;
+        position: sticky;
+        top: 1rem;
+    }
+
+    .sb-card-hd {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: .65rem .85rem;
+        border-bottom: 1px solid #EDE8E0;
+        background: #FDFCF9;
+        font-size: 12px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .sb-card-body {
+        padding: .85rem;
+    }
+
+    .sb-block {
+        padding-bottom: .75rem;
+        margin-bottom: .75rem;
+        border-bottom: 1px solid #F0EDE8;
+    }
+
+        .sb-block:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+    .sb-block-hd {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #1C2B3A;
+        margin-bottom: .5rem;
+    }
+
+    .sb-route {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-left: 2px;
+    }
+
+    .sb-route-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        color: #1C2B3A;
+    }
+
+    .sb-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .sb-dot-green {
+        background: #0F6E56;
+    }
+
+    .sb-dot-red {
+        background: #C0463A;
+    }
+
+    .sb-tag {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 3px 9px;
+        border-radius: 100px;
+        background: #E8F0F9;
+        color: #1C3A5E;
+    }
+
+    .sb-amount-block {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #F5F3EF;
+        border: 1px solid #E2DBCF;
+        border-radius: 8px;
+        padding: .65rem .85rem;
+    }
+
+    .sb-amount-lbl {
+        font-size: 12px;
+        font-weight: 500;
+        color: #1C2B3A;
+    }
+
+    .sb-amount-val {
+        font-size: 16px;
+        font-weight: 600;
+        color: #0F6E56;
+    }
+
+    /* ── Спиннер ─────────────────────────────────────────────── */
+    .lc-spinner {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        border: 2px solid rgba(255,255,255,0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: pe-spin .7s linear infinite;
+    }
+    @@keyframes pe-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>

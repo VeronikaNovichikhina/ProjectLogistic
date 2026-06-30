@@ -1,1002 +1,952 @@
 ﻿@page "/profile"
-@using System.ComponentModel.DataAnnotations
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.Application.Services
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
+@using LogisticCompany.Application.model
 @using LogisticCompany.Domain.Entities.Employee
 @using LogisticCompany.Domain.Entities.Location
-@using LogisticCompany.Domain.Entities.Orders
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
+
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation
 
 @rendermode InteractiveServer
 @inject IClientService ClientService
 @inject IUserService UserService
+@inject IAuthService AuthService
 @inject IOrderService OrderService
 @inject IEmployeeService EmployeeService
 
-<div class="account-container min-vh-100">
-    @if (showPasswordChangeDialog)
-    {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1" style="z-index: 1060;">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header bg-warning text-dark">
-                        <div class="d-flex align-items-center w-100">
-                            <div class="modal-icon me-3">
-                                <i class="fas fa-shield-alt fa-lg"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="modal-title fw-bold mb-0">Требуется смена пароля</h5>
-                                <small class="opacity-75">В целях безопасности необходимо установить новый пароль</small>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="modal-body p-4">
-                        <div class="alert alert-info border-0 mb-4">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-info-circle me-3 fs-5 text-info"></i>
-                                <div>
-                                    <h6 class="alert-heading mb-1">Вы вошли с временным паролем</h6>
-                                    <p class="mb-0">Для обеспечения безопасности вашего аккаунта необходимо установить постоянный пароль.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="security-features mb-4">
-                            <h6 class="fw-semibold text-dark mb-3">Требования к паролю:</h6>
-                            <ul class="list-unstyled">
-                                <li class="mb-2">
-                                    <i class="fas fa-check text-success me-2"></i>
-                                    <small>Минимум 8 символов</small>
-                                </li>
-                                <li class="mb-2">
-                                    <i class="fas fa-check text-success me-2"></i>
-                                    <small>Как минимум одна цифра</small>
-                                </li>
-                                <li class="mb-2">
-                                    <i class="fas fa-check text-success me-2"></i>
-                                    <small>Как минимум одна заглавная буква</small>
-                                </li>
-                                <li>
-                                    <i class="fas fa-check text-success me-2"></i>
-                                    <small>Как минимум один специальный символ</small>
-                                </li>
-                            </ul>
-                        </div>
-                        <div class="modal-footer bg-light">
-                            <div class="d-flex justify-content-between w-100 align-items-center">
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-outline-warning" @onclick="DismissPasswordChange">
-                                        <i class="fas fa-times me-2"></i>Больше не показывать
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+@if (showPasswordChangeDialog)
+{
+    <div class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-hd">
+                <div class="modal-hd-ico" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="modal-title">Требуется смена пароля</div>
+                    <div class="modal-sub">Установите постоянный пароль для безопасности</div>
                 </div>
             </div>
-        </div>
-    }
-    <div class="container-fluid h-100 p-0">
-        <div class="row g-0 h-100">
-            <!-- Sidebar -->
-            <div class="col-md-3 col-lg-2 sidebar">
-                <div class="d-flex flex-column h-100">
-                    <!-- Header -->
-                    <div class="sidebar-header p-4">
-                        <div class="d-flex align-items-center">
-                            <div class="user-avatar me-3">
-                                <div class="avatar-circle @(isManager ? "bg-gradient-primary" : "bg-gradient-success")">
-                                    <i class="fas @(isManager  ? "fa-user-tie" : "fa-user") text-white"></i>
-                                </div>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="fw-bold text-white mb-1">
-                                    @(isManager ? "Кабинет сотрудника" : "Личный кабинет")
-                                </h5>
-                                @if (isManager)
-                                {
-                                    <small class="text-white-50 opacity-75">@(adminEmployee?.Email ?? "")</small>
-                                }
-
-                                @if (isManager && adminEmployee != null)
-                                {
-                                    <small class="text-warning fw-semibold d-block mt-1">
-                                        <i class="fas fa-star me-1"></i>@adminEmployee.FirstName @adminEmployee.LastName
-                                    </small>
-                                }
-
-                            </div>
-                        </div>
+            <div class="modal-body">
+                <div class="modal-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         style="flex-shrink:0;margin-top:1px" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>Вы вошли с временным паролем. Установите постоянный пароль для защиты аккаунта.</span>
+                </div>
+                <div class="req-list">
+                    <div class="req-item">
+                        <span class="req-check">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Минимум 8 символов
                     </div>
-
-                    <!-- Navigation -->
-                    <div class="sidebar-nav flex-grow-1 p-3">
-                        <ul class="nav flex-column" id="menuTabs" role="tablist">
-                            <li class="nav-item mb-2" role="presentation">
-                                <button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main" type="button" role="tab">
-                                    <div class="nav-link-content">
-                                        <i class="fas fa-home me-3"></i>
-                                        <span>Главная</span>
-                                    </div>
-                                </button>
-                            </li>
-                            <li class="nav-item mb-2" role="presentation">
-                                <button class="nav-link id="data-tab" data-bs-toggle="tab" data-bs-target="#data" type="button" role="tab">
-                                    <div class="nav-link-content">
-                                        <i class="fas fa-user-edit me-3"></i>
-                                        <span>Личные данные</span>
-                                    </div>
-                                </button>
-                            </li>
-                            @if (!isManager)
-                            {
-                                <li class="nav-item mb-2" role="presentation">
-                                    <button class="nav-link " id="packages-tab" data-bs-toggle="tab" data-bs-target="#packages" type="button" role="tab">
-                                        <div class="nav-link-content">
-                                            <i class="fas fa-box me-3"></i>
-                                            <span>Мои посылки</span>
-                                            @if (orders?.Any() == true)
-                                            {
-                                                <span class="badge bg-success ms-auto">@orders.Count</span>
-                                            }
-                                        </div>
-                                    </button>
-                                </li>
-                            }
-                            <li class="nav-item mb-2" role="presentation">
-                                <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
-                                    <div class="nav-link-content">
-                                        <i class="fas fa-cog me-3"></i>
-                                        <span>Настройки</span>
-                                    </div>
-                                </button>
-                            </li>
-                        </ul>
+                    <div class="req-item">
+                        <span class="req-check">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Как минимум одна цифра
                     </div>
-
-                    <!-- Logout -->
-                    <div class="sidebar-footer p-3">
-                        <button class="btn btn-logout w-100" @onclick="Logout">
-                            <i class="fas fa-sign-out-alt me-2"></i>Выйти
-                        </button>
+                    <div class="req-item">
+                        <span class="req-check">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Как минимум одна заглавная буква
+                    </div>
+                    <div class="req-item">
+                        <span class="req-check">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Как минимум один специальный символ
                     </div>
                 </div>
-            </div>
-
-            <!-- Main Content -->
-            <div class="col-md-9 col-lg-10 main-content">
-                <div class="tab-content ">
-                   
-                    <!-- Главная -->
-                    <div class="tab-pane fade show active h-100" id="main" role="tabpanel">
-                        <div class="p-4 h-100">
-                            <div class="row g-4">
-                                <!-- Welcome Card -->
-                                <div class="col-12">
-                                    <div class="card border-0 shadow-lg welcome-card">
-                                        <div class="card-body p-4">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-8">
-                                                    <h2 class="fw-bold text-white mb-2">Добро пожаловать!</h2>
-                                                    <p class="text-white opacity-75 mb-0">
-                                                        Рады видеть вас в личном кабинете Logistic Company.
-                                                    </p>
-                                                </div>
-                                                <div class="col-md-4 text-end">
-                                                    <div class="welcome-icon">
-                                                        <i class="fas fa-hand-wave"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Quick Actions -->
-                                <div class="col-12">
-                                    <div class="card border-0 shadow-sm">
-                                        <div class="card-header bg-transparent border-0 pb-0">
-                                            <h5 class="fw-bold text-dark mb-3">
-                                                <i class="fas fa-bolt me-2 text-warning"></i>Быстрые действия
-                                            </h5>
-                                        </div>
-										@if (!isManager)
-                                        {
-                                            <div class="card-body pt-0">
-                                                <div class="row g-3">
-                                                    <div class="col-md-4">
-                                                        <NavLink class="btn btn-action w-100 p-4" href="/create-order">
-                                                            <div class="action-icon mb-3">
-                                                                <i class="fas fa-plus-circle"></i>
-                                                            </div>
-                                                            <h6 class="fw-bold mb-1">Создать заказ</h6>
-                                                            <small class="text-muted">Новая отправка</small>
-                                                        </NavLink>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <button class="btn btn-action w-100 p-4">
-                                                            <div class="action-icon mb-3">
-                                                                <i class="fas fa-question-circle"></i>
-                                                            </div>
-                                                            <h6 class="fw-bold mb-1">Помощь</h6>
-                                                            <small class="text-muted">Поддержка 24/7</small>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="card-body pt-0">
-                                                <div class="row g-3">
-                                                    <div class="col-md-4">
-                                                        <NavLink href="/admin-home" class="btn btn-action w-100 p-4">
-                                                            <div class="action-icon mb-3">
-                                                                <i class="fas fa-plus-circle"></i>
-                                                            </div>
-                                                            <h6 class="fw-bold mb-1">Перейти к управлению</h6>
-                                                        </NavLink>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Личные данные -->
-                    <div class="tab-pane fade  h-100" id="data" role="tabpanel">
-                        <div class="p-4 h-100 d-flex flex-column">
-                            <EditForm Model="@(isManager? adminEmployee : client)" OnValidSubmit="@(isManager? SaveEmployee : SaveClient)" FormName="profile" class="flex-grow-1">
-                                <DataAnnotationsValidator />
-                                <!-- Сообщение о результате сохранения -->
-                                @if (!string.IsNullOrEmpty(saveMessage))
-                                {
-                                    <div class="alert @(isSaveSuccess ? "alert-success" : "alert-danger") mb-4">
-                                        <div class="d-flex align-items-center">
-                                            <i class="fas @(isSaveSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
-                                            <span>@saveMessage</span>
-                                        </div>
-                                    </div>
-                                }
-
-                                <div class="card border-0 shadow-sm h-100">
-                                    <div class="card-header bg-white">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h4 class="fw-bold text-dark mb-0">
-                                                <i class="fas fa-user-edit me-2 text-primary"></i>
-                                                @(isManager ? "Данные сотрудника" : "Личные данные")
-                                            </h4>
-                                            @if (isManager)
-                                            {
-                                                <span class="badge bg-primary bg-opacity-20 text-white px-3 py-2">
-                                                    <i class="fas fa-user-tie me-1"></i>Сотрудник
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-success bg-opacity-20 text-white px-3 py-2">
-                                                    <i class="fas fa-user me-1"></i>Клиент
-                                                </span>
-                                            }
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <!-- Общая информация -->
-                                        <div class="row g-4 mb-4">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="form-label fw-semibold text-dark mb-3">
-                                                        <i class="fas fa-envelope text-primary me-2"></i>Email
-                                                    </label>
-                                                    <input class="form-control"
-                                                           value="@(isManager? adminEmployee?.Email : client?.Email)" />
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="form-label fw-semibold text-dark mb-3">
-                                                        <i class="fas fa-phone text-primary me-2"></i>Телефон *
-                                                    </label>
-                                                    @if (isManager)
-                                                    {
-                                                        <InputText class="form-control form-control-lg"
-                                                                   @bind-Value="adminEmployee.Phone" />
-                                                        <ValidationMessage For="() => adminEmployee.Phone" class="text-danger small mt-2" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <input @bind="client.Phone" @ref="phoneInput" class="form-control form-control-lg" />
-                                                        <ValidationMessage For="() => client.Phone" class="text-danger small mt-2" />
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        @if (isManager)
-                                        {
-                                            <!-- Данные сотрудника -->
-                                            <div class="row g-3">
-                                                <div class="col-md-4">
-                                                    <label class="form-label fw-semibold text-dark">Фамилия *</label>
-                                                    <InputText class="form-control form-control-lg"
-                                                               @bind-Value="adminEmployee.LastName" />
-                                                    <ValidationMessage For="() => adminEmployee.LastName" class="text-danger small mt-2" />
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <label class="form-label fw-semibold text-dark">Имя *</label>
-                                                    <InputText class="form-control form-control-lg"
-                                                               @bind-Value="adminEmployee.FirstName" />
-                                                    <ValidationMessage For="() => adminEmployee.FirstName" class="text-danger small mt-2" />
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <label class="form-label fw-semibold text-dark">Отчество</label>
-                                                    <InputText class="form-control form-control-lg"
-                                                               @bind-Value="adminEmployee.PatronymicName" />
-                                                    <ValidationMessage For="() => adminEmployee.PatronymicName" class="text-danger small mt-2" />
-                                                </div>
-
-                                                <!-- Неизменяемые поля -->
-                                                <div class="col-md-6">
-                                                    <label class="form-label fw-semibold text-dark">Должность</label>
-                                                    <InputText class="form-control form-control-lg"
-                                                               @bind-Value="adminEmployee.Position"
-                                                               Disabled="true" />
-                                                    <div class="form-text text-muted mt-1">
-                                                        <i class="fas fa-info-circle me-1"></i>Для изменения должности обратитесь к администратору
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label fw-semibold text-dark">Филиал</label>
-                                                    <InputText class="form-control form-control-lg"
-                                                               @bind-Value="adminEmployee.Branch.NameBranches"
-                                                               Disabled="true" />
-                                                    <div class="form-text text-muted mt-1">
-                                                        <i class="fas fa-info-circle me-1"></i>Филиал назначается администратором
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Кнопка сохранения для сотрудника -->
-                                            <div class="mt-4 pt-4 border-top">
-                                                <div class="row align-items-center">
-                                                    <div class="col-md-8">
-                                                        <div class="alert alert-info border-0 mb-0">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="fas fa-info-circle me-2 text-info"></i>
-                                                                <small>Вы можете изменить свои личные данные, кроме должности и филиала</small>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-4 text-end">
-                                                        <button type="submit" class="btn btn-primary btn-lg px-5 py-3">
-                                                            <i class="fas fa-save me-2"></i>Сохранить изменения
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <!-- Данные клиента -->
-                                            <div class="mb-4">
-                                                <label class="form-label fw-semibold text-dark mb-3">Тип клиента*</label>
-                                                <InputRadioGroup @bind-Value="selectedClientTypeId">
-                                                    <div class="client-type-selector">
-                                                        <label class="client-type-option @(selectedClientTypeId == 1 ? "selected" : "")">
-                                                            <InputRadio Value="1" />
-                                                            <div class="option-content">
-                                                                <i class="fas fa-user fa-2x mb-2"></i>
-                                                                <span>Физическое лицо</span>
-                                                            </div>
-                                                        </label>
-                                                        <label class="client-type-option @(selectedClientTypeId == 2 ? "selected" : "")">
-                                                            <InputRadio Value="2" />
-                                                            <div class="option-content">
-                                                                <i class="fas fa-building fa-2x mb-2"></i>
-                                                                <span>Компания</span>
-                                                            </div>
-                                                        </label>
-                                                    </div>
-                                                </InputRadioGroup>
-                                            </div>
-
-                                            @if (selectedClientTypeId == 1)
-                                            {
-                                                <div class="row g-3">
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-dark">Фамилия*</label>
-                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.LastName" />
-                                                        <ValidationMessage For="() => individualClient.LastName" class="text-danger small mt-2" />
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-dark">Имя*</label>
-                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.FirstName" />
-                                                        <ValidationMessage For="() => individualClient.FirstName" class="text-danger small mt-2" />
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-dark">Отчество</label>
-                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.PatronymicName" />
-                                                        <ValidationMessage For="() => individualClient.PatronymicName" class="text-danger small mt-2" />
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-dark">Пасспорт*</label>
-                                                        <InputText class="form-control form-control-lg" @bind-Value="individualClient.PassportNumber" />
-                                                        <ValidationMessage For="() => individualClient.PassportNumber" class="text-danger small mt-2" />
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-dark">Дата выдача пасспорта*</label>
-                                                        <InputDate class="form-control form-control-lg" @bind-Value="individualClient.PassportDateOfIssue" />
-                                                        <ValidationMessage For="() => individualClient.PassportDateOfIssue" class="text-danger small mt-2" />
-                                                    </div>
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <div class="row g-3">
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-dark">Название компании*</label>
-                                                        <InputText class="form-control form-control-lg" @bind-Value="companyClient.CompanyName" />
-                                                        <ValidationMessage For="() => companyClient.CompanyName" class="text-danger small mt-2" />
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-dark">ИИН*</label>
-                                                        <InputText class="form-control form-control-lg" @bind-Value="companyClient.Inn" />
-                                                        <ValidationMessage For="() => companyClient.Inn" class="text-danger small mt-2" />
-                                                    </div>
-                                                </div>
-                                            }
-
-                                            <!-- Кнопка сохранения для клиента -->
-                                            <div class="mt-4 pt-4 border-top">
-                                                <button type="submit" class="btn btn-primary btn-lg px-5 py-3">
-                                                    <i class="fas fa-save me-2"></i>Сохранить изменения
-                                                </button>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </EditForm>
-                        </div>
-                    </div>
-                    <!-- Посылки -->
-                    <div class="tab-pane fade h-100" id="packages" role="tabpanel">
-                        <div class="p-4 h-100 d-flex flex-column">
-                            @if (orders?.Any() == true)
-                            {
-                                <div class="card border-0 shadow-sm flex-grow-1">
-                                    <div class="card-header bg-white">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h4 class="fw-bold text-dark mb-0">
-                                                <i class="fas fa-box me-2 text-success"></i>Мои посылки
-                                            </h4>
-                                            <NavLink href="/create/order/for/user" class="btn btn-primary">
-                                                <i class="fas fa-plus-circle me-2"></i>Создать заказ
-                                            </NavLink>
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover align-middle">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th class="border-0">№ Заказа</th>
-                                                        <th class="border-0">Описание</th>
-                                                        <th class="border-0">Размеры</th>
-                                                        <th class="border-0">Вес</th>
-                                                        <th class="border-0 text-end">Действия</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach (var order in orders)
-                                                    {
-                                                        <tr class="package-row">
-                                                            <td>
-                                                                <strong class="text-primary">#@order.OrderNumber</strong>
-                                                            </td>
-                                                            <td>
-                                                                <div class="package-description">
-                                                                    @if (!string.IsNullOrEmpty(order.DescriptionParcel))
-                                                                    {
-                                                                        <span title="@order.DescriptionParcel">
-                                                                            @(order.DescriptionParcel.Length > 50 ? order.DescriptionParcel.Substring(0, 50) + "..." : order.DescriptionParcel)
-                                                                        </span>
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        <span class="text-muted">Без описания</span>
-                                                                    }
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                @if (order.Template != null)
-                                                                {
-                                                                    <div class="package-type">
-                                                                        <i class="fas fa-box text-primary me-1"></i>
-                                                                        @order.Template.TemplateName
-                                                                    </div>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <div class="package-weight text-muted">
-                                                                        <i class="fas fa-weight-hanging me-1"></i>
-                                                                        --
-                                                                    </div>
-                                                                }
-                                                                @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
-                                                                {
-                                                                    <div class="package-size text-muted">
-                                                                        <i class="fas fa-ruler-combined me-1"></i>
-                                                                        @order.LengthCm × @order.WidthCm × @order.HeightCm
-                                                                    </div>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <div class="package-weight text-muted">
-                                                                        <i class="fas fa-weight-hanging me-1"></i>
-                                                                        --
-                                                                    </div>
-                                                                }
-                                                            </td>
-                                                            <td>
-                                                                @if (order.Weight != null && order.Weight > 0)
-                                                                {
-                                                                    <div class="package-weight text-muted">
-                                                                        <i class="fas fa-weight-hanging me-1"></i>
-                                                                        @order.Weight
-                                                                    </div>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <div class="package-weight text-muted">
-                                                                        <i class="fas fa-weight-hanging me-1"></i>
-                                                                        --
-                                                                    </div>
-                                                                }
-                                                            </td>
-                                                            <td class="text-end">
-                                                                <button class="btn btn-outline-primary btn-sm" type="button"
-                                                                        @onclick="() => ShowOrderDetails(order.OrdersId)">
-                                                                    <i class="fas fa-eye me-1"></i>Подробнее
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    }
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="card border-0 shadow-sm flex-grow-1">
-                                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                                        <div class="empty-state text-center">
-                                            <i class="fas fa-box-open fa-4x text-muted mb-4"></i>
-                                            <h5 class="text-muted mb-3">У вас пока нет посылок</h5>
-                                            <p class="text-muted mb-4">Все ваши заказы будут отображаться здесь</p>
-                                            <NavLink href="/create/order/for/user" class="btn btn-primary btn-lg">
-                                                <i class="fas fa-plus me-2"></i>Создать заказ
-                                            </NavLink>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                   
-                    <!-- Настройки -->
-                    <div class="tab-pane fade h-100" id="settings" role="tabpanel">
-                        <div class="p-4 h-100 d-flex flex-column">
-                            <div class="card border-0 shadow-sm flex-grow-1">
-                                <div class="card-header bg-white">
-                                    <h4 class="fw-bold text-dark mb-0">
-                                        <i class="fas fa-cog me-2 text-primary"></i>Настройки аккаунта
-                                    </h4>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-4">
-                                        <!-- Уведомления -->
-                                        <div class="col-lg-6">
-                                            <div class="card border-0 bg-gradient-light h-100">
-                                                <div class="card-body">
-                                                    <h6 class="fw-bold text-dark mb-4">
-                                                        <i class="fas fa-bell text-warning me-2"></i>Уведомления
-                                                    </h6>
-                                                    <div class="form-check form-switch mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
-                                                        <label class="form-check-label fw-semibold" for="emailNotifications">
-                                                            Email уведомления
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-check form-switch">
-                                                        <input class="form-check-input" type="checkbox" id="smsNotifications">
-                                                        <label class="form-check-label fw-semibold" for="smsNotifications">
-                                                            SMS уведомления
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Смена пароля -->
-                                        <div class="col-lg-6">
-                                            <div class="card border-0 bg-gradient-light h-100">
-                                                <div class="card-body">
-                                                    <h6 class="fw-bold text-dark mb-4">
-                                                        <i class="fas fa-shield-alt text-primary me-2"></i>Безопасность
-                                                    </h6>
-                                                    <EditForm Model="changePasswordModel" OnValidSubmit="ChangePassword" FormName="changePassword">
-                                                        <DataAnnotationsValidator />
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label fw-semibold text-dark">Текущий пароль</label>
-                                                            <div class="input-group">
-                                                                <InputText type="@(showCurrentPassword ? "text" : "password")"
-                                                                           class="form-control"
-                                                                           @bind-Value="changePasswordModel.CurrentPassword"
-                                                                           placeholder="Введите текущий пароль" />
-                                                                <button type="button" class="btn btn-outline-secondary"
-                                                                        @onclick="() => showCurrentPassword = !showCurrentPassword">
-                                                                    <i class="fas @(showCurrentPassword ? "fa-eye-slash" : "fa-eye")"></i>
-                                                                </button>
-                                                            </div>
-                                                            <ValidationMessage For="() => changePasswordModel.CurrentPassword" class="text-danger small" />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label fw-semibold text-dark">Новый пароль</label>
-                                                            <div class="input-group">
-                                                                <InputText type="@(showNewPassword ? "text" : "password")"
-                                                                           class="form-control"
-                                                                           @bind-Value="changePasswordModel.NewPassword"
-                                                                           placeholder="Введите новый пароль" />
-                                                                <button type="button" class="btn btn-outline-secondary"
-                                                                        @onclick="() => showNewPassword = !showNewPassword">
-                                                                    <i class="fas @(showNewPassword ? "fa-eye-slash" : "fa-eye")"></i>
-                                                                </button>
-                                                            </div>
-                                                            <ValidationMessage For="() => changePasswordModel.NewPassword" class="text-danger small" />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label fw-semibold text-dark">Подтвердите новый пароль</label>
-                                                            <div class="input-group">
-                                                                <InputText type="@(showConfirmPassword ? "text" : "password")"
-                                                                           class="form-control"
-                                                                           @bind-Value="changePasswordModel.ConfirmPassword"
-                                                                           placeholder="Повторите новый пароль" />
-                                                                <button type="button" class="btn btn-outline-secondary"
-                                                                        @onclick="() => showConfirmPassword = !showConfirmPassword">
-                                                                    <i class="fas @(showConfirmPassword ? "fa-eye-slash" : "fa-eye")"></i>
-                                                                </button>
-                                                            </div>
-                                                            <ValidationMessage For="() => changePasswordModel.ConfirmPassword" class="text-danger small" />
-                                                        </div>
-
-                                                        @if (!string.IsNullOrEmpty(passwordChangeMessage))
-                                                        {
-                                                            <div class="alert @(isPasswordChangeSuccess ? "alert-success" : "alert-danger") mt-3">
-                                                                <i class="fas @(isPasswordChangeSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
-                                                                @passwordChangeMessage
-                                                            </div>
-                                                        }
-
-                                                        <button type="submit" class="btn btn-primary w-100" disabled="@isChangingPassword">
-                                                            <i class="fas fa-key me-2"></i>
-                                                            @if (isChangingPassword)
-                                                            {
-                                                                <span>
-                                                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                                                    Меняем пароль...
-                                                                </span>
-                                                            }
-                                                            else
-                                                            {
-                                                                <span>Сменить пароль</span>
-                                                            }
-                                                        </button>
-                                                    </EditForm>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="modal-ft">
+                    <button class="dismiss-btn" @onclick="DismissPasswordChange">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        Больше не показывать
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-</div>
+}
 
-@if (showOrderDetailsModal && selectedOrder != null)
-{
-    <div class="modal-backdrop fade show"></div>
-    <div class="modal fade show d-block" tabindex="-1" style="z-index: 1050;">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <!-- Заголовок модалки -->
-                <div class="modal-header bg-gradient-primary text-white">
-                    <div class="d-flex align-items-center w-100">
-                        <div class="modal-icon me-3">
-                            <i class="fas fa-box-open fa-lg"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h5 class="modal-title fw-bold mb-0">Детали заказа #@selectedOrder.OrderNumber</h5>
-                            <small class="opacity-75">Полная информация о посылке</small>
-                        </div>
-                        <button type="button" class="btn-close btn-close-white" @onclick="CloseOrderDetails"></button>
+<div class="profile-page">
+
+    <!-- Декоративная полоска -->
+    <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
+
+    <div class="profile-layout">
+
+        <!-- ── Сайдбар ──────────────────────────────────────── -->
+        <aside class="sidebar">
+            <div class="sb-head">
+                <div class="sb-avatar-row">
+                    <div class="sb-avatar @(isManager ? "sb-avatar-manager" : "sb-avatar-client")" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="sb-name">@(isManager ? "Кабинет сотрудника" : "Личный кабинет")</div>
+                        @if (isManager && adminEmployee != null)
+                        {
+                            <div class="sb-email">@adminEmployee.Email</div>
+                            <div class="sb-role">@adminEmployee.FirstName @adminEmployee.LastName</div>
+                        }
                     </div>
                 </div>
+            </div>
 
-                <!-- Тело модалки -->
-                <div class="modal-body p-4">
-                    <div class="row g-4">
-                        <!-- Информация о получатели -->
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light h-100">
-                                <div class="card-header bg-white border-0">
-                                    <h6 class="fw-bold text-primary mb-0">
-                                        <i class="fas fa-shipping-fast me-2"></i>Информация о получателе
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Фамилия получателя:</label>
-                                        <p class="mb-0">@selectedOrder.LastRecepientName</p>
-                                    </div>
+            <nav class="sb-nav" role="tablist">
+                <button class="sb-nav-item active" id="tab-main" data-bs-toggle="tab" data-bs-target="#main" type="button" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                    <span>Главная</span>
+                </button>
 
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Имя получателя:</label>
-                                        <p class="mb-0">@selectedOrder.FirstRecepientName</p>
-                                    </div>
+                <button class="sb-nav-item" id="tab-data" data-bs-toggle="tab" data-bs-target="#data" type="button" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                        <line x1="19" y1="8" x2="19" y2="14"/>
+                        <line x1="22" y1="11" x2="16" y2="11"/>
+                    </svg>
+                    <span>Личные данные</span>
+                </button>
 
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Отчество получателя:</label>
-                                        <p class="mb-0">
-                                            @(string.IsNullOrEmpty(selectedOrder.MiddleRecepientName) ? "--" : selectedOrder.MiddleRecepientName)
-                                        </p>
-                                    </div>
-
-                                    <div class="info-item">
-                                        <label class="fw-semibold text-muted">Телефон получателя:</label>
-                                        <p class="mb-0">
-                                            @selectedOrder.PhoneRecepient
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Информация о посылке -->
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light h-100">
-                                <div class="card-header bg-white border-0">
-                                    <h6 class="fw-bold text-primary mb-0">
-                                        <i class="fas fa-box me-2"></i>Информация о посылке
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Описание:</label>
-                                        <p class="mb-0">@(string.IsNullOrEmpty(selectedOrder.DescriptionParcel) ? "Не указано" : selectedOrder.DescriptionParcel)</p>
-                                    </div>
-
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Размеры:</label>
-                                        <p class="mb-0">
-                                            @if (selectedOrder.Template != null)
-                                            {
-                                                <div class="package-type">
-                                                    <i class="fas fa-box text-primary me-1"></i>
-                                                    @selectedOrder.Template.TemplateName
-                                                </div>
-                                            }
-                                            @if (selectedOrder.LengthCm > 0 && selectedOrder.WidthCm > 0 && selectedOrder.HeightCm > 0)
-                                            {
-                                                <div class="package-size text-muted">
-                                                    <i class="fas fa-ruler-combined me-1"></i>
-                                                    @selectedOrder.LengthCm × @selectedOrder.WidthCm × @selectedOrder.HeightCm
-                                                </div>
-                                            }
-                                        </p>
-                                    </div>
-
-                                    <div class="info-item">
-                                        <label class="fw-semibold text-muted">Вес:</label>
-                                        <p class="mb-0">
-                                            @if (selectedOrder.Weight != null && selectedOrder.Weight > 0)
-                                            {
-                                                <div class="package-weight text-muted">
-                                                    <i class="fas fa-weight-hanging me-1"></i>
-                                                    @selectedOrder.Weight
-                                                </div>
-                                            }
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Информация о доставке -->
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light h-100">
-                                <div class="card-header bg-white border-0">
-                                    <h6 class="fw-bold text-primary mb-0">
-                                        <i class="fas fa-shipping-fast me-2"></i>Информация о доставке
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Тип доставки:</label>
-                                        <p class="mb-0">@selectedOrder.DeliveryType?.NameDeliveryType</p>
-                                    </div>
-
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Транспорт:</label>
-                                        <p class="mb-0">@selectedOrder.TransportType?.NameTransportType</p>
-                                    </div>
-
-                                    <div class="info-item mb-3">
-                                        <label class="fw-semibold text-muted">Откуда:</label>
-                                        <p class="mb-0">
-                                            @selectedOrder.OriginTown?.TownName, @selectedOrder.OriginTown?.Country?.CountryName
-                                        </p>
-                                    </div>
-
-                                    <div class="info-item">
-                                        <label class="fw-semibold text-muted">Куда:</label>
-                                        <p class="mb-0">
-                                            @selectedOrder.DestinationTown?.TownName, @selectedOrder.DestinationTown?.Country?.CountryName
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Дополнительная информация -->
-                        <div class="col-12">
-                            <div class="card border-0 bg-light">
-                                <div class="card-header bg-white border-0">
-                                    <h6 class="fw-bold text-primary mb-0">
-                                        <i class="fas fa-info-circle me-2"></i>Дополнительная информация
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="info-item mb-3">
-                                                <label class="fw-semibold text-muted">Филиал забора:</label>
-                                                <p class="mb-0">@selectedOrder.PickupBranches?.NameBranches</p>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="info-item mb-3">
-                                                <label class="fw-semibold text-muted">Статус:</label>
-                                                <p class="mb-0">
-                                                    @if (selectedOrder?.Trackings?.Any() == true)
-                                                    {
-                                                        var latestTracking = selectedOrder.Trackings
-                                                        .OrderByDescending(t => t.UpdateDate)
-                                                        .FirstOrDefault();
-
-                                                        @if (latestTracking?.Status != null)
-                                                        {
-                                                            <span class="">
-                                                                @latestTracking.Status.StatusName
-                                                            </span>
-
-                                                            <small class="text-muted d-block mt-1">
-                                                                <i class="fas fa-clock me-1"></i>
-                                                                @latestTracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
-                                                            </small>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="badge bg-secondary">Статус не указан</span>
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-secondary">Нет данных отслеживания</span>
-                                                    }
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="info-item mb-3">
-                                                <label class="fw-semibold text-muted">Дата создания:</label>
-                                                <p class="mb-0">
-                                                    @if (selectedOrder?.Trackings?.Any() == true)
-                                                    {
-                                                        var firstTracking = selectedOrder.Trackings
-                                                        .OrderBy(t => t.UpdateDate)
-                                                        .FirstOrDefault();
-                                                        @firstTracking?.UpdateDate.ToString("dd.MM.yyyy HH:mm")
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="text-muted">—</span>
-                                                    }
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- История статусов -->
-                        @if (selectedOrder?.Trackings?.Any() == true)
+                @if (!isManager)
+                {
+                    <button class="sb-nav-item" id="tab-packages" data-bs-toggle="tab" data-bs-target="#packages" type="button" role="tab">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        </svg>
+                        <span>Мои посылки</span>
+                        @if (orders?.Any() == true)
                         {
-                            <div class="col-12 mt-4">
-                                <div class="card border-0 shadow-sm">
-                                    <div class="card-header bg-white">
-                                        <h6 class="fw-bold text-primary mb-0">
-                                            <i class="fas fa-history me-2"></i>История статусов
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="tracking-timeline">
-                                            @foreach (var tracking in selectedOrder.Trackings.OrderByDescending(t => t.UpdateDate))
-                                            {
-                                                <div class="tracking-item">
-                                                    <div class="tracking-marker">
-                                                        <i class="fas fa-circle"></i>
-                                                    </div>
-                                                    <div class="tracking-content">
-                                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                                            <span class="fw-semibold text-dark">@tracking.Status.StatusName</span>
-                                                            <small class="text-muted">@tracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")</small>
-                                                        </div>
-                                                        @if (!string.IsNullOrEmpty(tracking.LocationTrackings))
-                                                        {
-                                                            <div class="mb-1">
-                                                                <small class="text-muted">
-                                                                    <i class="fas fa-map-marker-alt me-1"></i>
-                                                                    @tracking.LocationTrackings
-                                                                </small>
-                                                            </div>
-                                                        }
-                                                        @if (tracking.Branches != null)
-                                                        {
-                                                            <div>
-                                                                <small class="text-muted">
-                                                                    <i class="fas fa-building me-1"></i>
-                                                                    Филиал: @tracking.Branches.NameBranches
-                                                                </small>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
+                            <span class="sb-badge">@orders.Count</span>
+                        }
+                    </button>
+                }
+
+                <button class="sb-nav-item" id="tab-settings" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span>Настройки</span>
+                </button>
+            </nav>
+
+            <div class="sb-foot">
+                <button class="sb-logout" @onclick="Logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Выйти
+                </button>
+            </div>
+        </aside>
+
+        <!-- ── Контент ───────────────────────────────────────── -->
+        <main class="profile-content">
+            <div class="tab-content">
+
+                <!-- ГЛАВНАЯ -->
+                <div class="tab-pane fade show active" id="main" role="tabpanel">
+                    <div class="welcome-card">
+                        <div>
+                            <div class="wc-title">Добро пожаловать!</div>
+                            <div class="wc-sub">Рады видеть вас в личном кабинете Logistic Company</div>
+                        </div>
+                        <div class="wc-ico" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/>
+                                <rect x="9" y="11" width="14" height="10" rx="2"/>
+                                <circle cx="12" cy="21" r="1"/>
+                                <circle cx="20" cy="21" r="1"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="sec-lbl">Быстрые действия</div>
+                    <div class="action-grid">
+                        @if (!isManager)
+                        {
+                            <NavLink href="/create-order" class="action-card">
+                                <div class="action-ico ico-blue" aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="12" y1="8" x2="12" y2="16"/>
+                                        <line x1="8" y1="12" x2="16" y2="12"/>
+                                    </svg>
                                 </div>
+                                <div class="action-title">Создать заказ</div>
+                                <div class="action-sub">Новая отправка</div>
+                            </NavLink>
+                            <div class="action-card">
+                                <div class="action-ico ico-orange" aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/>
+                                    </svg>
+                                </div>
+                                <div class="action-title">Помощь</div>
+                                <div class="action-sub">Поддержка 24/7</div>
                             </div>
+                        }
+                        else
+                        {
+                            <NavLink href="/admin-home" class="action-card">
+                                <div class="action-ico ico-blue" aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="7" height="7"/>
+                                        <rect x="14" y="3" width="7" height="7"/>
+                                        <rect x="14" y="14" width="7" height="7"/>
+                                        <rect x="3" y="14" width="7" height="7"/>
+                                    </svg>
+                                </div>
+                                <div class="action-title">Перейти к управлению</div>
+                                <div class="action-sub">Панель администратора</div>
+                            </NavLink>
                         }
                     </div>
                 </div>
 
-                <!-- Футер модалки -->
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseOrderDetails">
-                        <i class="fas fa-times me-2"></i>Закрыть
-                    </button>
+                <!-- ЛИЧНЫЕ ДАННЫЕ -->
+                <div class="tab-pane fade" id="data" role="tabpanel">
+                    <EditForm Model="@(isManager ? adminEmployee : client)" OnValidSubmit="@(isManager ? SaveEmployee : SaveClient)" FormName="profile">
+                        <DataAnnotationsValidator />
+
+                        @if (!string.IsNullOrEmpty(saveMessage))
+                        {
+                            <div class="lc-alert @(isSaveSuccess ? "lc-alert-success" : "lc-alert-danger")">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    @if (isSaveSuccess) { <polyline points="20 6 9 17 4 12"/> }
+                                    else { <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/> }
+                                </svg>
+                                <span>@saveMessage</span>
+                            </div>
+                        }
+
+                        <div class="lc-card">
+                            <div class="lc-card-hd">
+                                <div class="lc-card-title">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    @(isManager ? "Данные сотрудника" : "Личные данные")
+                                </div>
+                                <span class="@(isManager ? "lc-badge-blue" : "lc-badge-orange")">
+                                    @(isManager ? "Сотрудник" : "Клиент")
+                                </span>
+                            </div>
+                            <div class="lc-card-body">
+                                <div class="form-row-2">
+                                    <div>
+                                        <span class="field-lbl">Email</span>
+                                        <div class="inp-wrap">
+                                            <div class="inp-ico" aria-hidden="true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                                    <polyline points="22,6 12,13 2,6"/>
+                                                </svg>
+                                            </div>
+                                            <input class="lc-inp" value="@(isManager ? adminEmployee?.Email : client?.Email)" disabled />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="field-lbl">Телефон *</span>
+                                        <div class="inp-wrap">
+                                            <div class="inp-ico" aria-hidden="true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/>
+                                                </svg>
+                                            </div>
+                                            @if (isManager)
+                                            {
+                                                <InputText class="lc-inp" @bind-Value="adminEmployee.Phone" />
+                                            }
+                                            else
+                                            {
+                                                <input @bind="client.Phone" @ref="phoneInput" class="lc-inp" />
+                                            }
+                                        </div>
+                                        @if (isManager)
+                                        { <ValidationMessage For="() => adminEmployee.Phone" class="lc-validation-msg" /> }
+                                        else
+                                        { <ValidationMessage For="() => client.Phone" class="lc-validation-msg" /> }
+                                    </div>
+                                </div>
+
+                                @if (isManager)
+                                {
+                                    <div class="form-row-3">
+                                        <div>
+                                            <span class="field-lbl">Фамилия *</span>
+                                            <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="adminEmployee.LastName" /></div>
+                                            <ValidationMessage For="() => adminEmployee.LastName" class="lc-validation-msg" />
+                                        </div>
+                                        <div>
+                                            <span class="field-lbl">Имя *</span>
+                                            <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="adminEmployee.FirstName" /></div>
+                                            <ValidationMessage For="() => adminEmployee.FirstName" class="lc-validation-msg" />
+                                        </div>
+                                        <div>
+                                            <span class="field-lbl">Отчество</span>
+                                            <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="adminEmployee.PatronymicName" /></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row-2">
+                                        <div>
+                                            <span class="field-lbl">Должность</span>
+                                            <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="adminEmployee.Position" Disabled="true" /></div>
+                                            <div class="field-hint">Для изменения обратитесь к администратору</div>
+                                        </div>
+                                        <div>
+                                            <span class="field-lbl">Филиал</span>
+                                            <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="adminEmployee.Branch.NameBranches" Disabled="true" /></div>
+                                            <div class="field-hint">Филиал назначается администратором</div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div style="margin-bottom: .85rem;">
+                                        <span class="field-lbl">Тип клиента *</span>
+                                        <InputRadioGroup @bind-Value="selectedClientTypeId">
+                                            <div class="client-type-row">
+                                                <label class="client-type-opt @(selectedClientTypeId == 1 ? "selected" : "")">
+                                                    <InputRadio Value="1" />
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                        <circle cx="12" cy="7" r="4"/>
+                                                    </svg>
+                                                    Физическое лицо
+                                                </label>
+                                                <label class="client-type-opt @(selectedClientTypeId == 2 ? "selected" : "")">
+                                                    <InputRadio Value="2" />
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <rect x="2" y="7" width="20" height="14" rx="2"/>
+                                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                                                    </svg>
+                                                    Компания
+                                                </label>
+                                            </div>
+                                        </InputRadioGroup>
+                                    </div>
+
+                                    @if (selectedClientTypeId == 1)
+                                    {
+                                        <div class="form-row-3">
+                                            <div>
+                                                <span class="field-lbl">Фамилия *</span>
+                                                <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="individualClient.LastName" /></div>
+                                                <ValidationMessage For="() => individualClient.LastName" class="lc-validation-msg" />
+                                            </div>
+                                            <div>
+                                                <span class="field-lbl">Имя *</span>
+                                                <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="individualClient.FirstName" /></div>
+                                                <ValidationMessage For="() => individualClient.FirstName" class="lc-validation-msg" />
+                                            </div>
+                                            <div>
+                                                <span class="field-lbl">Отчество</span>
+                                                <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="individualClient.PatronymicName" /></div>
+                                            </div>
+                                        </div>
+                                        <div class="form-row-2">
+                                            <div>
+                                                <span class="field-lbl">Паспорт *</span>
+                                                <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="individualClient.PassportNumber" /></div>
+                                                <ValidationMessage For="() => individualClient.PassportNumber" class="lc-validation-msg" />
+                                            </div>
+                                            <div>
+                                                <span class="field-lbl">Дата выдачи паспорта *</span>
+                                                <div class="inp-wrap"><InputDate class="lc-inp" @bind-Value="individualClient.PassportDateOfIssue" /></div>
+                                                <ValidationMessage For="() => individualClient.PassportDateOfIssue" class="lc-validation-msg" />
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="form-row-2">
+                                            <div>
+                                                <span class="field-lbl">Название компании *</span>
+                                                <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="companyClient.CompanyName" /></div>
+                                                <ValidationMessage For="() => companyClient.CompanyName" class="lc-validation-msg" />
+                                            </div>
+                                            <div>
+                                                <span class="field-lbl">ИИН *</span>
+                                                <div class="inp-wrap"><InputText class="lc-inp" @bind-Value="companyClient.Inn" /></div>
+                                                <ValidationMessage For="() => companyClient.Inn" class="lc-validation-msg" />
+                                            </div>
+                                        </div>
+                                    }
+                                }
+
+                                <div class="form-actions">
+                                    <button type="submit" class="save-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                            <polyline points="17 21 17 13 7 13 7 21"/>
+                                            <polyline points="7 3 7 8 15 8"/>
+                                        </svg>
+                                        Сохранить изменения
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </EditForm>
                 </div>
+
+                <!-- ПОСЫЛКИ -->
+                <div class="tab-pane fade" id="packages" role="tabpanel">
+                    @if (orders?.Any() == true)
+                    {
+                        <div class="lc-card">
+                            <div class="lc-card-hd">
+                                <div class="lc-card-title">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    </svg>
+                                    Мои посылки
+                                </div>
+                                <NavLink href="/create/order/for/user" class="save-btn" style="font-size: 12px; padding: 6px 14px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="12" y1="8" x2="12" y2="16"/>
+                                        <line x1="8" y1="12" x2="16" y2="12"/>
+                                    </svg>
+                                    Создать заказ
+                                </NavLink>
+                            </div>
+                            <div class="lc-card-body" style="padding: 0;">
+                                <table class="pkg-table">
+                                    <thead>
+                                        <tr>
+                                            <th>№ Заказа</th>
+                                            <th>Описание</th>
+                                            <th>Размеры</th>
+                                            <th>Вес</th>
+                                            <th style="text-align: right;">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var order in orders)
+                                        {
+                                            <tr>
+                                                <td><span class="order-num">#@order.OrderNumber</span></td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(order.DescriptionParcel))
+                                                    {
+                                                        <span title="@order.DescriptionParcel">
+                                                            @(order.DescriptionParcel.Length > 50 ? order.DescriptionParcel[..50] + "…" : order.DescriptionParcel)
+                                                        </span>
+                                                    }
+                                                    else { <span class="text-muted">Без описания</span> }
+                                                </td>
+                                                <td>
+                                                    @if (order.Template != null) { <span>@order.Template.TemplateName</span> }
+                                                    @if (order.LengthCm > 0 && order.WidthCm > 0 && order.HeightCm > 0)
+                                                    { <div class="pkg-dim">@order.LengthCm × @order.WidthCm × @order.HeightCm см</div> }
+                                                </td>
+                                                <td>
+                                                    @if (order.Weight != null && order.Weight > 0) { <span>@order.Weight кг</span> }
+                                                    else { <span class="text-muted">—</span> }
+                                                </td>
+                                                <td style="text-align: right;">
+                                                    <button class="view-btn" type="button" @onclick="() => ShowOrderDetails(order.OrdersId)">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                            <circle cx="12" cy="12" r="3"/>
+                                                        </svg>
+                                                        Подробнее
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="lc-card">
+                            <div class="lc-card-body empty-state">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                     style="color: #C8BFB0; margin-bottom: .75rem;" aria-hidden="true">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                </svg>
+                                <div class="empty-title">У вас пока нет посылок</div>
+                                <div class="empty-sub">Все ваши заказы будут отображаться здесь</div>
+                                <NavLink href="/create/order/for/user" class="save-btn" style="margin-top: .75rem;">Создать заказ</NavLink>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- НАСТРОЙКИ -->
+                <div class="tab-pane fade" id="settings" role="tabpanel">
+                    <div class="settings-grid">
+
+                        <!-- Уведомления -->
+                        <div class="lc-card">
+                            <div class="lc-card-hd">
+                                <div class="lc-card-title">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color: #D98E10;" aria-hidden="true">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                                    </svg>
+                                    Уведомления
+                                </div>
+                            </div>
+                            <div class="lc-card-body">
+                                <div class="toggle-row">
+                                    <div>
+                                        <div class="toggle-lbl">Email уведомления</div>
+                                        <div class="toggle-sub">Получать на почту</div>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" checked />
+                                        <span class="toggle-track"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-row">
+                                    <div>
+                                        <div class="toggle-lbl">SMS уведомления</div>
+                                        <div class="toggle-sub">Получать на телефон</div>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" />
+                                        <span class="toggle-track"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Безопасность / смена пароля -->
+                        <div class="lc-card">
+                            <div class="lc-card-hd">
+                                <div class="lc-card-title">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color: #1C3A5E;" aria-hidden="true">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    </svg>
+                                    Безопасность
+                                </div>
+                            </div>
+                            <div class="lc-card-body">
+                                <EditForm Model="changePasswordModel" OnValidSubmit="ChangePassword" FormName="changePassword">
+                                    <DataAnnotationsValidator />
+
+                                    <div class="field" style="margin-bottom: .75rem;">
+                                        <span class="field-lbl">Текущий пароль</span>
+                                        <div class="pw-wrap">
+                                            <InputText type="@(showCurrentPassword ? "text" : "password")"
+                                                       class="lc-inp"
+                                                       @bind-Value="changePasswordModel.CurrentPassword"
+                                                       placeholder="Введите текущий пароль" />
+                                            <button type="button" class="pw-toggle"
+                                                    @onclick="() => showCurrentPassword = !showCurrentPassword"
+                                                    aria-label="Показать пароль">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    @if (showCurrentPassword)
+                                                    {
+                                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                                                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                                                        <line x1="1" y1="1" x2="23" y2="23"/>
+                                                    }
+                                                    else
+                                                    {
+                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                        <circle cx="12" cy="12" r="3"/>
+                                                    }
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <ValidationMessage For="() => changePasswordModel.CurrentPassword" class="lc-validation-msg" />
+                                    </div>
+
+                                    <div class="field" style="margin-bottom: .75rem;">
+                                        <span class="field-lbl">Новый пароль</span>
+                                        <div class="pw-wrap">
+                                            <InputText type="@(showNewPassword ? "text" : "password")"
+                                                       class="lc-inp"
+                                                       @bind-Value="changePasswordModel.NewPassword"
+                                                       placeholder="Введите новый пароль" />
+                                            <button type="button" class="pw-toggle"
+                                                    @onclick="() => showNewPassword = !showNewPassword"
+                                                    aria-label="Показать пароль">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                    <circle cx="12" cy="12" r="3"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <ValidationMessage For="() => changePasswordModel.NewPassword" class="lc-validation-msg" />
+                                    </div>
+
+                                    <div class="field" style="margin-bottom: .75rem;">
+                                        <span class="field-lbl">Подтвердите новый пароль</span>
+                                        <div class="pw-wrap">
+                                            <InputText type="@(showConfirmPassword ? "text" : "password")"
+                                                       class="lc-inp"
+                                                       @bind-Value="changePasswordModel.ConfirmPassword"
+                                                       placeholder="Повторите новый пароль" />
+                                            <button type="button" class="pw-toggle"
+                                                    @onclick="() => showConfirmPassword = !showConfirmPassword"
+                                                    aria-label="Показать пароль">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                    <circle cx="12" cy="12" r="3"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <ValidationMessage For="() => changePasswordModel.ConfirmPassword" class="lc-validation-msg" />
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(passwordChangeMessage))
+                                    {
+                                        <div class="lc-alert @(isPasswordChangeSuccess ? "lc-alert-success" : "lc-alert-danger")" style="margin-bottom: .75rem;">
+                                            <span>@passwordChangeMessage</span>
+                                        </div>
+                                    }
+
+                                    <button type="submit" class="save-btn" style="width: 100%; justify-content: center;" disabled="@isChangingPassword">
+                                        @if (isChangingPassword)
+                                        {
+                                            <span class="lc-spinner" role="status"></span>
+                                            <span>Меняем пароль...</span>
+                                        }
+                                        else
+                                        {
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                                            </svg>
+                                            <span>Сменить пароль</span>
+                                        }
+                                    </button>
+                                </EditForm>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
+        </main>
+    </div>
+</div>
+
+
+
+@if (showOrderDetailsModal && selectedOrder != null)
+{
+    <div class="modal-overlay">
+        <div class="modal-box">
+
+            <!-- Заголовок -->
+            <div class="modal-hd">
+                <div class="modal-hd-ico" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="modal-hd-title">Детали заказа #@selectedOrder.OrderNumber</div>
+                    <div class="modal-hd-sub">Полная информация о посылке</div>
+                </div>
+                <button class="modal-close" @onclick="CloseOrderDetails" aria-label="Закрыть">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Тело -->
+            <div class="modal-body">
+
+                <div class="info-grid">
+
+                    <!-- Получатель -->
+                    <div class="ic">
+                        <div class="ic-hd">
+                            <div class="ic-hd-ico ico-blue" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                            <span class="ic-hd-title">Получатель</span>
+                        </div>
+                        <div class="ic-body">
+                            <div class="ii">
+                                <span class="ii-lbl">Фамилия</span>
+                                <span class="ii-val">@selectedOrder.LastRecepientName</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Имя</span>
+                                <span class="ii-val">@selectedOrder.FirstRecepientName</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Отчество</span>
+                                <span class="ii-val">@(string.IsNullOrEmpty(selectedOrder.MiddleRecepientName) ? "—" : selectedOrder.MiddleRecepientName)</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Телефон</span>
+                                <span class="ii-val">@selectedOrder.PhoneRecepient</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Посылка -->
+                    <div class="ic">
+                        <div class="ic-hd">
+                            <div class="ic-hd-ico ico-orange" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                                </svg>
+                            </div>
+                            <span class="ic-hd-title">Посылка</span>
+                        </div>
+                        <div class="ic-body">
+                            <div class="ii">
+                                <span class="ii-lbl">Описание</span>
+                                <span class="ii-val">@(string.IsNullOrEmpty(selectedOrder.DescriptionParcel) ? "Не указано" : selectedOrder.DescriptionParcel)</span>
+                            </div>
+                            @if (selectedOrder.Template != null)
+                            {
+                                <div class="ii">
+                                    <span class="ii-lbl">Шаблон</span>
+                                    <span class="ii-val">@selectedOrder.Template.TemplateName</span>
+                                </div>
+                            }
+                            @if (selectedOrder.LengthCm > 0 && selectedOrder.WidthCm > 0 && selectedOrder.HeightCm > 0)
+                            {
+                                <div class="ii">
+                                    <span class="ii-lbl">Размеры (Д×Ш×В)</span>
+                                    <span class="ii-val">@selectedOrder.LengthCm × @selectedOrder.WidthCm × @selectedOrder.HeightCm см</span>
+                                </div>
+                            }
+                            @if (selectedOrder.Weight != null && selectedOrder.Weight > 0)
+                            {
+                                <div class="ii">
+                                    <span class="ii-lbl">Вес</span>
+                                    <span class="ii-val">@selectedOrder.Weight кг</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Доставка -->
+                    <div class="ic">
+                        <div class="ic-hd">
+                            <div class="ic-hd-ico ico-blue" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/>
+                                    <rect x="9" y="11" width="14" height="10" rx="2"/>
+                                    <circle cx="12" cy="21" r="1"/>
+                                    <circle cx="20" cy="21" r="1"/>
+                                </svg>
+                            </div>
+                            <span class="ic-hd-title">Доставка</span>
+                        </div>
+                        <div class="ic-body">
+                            <div class="ii">
+                                <span class="ii-lbl">Тип доставки</span>
+                                <span class="ii-val">@(selectedOrder.DeliveryType?.NameDeliveryType ?? "—")</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Транспорт</span>
+                                <span class="ii-val">@(selectedOrder.TransportType?.NameTransportType ?? "—")</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Откуда</span>
+                                <span class="ii-val">@selectedOrder.OriginTown?.TownName, @selectedOrder.OriginTown?.Country?.CountryName</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Куда</span>
+                                <span class="ii-val">@selectedOrder.DestinationTown?.TownName, @selectedOrder.DestinationTown?.Country?.CountryName</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Дополнительно -->
+                    <div class="ic">
+                        <div class="ic-hd">
+                            <div class="ic-hd-ico ico-gray" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="8" x2="12" y2="12"/>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                            </div>
+                            <span class="ic-hd-title">Дополнительно</span>
+                        </div>
+                        <div class="ic-body">
+                            <div class="ii">
+                                <span class="ii-lbl">Филиал забора</span>
+                                <span class="ii-val">@(selectedOrder.PickupBranches?.NameBranches ?? "—")</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Текущий статус</span>
+                                @if (selectedOrder?.Trackings?.Any() == true)
+                                {
+                                    var latest = selectedOrder.Trackings.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
+                                    @if (latest?.Status != null)
+                                    {
+                                        <span class="od-pill"><span class="od-pill-dot"></span>@latest.Status.StatusName</span>
+                                        <span class="ii-date">@latest.UpdateDate.ToString("dd.MM.yyyy HH:mm")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="ii-val-muted">Статус не указан</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="ii-val-muted">Нет данных</span>
+                                }
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Дата создания</span>
+                                @if (selectedOrder?.Trackings?.Any() == true)
+                                {
+                                    var first = selectedOrder.Trackings.OrderBy(t => t.UpdateDate).FirstOrDefault();
+                                    <span class="ii-val">@first?.UpdateDate.ToString("dd.MM.yyyy HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="ii-val-muted">—</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- История перемещений -->
+                @if (selectedOrder?.Trackings?.Any() == true)
+                {
+                    <div class="ic">
+                        <div class="ic-hd">
+                            <div class="ic-hd-ico ico-blue" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="12 8 12 12 14 14"/>
+                                    <path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/>
+                                </svg>
+                            </div>
+                            <span class="ic-hd-title">История перемещений</span>
+                        </div>
+                        <div class="ic-body">
+                            <div class="od-timeline">
+                                @foreach (var tracking in selectedOrder.Trackings.OrderByDescending(t => t.UpdateDate))
+                                {
+                                    <div class="od-tl-item">
+                                        <div class="od-tl-dot od-tl-done"></div>
+                                        <div class="od-tl-content">
+                                            <div class="od-tl-row">
+                                                <span class="od-tl-status">@tracking.Status.StatusName</span>
+                                                <span class="od-tl-date">@tracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")</span>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(tracking.LocationTrackings))
+                                            {
+                                                <div class="od-tl-meta">@tracking.LocationTrackings</div>
+                                            }
+                                            @if (tracking.Branches != null)
+                                            {
+                                                <div class="od-tl-branch">Филиал: @tracking.Branches.NameBranches</div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            </div>
+
+            <!-- Футер -->
+            <div class="modal-ft">
+                <button class="od-close-btn" @onclick="CloseOrderDetails">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    Закрыть
+                </button>
+            </div>
+
         </div>
     </div>
 }
@@ -1012,7 +962,7 @@
     private List<Order> orders = new List<Order>();
     private Order selectedOrder = null;
     private List<StatusDelivery> statusDelivery = new();
-   
+
     [Inject]
     private IJSRuntime JS { get; set; }
 
@@ -1089,7 +1039,9 @@
             var email = GetCurrentUserEmail();
             if (string.IsNullOrEmpty(email)) return;
 
-            bool hasChangedPassword = await UserService.HasChangedPasswordCookieAsync();
+               var cookieVal = await JS.InvokeAsync<string>("eval",
+                "document.cookie.replace(/(?:(?:^|.*;\\s*)userPasswordChanged\\s*\\=\\s*([^;]*).*$)|^.*$/, '$1')");
+            bool hasChangedPassword = !string.IsNullOrEmpty(cookieVal) && cookieVal != "dismissed"; 
             isTempPassword = await UserService.IsTemporaryPasswordAsync(email);
 
             showPasswordChangeDialog = isTempPassword && !hasChangedPassword;
@@ -1101,7 +1053,7 @@
             Console.WriteLine($"Ошибка при проверке первого входа: {ex.Message}");
         }
     }
-   
+
     private async Task ChangePassword()
     {
         try
@@ -1165,11 +1117,11 @@
         }
     }
 
-    private void Logout()
+    private async Task Logout()
     {
-        Navigation.NavigateTo("/logout", true);
+        Navigation.NavigateTo("/logout", forceLoad: true);
     }
-    
+
     private async Task SaveEmployee()
     {
         isSaving = true;
@@ -1214,367 +1166,794 @@
 
 
 <style>
-    .tracking-timeline {
-        position: relative;
-        padding-left: 30px;
-    }
 
-        .tracking-timeline::before {
-            content: '';
-            position: absolute;
-            left: 15px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: #e9ecef;
-        }
+/* ── Полоска ─────────────────────────────────────────────── */
+.lc-stripe { height: 4px; background: #1C3A5E; }
+.lc-stripe-inner { height: 100%; width: 35%; background: #F5A623; border-radius: 0 3px 3px 0; }
 
-    .tracking-item {
-        position: relative;
-        margin-bottom: 25px;
-    }
+/* ── Страница ────────────────────────────────────────────── */
+.profile-page {
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #F5F3EF;
+    color: #1C2B3A;
+}
 
-    .tracking-marker {
-        position: absolute;
-        left: -30px;
-        top: 5px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #007bff;
-        border: 2px solid white;
-        box-shadow: 0 0 0 2px #007bff;
-    }
+.profile-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 4px);
+}
 
-    .tracking-content {
-        background: white;
-        padding: 15px;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
+@@media (max-width: 768px) {
+    .profile-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+}
 
-    .tracking-item:last-child {
-        margin-bottom: 0;
-    }
-    .account-container {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #ffffff 100%);
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    }
+/* ── Сайдбар ─────────────────────────────────────────────── */
+.sidebar {
+    background: #1C3A5E;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 4px);
+}
 
-    .sidebar {
-        background: linear-gradient(135deg, #1a2b3c 0%, #2c3e50 50%, #34495e 100%);
-        backdrop-filter: blur(20px);
-        border-right: 1px solid rgba(255,255,255,0.1);
-    }
+.sb-head {
+    padding: 1.1rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
 
-    .sidebar-header {
-        background: rgba(255, 255, 255, 0.05);
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
+.sb-avatar-row { display: flex; align-items: center; gap: 10px; }
 
-    .avatar-circle {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
+.sb-avatar {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+}
+.sb-avatar-client  { background: #F5A623; }
+.sb-avatar-manager { background: #378ADD; }
 
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
+.sb-name  { font-size: 13px; font-weight: 500; color: #fff; }
+.sb-email { font-size: 11px; color: #A8C4DE; margin-top: 1px; }
+.sb-role  { font-size: 11px; color: #F5A623; margin-top: 2px; font-weight: 500; }
 
-    .bg-gradient-success {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
+/* ── Навигация ───────────────────────────────────────────── */
+.sb-nav { flex: 1; padding: .75rem .5rem; display: flex; flex-direction: column; gap: 2px; }
 
-    .sidebar-nav .nav-link {
-        color: rgba(255, 255, 255, 0.7) !important;
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 0.5rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: none;
-        background: transparent;
-        text-align: left;
-        position: relative;
-        overflow: hidden;
-    }
+.sb-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #A8C4DE;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+}
+.sb-nav-item:hover  { background: rgba(255,255,255,0.08); color: #fff; }
+.sb-nav-item.active { background: rgba(245,166,35,0.18); color: #F5A623; }
+.sb-nav-item svg    { flex-shrink: 0; }
 
-    .nav-link-content {
-        display: flex;
-        align-items: center;
-        position: relative;
-        z-index: 2;
-    }
+.sb-badge {
+    margin-left: auto;
+    background: #F5A623;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 100px;
+}
 
-    .sidebar-nav .nav-link::before {
+.sb-foot { padding: .75rem .5rem; border-top: 1px solid rgba(255,255,255,0.1); }
+
+.sb-logout {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: transparent;
+    color: #A8C4DE;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.sb-logout:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.3); }
+
+/* ── Контент ─────────────────────────────────────────────── */
+.profile-content { padding: 1.25rem; overflow: auto; }
+
+/* ── Welcome ─────────────────────────────────────────────── */
+.welcome-card {
+    background: #1C3A5E;
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+.wc-title { font-size: 18px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.wc-sub   { font-size: 12px; color: #A8C4DE; }
+.wc-ico {
+    width: 48px; height: 48px;
+    background: rgba(245,166,35,0.18);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: #F5A623;
+    flex-shrink: 0;
+}
+
+/* ── Секция-лейбл ────────────────────────────────────────── */
+.sec-lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8A8070;
+    margin-bottom: .5rem;
+}
+
+/* ── Быстрые действия ────────────────────────────────────── */
+.action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; margin-bottom: 1rem; }
+
+.action-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+}
+.action-card:hover { background: #F5F3EF; border-color: #B0A898; transform: translateY(-2px); }
+
+.action-ico {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto .5rem;
+}
+.ico-blue   { background: #E8F0F9; color: #1C3A5E; }
+.ico-orange { background: #FEF0D8; color: #D98E10; }
+
+.action-title { font-size: 13px; font-weight: 500; color: #1C2B3A; }
+.action-sub   { font-size: 11px; color: #8A8070; margin-top: 2px; }
+
+/* ── Карточка ────────────────────────────────────────────── */
+.lc-card { background: #fff; border: 1px solid #E2DBCF; border-radius: 14px; overflow: hidden; margin-bottom: .75rem; }
+
+.lc-card-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .85rem 1rem;
+    border-bottom: 1px solid #EDE8E0;
+}
+
+.lc-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1C2B3A;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.lc-card-body { padding: 1rem; }
+
+.lc-badge-blue   { background: #E8F0F9; color: #1C3A5E; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 100px; }
+.lc-badge-orange { background: #FEF0D8; color: #D98E10; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 100px; }
+
+/* ── Форма ───────────────────────────────────────────────── */
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: .75rem; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; margin-bottom: .75rem; }
+
+.field-lbl { font-size: 12px; font-weight: 500; color: #1C2B3A; margin-bottom: .3rem; display: block; }
+
+.field-hint { font-size: 11px; color: #8A8070; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+
+.inp-wrap {
+    display: flex;
+    border: 1px solid #D5CCBC;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.inp-wrap:focus-within { border-color: #1C3A5E; box-shadow: 0 0 0 3px rgba(28,58,94,0.1); }
+
+.inp-ico {
+    width: 34px;
+    display: flex; align-items: center; justify-content: center;
+    background: #FAF8F4;
+    color: #8A8070;
+    border-right: 1px solid #E2DBCF;
+    flex-shrink: 0;
+    font-size: 13px;
+}
+
+.lc-inp {
+    flex: 1;
+    font-size: 13px;
+    padding: 8px 10px;
+    border: none;
+    background: #FAF8F4;
+    color: #1C2B3A;
+    outline: none;
+    width: 100%;
+}
+.lc-inp::placeholder { color: #B0A898; }
+.lc-inp:disabled     { color: #8A8070; cursor: not-allowed; }
+
+.lc-validation-msg { font-size: 12px; color: #b91c1c; margin-top: 3px; display: block; }
+
+.form-actions { display: flex; justify-content: flex-end; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #EDE8E0; }
+
+/* ── Тип клиента ─────────────────────────────────────────── */
+.client-type-row { display: flex; gap: .75rem; margin-top: .35rem; }
+
+.client-type-opt {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: .65rem .85rem;
+    border: 1px solid #D5CCBC;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #1C2B3A;
+    background: #FAF8F4;
+    transition: all 0.15s;
+}
+.client-type-opt input[type="radio"] { display: none; }
+.client-type-opt.selected { border-color: #1C3A5E; background: #E8F0F9; color: #1C3A5E; }
+.client-type-opt:hover:not(.selected) { border-color: #B0A898; background: #F5F0E8; }
+
+/* ── Таблица посылок ─────────────────────────────────────── */
+.pkg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pkg-table th {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: #8A8070; font-weight: 500;
+    padding: .6rem .85rem;
+    border-bottom: 1px solid #EDE8E0;
+    text-align: left;
+    background: #FDFCF9;
+}
+.pkg-table td { padding: .65rem .85rem; border-bottom: 1px solid #F0EDE8; vertical-align: middle; }
+.pkg-table tr:last-child td { border-bottom: none; }
+.pkg-table tr:hover td { background: #FDFCF9; }
+
+.order-num { font-weight: 600; color: #1C3A5E; }
+.pkg-dim   { font-size: 11px; color: #8A8070; margin-top: 2px; }
+.text-muted { color: #8A8070; }
+
+.view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 7px;
+    border: 1px solid #D5CCBC;
+    background: #fff;
+    color: #1C2B3A;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.view-btn:hover { background: #F5F3EF; border-color: #B0A898; }
+
+/* ── Пустое состояние ────────────────────────────────────── */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+    text-align: center;
+}
+.empty-title { font-size: 14px; font-weight: 500; color: #8A8070; margin-bottom: 4px; }
+.empty-sub   { font-size: 12px; color: #B0A898; }
+
+/* ── Настройки ───────────────────────────────────────────── */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
+@@media (max-width: 900px) {
+    .settings-grid { grid-template-columns: 1fr; }
+    .form-row-2    { grid-template-columns: 1fr; }
+    .form-row-3    { grid-template-columns: 1fr; }
+    .action-grid   { grid-template-columns: 1fr; }
+}
+
+/* ── Переключатели ───────────────────────────────────────── */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .65rem 0;
+    border-bottom: 1px solid #F0EDE8;
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-lbl { font-size: 13px; font-weight: 500; color: #1C2B3A; }
+.toggle-sub { font-size: 11px; color: #8A8070; margin-top: 1px; }
+
+.toggle-switch { position: relative; flex-shrink: 0; cursor: pointer; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+    display: block;
+    width: 36px; height: 20px;
+    border-radius: 100px;
+    background: #D5CCBC;
+    transition: background 0.2s;
+    position: relative;
+}
+.toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-track { background: #1C3A5E; }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); }
+
+/* ── Поля пароля ─────────────────────────────────────────── */
+.pw-wrap {
+    display: flex;
+    border: 1px solid #D5CCBC;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pw-wrap:focus-within { border-color: #1C3A5E; box-shadow: 0 0 0 3px rgba(28,58,94,0.1); }
+
+.pw-toggle {
+    width: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: #FAF8F4;
+    color: #8A8070;
+    border: none;
+    border-left: 1px solid #E2DBCF;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+.pw-toggle:hover { background: #EDE8E0; }
+
+/* ── Кнопки ──────────────────────────────────────────────── */
+.save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: none;
+    background: #1C3A5E;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+}
+.save-btn:hover:not(:disabled) { background: #154E8C; color: #fff; }
+.save-btn:disabled { opacity: .65; cursor: not-allowed; }
+
+/* ── Алерты ──────────────────────────────────────────────── */
+.lc-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    margin-bottom: .85rem;
+}
+.lc-alert-success { background: #EAF7F2; color: #0F6E56; border: 1px solid #B8E8D8; }
+.lc-alert-danger  { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+
+/* ── Спиннер ─────────────────────────────────────────────── */
+.lc-spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: lc-spin .7s linear infinite;
+}
+@@keyframes lc-spin { to { transform: rotate(360deg); } }
+
+/* ── Модальное окно ──────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal-box {
+    background: #fff;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 400px;
+    overflow: hidden;
+    border: 1px solid #E2DBCF;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+.modal-hd {
+    background: #FEF0D8;
+    padding: .85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #F5E4B8;
+}
+
+.modal-hd-ico {
+    width: 32px; height: 32px;
+    background: #F5A623;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.modal-title { font-size: 14px; font-weight: 500; color: #1C2B3A; }
+.modal-sub   { font-size: 11px; color: #8A8070; margin-top: 1px; }
+
+.modal-body { padding: 1rem; }
+
+.modal-info {
+    background: #F5F3EF;
+    border: 1px solid #EDE8E0;
+    border-radius: 8px;
+    padding: .75rem;
+    margin-bottom: .85rem;
+    font-size: 12px;
+    color: #5A5248;
+    display: flex;
+    gap: 8px;
+    line-height: 1.5;
+}
+
+.req-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+
+.req-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: #5A5248;
+}
+
+.req-check { color: #1C3A5E; display: flex; }
+
+.modal-ft {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: .75rem;
+    border-top: 1px solid #EDE8E0;
+}
+
+.dismiss-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid #D5CCBC;
+    background: #fff;
+    color: #1C2B3A;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.dismiss-btn:hover { background: #F5F3EF; }
+
+/* ============================================================
+   OrderDetailsModal.razor.css
+   Совпадает с палитрой Home / Login / Register / Profile
+   ============================================================ */
+
+/* ── Оверлей ─────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+/* ── Контейнер модалки ───────────────────────────────────── */
+.modal-box {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #E2DBCF;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* ── Заголовок ───────────────────────────────────────────── */
+.modal-hd {
+    background: #1C3A5E;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.modal-hd-ico {
+    width: 36px;
+    height: 36px;
+    background: rgba(245, 166, 35, 0.2);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #F5A623;
+    flex-shrink: 0;
+}
+
+.modal-hd-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.modal-hd-sub {
+    font-size: 11px;
+    color: #A8C4DE;
+    margin-top: 1px;
+}
+
+.modal-close {
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #A8C4DE;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Тело ────────────────────────────────────────────────── */
+.modal-body {
+    padding: 1.1rem;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    background: #F5F3EF;
+}
+
+/* ── Сетка карточек ──────────────────────────────────────── */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+}
+
+@@media (max-width: 600px) {
+    .info-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Карточка ────────────────────────────────────────────── */
+.ic {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.ic-hd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: .65rem .85rem;
+    border-bottom: 1px solid #EDE8E0;
+}
+
+.ic-hd-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ico-blue   { background: #E8F0F9; color: #1C3A5E; }
+.ico-orange { background: #FEF0D8; color: #D98E10; }
+.ico-gray   { background: #EEEBE5; color: #5A5248; }
+
+.ic-hd-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1C2B3A;
+}
+
+.ic-body {
+    padding: .75rem .85rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+/* ── Поле информации ─────────────────────────────────────── */
+.ii { display: flex; flex-direction: column; gap: 2px; }
+
+.ii-lbl {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #8A8070;
+}
+
+.ii-val       { font-size: 13px; color: #1C2B3A; }
+.ii-val-muted { font-size: 13px; color: #8A8070; }
+.ii-date      { font-size: 10px; color: #8A8070; margin-top: 2px; }
+
+/* ── Статус-пилюля ───────────────────────────────────────── */
+.od-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 100px;
+    background: #E8F0F9;
+    color: #1C3A5E;
+    margin-top: 2px;
+}
+
+.od-pill-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #1C3A5E;
+}
+
+/* ── Таймлайн ────────────────────────────────────────────── */
+.od-timeline {
+    display: flex;
+    flex-direction: column;
+}
+
+.od-tl-item {
+    display: flex;
+    gap: 10px;
+    position: relative;
+    padding-bottom: .75rem;
+}
+
+    .od-tl-item:not(:last-child)::after {
         content: '';
         position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-        transition: left 0.5s;
+        left: 6px;
+        top: 14px;
+        bottom: 0;
+        width: 1px;
+        background: #D5CCBC;
     }
 
-    .sidebar-nav .nav-link:hover::before {
-        left: 100%;
-    }
+.od-tl-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #1C3A5E;
+    background: #fff;
+    flex-shrink: 0;
+    margin-top: 2px;
+    z-index: 1;
+}
 
-    .sidebar-nav .nav-link:hover,
-    .sidebar-nav .nav-link.active {
-        background: rgba(255, 255, 255, 0.1);
-        color: white !important;
-        transform: translateX(8px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
+.od-tl-done { background: #1C3A5E; }
 
-    .btn-logout {
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.8);
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 10px;
-        padding: 0.75rem;
-        transition: all 0.3s ease;
-    }
+.od-tl-content { flex: 1; }
 
-        .btn-logout:hover {
-            background: rgba(220, 53, 69, 0.2);
-            color: white;
-            border-color: rgba(220, 53, 69, 0.3);
-            transform: translateY(-2px);
-        }
+.od-tl-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 3px;
+}
 
-    .welcome-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        overflow: hidden;
-        position: relative;
-    }
+.od-tl-status {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1C2B3A;
+}
 
-        .welcome-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 100%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 1%, transparent 1%);
-            background-size: 20px 20px;
-            transform: rotate(30deg);
-        }
+.od-tl-date {
+    font-size: 11px;
+    color: #8A8070;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
 
-    .welcome-icon {
-        font-size: 5rem;
-        opacity: 0.3;
-        animation: float 3s ease-in-out infinite;
-    }
+.od-tl-meta {
+    font-size: 11px;
+    color: #8A8070;
+    margin-top: 2px;
+}
 
-    .stat-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-radius: 16px;
-        overflow: hidden;
-    }
+.od-tl-branch {
+    font-size: 11px;
+    color: #1C3A5E;
+    margin-top: 2px;
+}
 
-        .stat-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
-        }
+/* ── Футер ───────────────────────────────────────────────── */
+.modal-ft {
+    padding: .75rem 1.1rem;
+    border-top: 1px solid #EDE8E0;
+    display: flex;
+    justify-content: flex-end;
+    background: #fff;
+    flex-shrink: 0;
+}
 
-    .stat-icon {
-        width: 70px;
-        height: 70px;
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.8rem;
-        margin: 0 auto;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    }
+.od-close-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid #D5CCBC;
+    background: #fff;
+    color: #1C2B3A;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
 
-    .btn-action {
-        background: white;
-        border: 1px solid #e9ecef;
-        border-radius: 16px;
-        transition: all 0.3s ease;
-        color: #2c3e50;
-    }
-
-        .btn-action:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            border-color: #667eea;
-        }
-
-    .action-icon {
-        width: 60px;
-        height: 60px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border-radius: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-        color: white;
-        font-size: 1.5rem;
-    }
-
-    .client-type-selector {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-
-    .client-type-option {
-        border: 2px solid #e9ecef;
-        border-radius: 16px;
-        padding: 2rem 1rem;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: white;
-    }
-
-        .client-type-option.selected {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #f8f9ff, #eef1ff);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-        }
-
-        .client-type-option .option-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-    .package-row {
-        transition: all 0.3s ease;
-    }
-
-        .package-row:hover {
-            background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), transparent);
-            transform: translateX(4px);
-        }
-
-    .form-control-lg {
-        border-radius: 12px;
-        border: 2px solid #e9ecef;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-    }
-
-        .form-control-lg:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-            transform: translateY(-2px);
-        }
-
-    .bg-gradient-light {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 16px;
-    }
-
-    /* Анимации */
-    @@keyframes float {
-        0%, 100%
-
-    {
-        transform: translateY(0px);
-    }
-
-    50% {
-        transform: translateY(-10px);
-    }
-
-    }
-
-    .tab-pane {
-        animation: slideIn 0.5s ease-out;
-    }
-
-    @@keyframes slideIn {
-        from
-
-    {
-        opacity: 0;
-        transform: translateX(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    }
-
-    /* Адаптивность */
-    @@media (max-width: 768px) {
-        .sidebar
-
-    {
-        position: fixed;
-        top: 0;
-        left: -100%;
-        width: 280px;
-        height: 100vh;
-        z-index: 1000;
-        transition: left 0.3s ease;
-    }
-
-    .sidebar.show {
-        left: 0;
-    }
-
-    .client-type-selector {
-        grid-template-columns: 1fr;
-    }
-
-    .welcome-icon {
-        font-size: 3rem;
-    }
-
-    }
-
-    .modal-backdrop {
-        z-index: 1040;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    .modal {
-        z-index: 1050;
-    }
-
-    .modal-icon {
-        width: 40px;
-        height: 40px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .info-item label {
-        font-size: 0.875rem;
-        margin-bottom: 0.25rem;
-        display: block;
-    }
-
-    .info-item p {
-        font-size: 1rem;
-        color: #333;
-    }
-
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    }
+.od-close-btn:hover {
+    background: #F5F3EF;
+    border-color: #B0A898;
+}
 </style>

@@ -1,5 +1,4 @@
 ﻿using LogisticCompany.Application.DTO;
-using LogisticCompany.DTO;
 using System.Security.Claims;
 
 namespace LogisticCompany.Application.Interfaces

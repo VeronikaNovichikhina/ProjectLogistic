@@ -1,9 +1,7 @@
 ﻿using LogisticCompany.Application.DTO;
 using LogisticCompany.Application.Interfaces;
 using LogisticCompany.Db;
-using LogisticCompany.DTO;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 using System;
 using System.Security.Claims;
 

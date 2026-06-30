@@ -9,12 +9,10 @@ namespace LogisticCompany.Application.Services
     public class UserService : IUserService
     {
         private readonly AppDbContext _db;
-        private readonly IJSRuntime _js;
 
-        public UserService(AppDbContext db, IJSRuntime js)
+        public UserService(AppDbContext db)
         {
             _db = db;
-            _js = js;
         }
 
         public async Task<User?> GetCurrentUserAsync(string email)
@@ -34,28 +32,18 @@ namespace LogisticCompany.Application.Services
                 return false;
             }
         }
-        public async Task<bool> HasChangedPasswordCookieAsync()
-        {
-            try
-            {
-                var value = await _js.InvokeAsync<string>("eval",
-                    "document.cookie.replace(/(?:(?:^|.*;\\s*)userPasswordChanged\\s*\\=\\s*([^;]*).*$)|^.*$/, '$1')");
-                return !string.IsNullOrEmpty(value) && value != "dismissed";
-            }
-            catch
-            {
-                return false;
-            }
-        }
+
 
         public async Task ChangePasswordAsync(string email, string currentPassword, string newPassword)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
-            if (user == null) throw new Exception("Пользователь не найден");
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower())
+                ?? throw new Exception("Пользователь не найден");
+
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                 throw new Exception("Текущий пароль неверен");
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword, workFactor: 12);
+            user.IsTemporaryPassword = false;
             await _db.SaveChangesAsync();
         }
     }

@@ -1,15 +1,11 @@
 ﻿@page "/orders/payment/{OrdersId:int}"
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.Application.Services
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
 @using LogisticCompany.Domain.Entities.Orders
 @using LogisticCompany.Domain.Entities.Tracking
-@using Microsoft.EntityFrameworkCore
 @rendermode InteractiveServer
 
 @inject IOrderService OrderService
-@inject PaymentService PaymentService
+@inject IPaymentService PaymentService
 
 <div class="page-bg min-vh-100 py-5">
     <div class="container">

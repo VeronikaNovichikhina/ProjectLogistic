@@ -1,355 +1,272 @@
 ﻿@page "/clients/create-company/{ClientId:int}"
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
+@using LogisticCompany.Application.DTO
 @using Presentation.Shared
 @inherits ClientBaseComponent
 @rendermode InteractiveServer
 
-<div class="office-manager-page bg-light min-vh-100">
+<div class="cc-page">
+    <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
+
     <!-- Хлебные крошки -->
-    <div class="container-fluid py-2 border-bottom bg-white">
-        <div class="container">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item">
-                        <a href="#" class="text-decoration-none " @onclick="GoBack">
-                            <i class="fas fa-chevron-left me-1"></i>Компании
-                        </a>
-                    </li>
-                </ol>
-            </nav>
-        </div>
+    <div class="bc-bar">
+        <a class="bc-link" @onclick="GoBack" href="#">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Компании
+        </a>
     </div>
 
-    <div class="container py-3">
-        <div class="row">
-            <!-- Основной контент -->
-            <div class="col-lg-8">
-                <!-- Заголовок -->
-                <div class="d-flex align-items-center mb-3">
-                    <div class="status-badge bg-warning text-white rounded-circle d-flex align-items-center justify-content-center me-2"
-                         style="width: 36px; height: 36px; font-size: 14px;">
-                        <i class="fas fa-building"></i>
-                    </div>
-                    <div>
-                        <h1 class="h5 fw-bold mb-1">Добавление  юридического лица</h1>
-                        <p class="text-muted small mb-0">Заполните основные реквизиты юридического лица</p>
-                    </div>
+    <div class="cc-layout">
+
+        <!-- Левая колонка — форма -->
+        <div>
+            <div class="pg-title-row">
+                <div class="pg-title-ico" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="7" width="20" height="14" rx="2" />
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                    </svg>
                 </div>
-
-                @if (Loading)
-                {
-                    <!-- Loading State -->
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body text-center py-4">
-                            <div class="spinner-border text-warning mb-2" role="status" style="width: 2rem; height: 2rem;">
-                                <span class="visually-hidden">Загрузка...</span>
-                            </div>
-                            <h5 class="text-muted" style="font-size: 14px;">Подготовка формы...</h5>
-                        </div>
-                    </div>
-                }
-                else if (!string.IsNullOrEmpty(ErrorMessage))
-                {
-                    <div class="alert alert-danger d-flex align-items-center mb-3 py-2" role="alert">
-                        <i class="fas fa-exclamation-triangle me-2" style="font-size: 14px;"></i>
-                        <div class="small">@ErrorMessage</div>
-                    </div>
-                }
-                else
-                {
-                    <EditForm Model="companyDto" OnValidSubmit="() => HandleAsync(SaveCompany)">
-                        <DataAnnotationsValidator />
-
-                        <!-- Основная форма -->
-                        <div class="card border-0 shadow-sm mb-3">
-                            <div class="card-header bg-white border-bottom py-2">
-                                <h6 class="fw-semibold mb-0 d-flex align-items-center">
-                                    <i class="fas fa-file-contract text-warning me-2" style="font-size: 14px;"></i>
-                                    Реквизиты компании
-                                </h6>
-                            </div>
-                            <div class="card-body p-3">
-                                <div class="row g-3">
-                                    <div class="col-12">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold mb-1 d-flex align-items-center ">
-                                                <i class="fas fa-signature text-muted me-1" style="font-size: 13px;"></i>
-                                                Название компании *
-                                                <span class="ms-1 badge bg-light text-muted" style="font-size: 11px;">Обязательно</span>
-                                            </label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                    <i class="fas fa-building text-muted" style="font-size: 14px;"></i>
-                                                </span>
-                                                <InputText @bind-Value="companyDto.CompanyName"
-                                                           class="form-control border-start-0 py-1"
-                                                           placeholder="ООО 'Ваша Компания'"
-                                                           style="font-size: 14px;" />
-                                            </div>
-                                            <div class="mt-1">
-                                                <ValidationMessage For="() => companyDto.CompanyName" class="text-danger" style="font-size: 12px;" />
-                                                <div class="form-text" style="font-size: 12px;">
-                                                    <i class="fas fa-info-circle me-1"></i>
-                                                    Полное юридическое название из учредительных документов
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- ИИН/БИН -->
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold mb-1 d-flex align-items-center ">
-                                                <i class="fas fa-hashtag text-muted me-1" style="font-size: 13px;"></i>
-                                                ИИН/БИН *
-                                                <span class="ms-1 badge bg-light text-muted" style="font-size: 11px;">Обязательно</span>
-                                            </label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 py-1 px-2">
-                                                    <i class="fas fa-id-card text-muted" style="font-size: 14px;"></i>
-                                                </span>
-                                                <InputText @bind-Value="companyDto.Inn"
-                                                           maxlength="12"
-                                                           class="form-control border-start-0 py-1"
-                                                           placeholder="123456789012"
-                                                           style="font-size: 14px;" />
-                                            </div>
-                                            <div class="mt-1">
-                                                <ValidationMessage For="() => companyDto.Inn" class="text-danger" style="font-size: 12px;" />
-                                                <div class="form-text" style="font-size: 12px;">
-                                                    <i class="fas fa-key me-1"></i>
-                                                    12-значный идентификационный номер налогоплательщика
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Панель действий -->
-                        <div class="action-panel bg-white border rounded p-3 shadow-sm">
-                            <div class="row g-2 align-items-center">
-                                <div class="col-md-8">
-                                    <div class="d-flex align-items-center">
-                                        </div>
-                                        <div class="text-muted" style="font-size: 12px;">
-                                            <i class="fas fa-file-contract me-1"></i>
-                                            Все документы будут оформляться на эти реквизиты
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                        <button type="button"
-                                                class="btn btn-outline-secondary px-3"
-                                                @onclick="GoBack"
-                                                disabled="@Loading"
-                                                style="font-size: 14px; padding: 6px 12px;">
-                                            <i class="fas fa-times me-1"></i>
-                                            Отмена
-                                        </button>
-                                        <button type="submit"
-                                                class="btn btn-warning px-3"
-                                                disabled="@Loading"
-                                                style="font-size: 14px; padding: 6px 12px;">
-                                            @if (Loading)
-                                            {
-                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                                <span>Сохранение...</span>
-                                            }
-                                            else
-                                            {
-                                                <i class="fas fa-save me-1"></i>
-                                                <span>Сохранить</span>
-                                            }
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                    </EditForm>
-                }
-
-               
+                <div>
+                    <div class="pg-title">Добавление юридического лица</div>
+                    <div class="pg-sub">Заполните основные реквизиты юридического лица</div>
+                </div>
             </div>
 
-            <!-- Боковая панель -->
-            <div class="col-lg-4">
-                <div class="sticky-top" style="top: 15px;">
-                    <!-- Что дальше -->
-                    <div class="card border-0 shadow-sm mb-3">
-                        <div class="card-header bg-white border-bottom py-2">
-                            <h6 class="fw-semibold mb-0" style="font-size: 14px;">
-                                <i class="fas fa-forward me-2 text-success" style="font-size: 20px;"></i>
-                                Что дальше?
-                            </h6>
+            @if (Loading)
+            {
+                <div class="cc-card">
+                    <div class="state-box">
+                        <span class="lc-spinner" role="status"></span>
+                        <div class="state-title">Подготовка формы...</div>
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="cc-alert cc-alert-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         style="flex-shrink:0;margin-top:1px" aria-hidden="true">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <span>@ErrorMessage</span>
+                </div>
+            }
+            else
+            {
+                <EditForm Model="companyDto" OnValidSubmit="() => HandleAsync(SaveCompany)">
+                    <DataAnnotationsValidator />
+
+                    <div class="cc-card">
+                        <div class="cc-card-hd">
+                            <div class="cc-card-hd-ico ico-orange" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                    <polyline points="10 9 9 9 8 9" />
+                                </svg>
+                            </div>
+                            <span class="cc-card-hd-title">Реквизиты компании</span>
                         </div>
-                        <div class="card-body py-2">
-                            <div class="mb-2 d-flex">
-                                <div class="me-3 text-success">
-                                    <i class="fas fa-check-circle" style="font-size: 12px;"></i>
+                        <div class="cc-card-body">
+
+                            <!-- Название компании -->
+                            <div class="field">
+                                <div class="field-lbl">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color:#8A8070" aria-hidden="true">
+                                        <path d="M12 20h9" />
+                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                    </svg>
+                                    Название компании
+                                    <span class="req-tag">Обязательно</span>
                                 </div>
-                                <div>
-                                    <span class="small d-block" style="font-size: 13px;">Создание заказов</span>
-                                    <span class="text-muted" style="font-size: 12px;">Все заказы будут оформляться от имени этой компании</span>
+                                <div class="inp-wrap">
+                                    <div class="inp-ico" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="2" y="7" width="20" height="14" rx="2" />
+                                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                                        </svg>
+                                    </div>
+                                    <InputText @bind-Value="companyDto.CompanyName"
+                                               class="lc-inp"
+                                               placeholder="ООО 'Ваша Компания'" />
+                                </div>
+                                <ValidationMessage For="() => companyDto.CompanyName" class="cc-val-msg" />
+                                <div class="field-hint">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                    Полное юридическое название из учредительных документов
                                 </div>
                             </div>
-                            <div class="mb-2 d-flex">
-                                <div class="me-3 text-success">
-                                    <i class="fas fa-check-circle" style="font-size: 12px;"></i>
+
+                            <!-- ИИН/БИН -->
+                            <div class="field" style="max-width: 60%;">
+                                <div class="field-lbl">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color:#8A8070" aria-hidden="true">
+                                        <line x1="4" y1="9" x2="20" y2="9" />
+                                        <line x1="4" y1="15" x2="20" y2="15" />
+                                        <line x1="10" y1="3" x2="8" y2="21" />
+                                        <line x1="16" y1="3" x2="14" y2="21" />
+                                    </svg>
+                                    ИИН / БИН
+                                    <span class="req-tag">Обязательно</span>
                                 </div>
-                                <div>
-                                    <span class="small d-block" style="font-size: 13px;">Финансовые документы</span>
-                                    <span class="text-muted" style="font-size: 12px;">Счета и акты будут формироваться на указанные реквизиты</span>
+                                <div class="inp-wrap">
+                                    <div class="inp-ico" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="2" y="5" width="20" height="14" rx="2" />
+                                            <line x1="2" y1="10" x2="22" y2="10" />
+                                        </svg>
+                                    </div>
+                                    <InputText @bind-Value="companyDto.Inn"
+                                               maxlength="12"
+                                               class="lc-inp"
+                                               placeholder="123456789012" />
+                                </div>
+                                <ValidationMessage For="() => companyDto.Inn" class="cc-val-msg" />
+                                <div class="field-hint">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                    12-значный идентификационный номер налогоплательщика
                                 </div>
                             </div>
-                            <div class="d-flex">
-                                <div class="me-3 text-success">
-                                    <i class="fas fa-check-circle" style="font-size: 12px;"></i>
-                                </div>
-                                <div>
-                                    <span class="small d-block" style="font-size: 13px;">Отчетность</span>
-                                    <span class="text-muted" style="font-size: 12px;">Автоматическое формирование отчетов по компании</span>
-                                </div>
-                            </div>
+
                         </div>
                     </div>
 
-                    
+                    <!-- Панель действий -->
+                    <div class="action-bar">
+                        <div class="action-note">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                 style="color:#8A8070" aria-hidden="true">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            Все документы будут оформляться на эти реквизиты
+                        </div>
+                        <div class="btn-row">
+                            <button type="button" class="cc-btn cc-btn-outline" @onclick="GoBack" disabled="@Loading">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                                Отмена
+                            </button>
+                            <button type="submit" class="cc-btn cc-btn-orange" disabled="@Loading">
+                                @if (Loading)
+                                {
+                                    <span class="lc-spinner" role="status"></span>
+                                    <span>Сохранение...</span>
+                                }
+                                else
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                        <polyline points="17 21 17 13 7 13 7 21" />
+                                        <polyline points="7 3 7 8 15 8" />
+                                    </svg>
+                                    <span>Сохранить</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
 
-                    
+                </EditForm>
+            }
+        </div>
+
+        <!-- Правая колонка — что дальше -->
+        <div>
+            <div class="cc-card">
+                <div class="cc-card-hd">
+                    <div class="cc-card-hd-ico ico-green" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </div>
+                    <span class="cc-card-hd-title">Что дальше?</span>
+                </div>
+                <div class="next-list">
+                    <div class="next-item">
+                        <span class="next-ico" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </span>
+                        <div>
+                            <div class="next-title">Создание заказов</div>
+                            <div class="next-sub">Все заказы будут оформляться от имени этой компании</div>
+                        </div>
+                    </div>
+                    <div class="next-item">
+                        <span class="next-ico" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </span>
+                        <div>
+                            <div class="next-title">Финансовые документы</div>
+                            <div class="next-sub">Счета и акты будут формироваться на указанные реквизиты</div>
+                        </div>
+                    </div>
+                    <div class="next-item">
+                        <span class="next-ico" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </span>
+                        <div>
+                            <div class="next-title">Отчётность</div>
+                            <div class="next-sub">Автоматическое формирование отчётов по компании</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
-
-<style>
-    .office-manager-page {
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        font-size: 14px;
-    }
-
-    .form-control {
-        font-size: 14px;
-        padding: 6px 12px;
-        height: 36px;
-    }
-
-    .input-group-text {
-        font-size: 14px;
-        padding: 6px 12px;
-        height: 36px;
-    }
-
-    .form-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .btn {
-        font-size: 14px;
-        padding: 6px 12px;
-        height: 36px;
-    }
-
-    .btn-sm {
-        font-size: 13px;
-        padding: 5px 10px;
-        height: 32px;
-    }
-
-    .action-panel {
-        position: sticky;
-        bottom: 15px;
-        z-index: 1000;
-        margin-top: 15px;
-        font-size: 14px;
-    }
-
-    .status-badge {
-        width: 36px;
-        height: 36px;
-        font-size: 14px;
-    }
-
-    .breadcrumb {
-        background: transparent;
-        padding: 0;
-        margin: 0;
-        font-size: 13px;
-    }
-
-    .card-header {
-        padding: 8px 16px;
-    }
-
-    .card-body {
-        padding: 16px;
-    }
-
-    .alert {
-        padding: 8px 12px;
-        font-size: 13px;
-    }
-
-    .badge {
-        font-size: 11px;
-        padding: 4px 8px;
-    }
-
-    input.form-control:focus,
-    select.form-control:focus {
-        border-color: #ffc107;
-        box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.15);
-        outline: none;
-    }
-
-    .small {
-        font-size: 12px !important;
-    }
-
-    .h5 {
-        font-size: 1.1rem;
-    }
-
-    .h6 {
-        font-size: 1rem;
-    }
-
-    .text-warning {
-        color: #fd7e14 !important;
-    }
-
-    .btn-warning {
-        background-color: #fd7e14;
-        border-color: #fd7e14;
-        color: white;
-    }
-
-        .btn-warning:hover {
-            background-color: #e76a00;
-            border-color: #e76a00;
-            color: white;
-        }
-</style>
-
 
 @code {
     [Parameter] public int ClientId { get; set; }
     private CompanyClientDto companyDto = new();
 
-    [Inject] private AppDbContext Db { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private ICompanyClientService CompanyClientService { get; set; } = default!;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await Task.CompletedTask;
-    }
+    
     private async Task SaveCompany()
     {
         try
@@ -365,3 +282,278 @@
 
 }
 
+<style>
+    /* ============================================================
+   CreateCompany.razor.css — тёмно-синий + бежевый + оранжевый
+   Совпадает с палитрой всех страниц проекта
+   ============================================================ */
+
+/* ── Полоска ─────────────────────────────────────────────── */
+.lc-stripe       { height: 4px; background: #1C3A5E; }
+.lc-stripe-inner { height: 100%; width: 35%; background: #F5A623; border-radius: 0 3px 3px 0; }
+
+/* ── Страница ────────────────────────────────────────────── */
+.cc-page {
+    min-height: 100vh;
+    background: #F5F3EF;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #1C2B3A;
+}
+
+/* ── Хлебные крошки ──────────────────────────────────────── */
+.bc-bar {
+    background: #fff;
+    border-bottom: 1px solid #EDE8E0;
+    padding: .5rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.bc-link {
+    color: #1C3A5E;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+.bc-link:hover { text-decoration: underline; }
+
+/* ── Макет ───────────────────────────────────────────────── */
+.cc-layout {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 1rem;
+    padding: 1.1rem 1.25rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+@@media (max-width: 768px) {
+    .cc-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Заголовок ───────────────────────────────────────────── */
+.pg-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.pg-title-ico {
+    width: 36px;
+    height: 36px;
+    background: #1C3A5E;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #F5A623;
+    flex-shrink: 0;
+}
+
+.pg-title { font-size: 15px; font-weight: 500; color: #1C2B3A; }
+.pg-sub   { font-size: 11px; color: #8A8070; margin-top: 1px; }
+
+/* ── Алерт ───────────────────────────────────────────────── */
+.cc-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: .75rem .85rem;
+    border-radius: 8px;
+    margin-bottom: .85rem;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.cc-alert-danger { background: #FEF2F2; border: 1px solid #FECACA; color: #B91C1C; }
+
+/* ── Состояние загрузки ──────────────────────────────────── */
+.state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+    gap: .5rem;
+    text-align: center;
+}
+.state-title { font-size: 13px; color: #8A8070; }
+
+/* ── Карточка ────────────────────────────────────────────── */
+.cc-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: .75rem;
+}
+
+.cc-card-hd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: .65rem .9rem;
+    border-bottom: 1px solid #EDE8E0;
+    background: #FDFCF9;
+}
+
+.cc-card-hd-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.ico-orange { background: #FEF0D8; color: #D98E10; }
+.ico-green  { background: #EAF7F2; color: #0F6E56; }
+.ico-blue   { background: #E8F0F9; color: #1C3A5E; }
+
+.cc-card-hd-title { font-size: 12px; font-weight: 500; color: #1C2B3A; }
+.cc-card-body     { padding: .9rem; }
+
+/* ── Поля ────────────────────────────────────────────────── */
+.field         { margin-bottom: .75rem; }
+
+.field-lbl {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1C2B3A;
+    margin-bottom: .3rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.req-tag {
+    font-size: 10px;
+    background: #F5F3EF;
+    color: #8A8070;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-weight: 400;
+}
+
+.inp-wrap {
+    display: flex;
+    border: 1px solid #D5CCBC;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.inp-wrap:focus-within { border-color: #1C3A5E; box-shadow: 0 0 0 3px rgba(28,58,94,0.1); }
+
+.inp-ico {
+    width: 34px;
+    display: flex; align-items: center; justify-content: center;
+    background: #FAF8F4;
+    color: #8A8070;
+    border-right: 1px solid #E2DBCF;
+    flex-shrink: 0;
+}
+
+.lc-inp {
+    flex: 1;
+    font-size: 13px;
+    padding: 8px 10px;
+    border: none;
+    background: #FAF8F4;
+    color: #1C2B3A;
+    outline: none;
+    width: 100%;
+}
+.lc-inp::placeholder { color: #B0A898; }
+
+.field-hint {
+    font-size: 11px;
+    color: #8A8070;
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cc-val-msg { font-size: 12px; color: #b91c1c; margin-top: 3px; display: block; }
+
+/* ── Панель действий ─────────────────────────────────────── */
+.action-bar {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    padding: .85rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.action-note {
+    font-size: 11px;
+    color: #8A8070;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-row { display: flex; gap: .6rem; }
+
+.cc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+}
+
+.cc-btn-outline {
+    border: 1px solid #D5CCBC;
+    background: #fff;
+    color: #1C2B3A;
+}
+.cc-btn-outline:hover:not(:disabled) { background: #F5F3EF; border-color: #B0A898; }
+
+.cc-btn-orange { background: #F5A623; color: #fff; }
+.cc-btn-orange:hover:not(:disabled) { background: #D98E10; }
+
+.cc-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ── Что дальше ──────────────────────────────────────────── */
+.next-list {
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+    padding: .85rem;
+}
+
+.next-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.next-ico { color: #0F6E56; flex-shrink: 0; margin-top: 2px; display: flex; }
+.next-title { font-size: 12px; font-weight: 500; color: #1C2B3A; margin-bottom: 1px; }
+.next-sub   { font-size: 11px; color: #8A8070; line-height: 1.4; }
+
+/* ── Спиннер ─────────────────────────────────────────────── */
+.lc-spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: cc-spin .7s linear infinite;
+}
+@@keyframes cc-spin { to { transform: rotate(360deg); } }
+</style>

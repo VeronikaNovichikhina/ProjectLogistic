@@ -1,225 +1,285 @@
 ﻿@page "/clients/details/{clientId:int}"
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
-@using Microsoft.EntityFrameworkCore
+@using LogisticCompany.Application.DTO
 @using Presentation.Shared
 @inherits ClientBaseComponent
 @rendermode InteractiveServer
 
-<div class="page-bg min-vh-100 py-5">
-    <div class="container">
+
+<div class="cd-page">
+    <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
+
+    <div class="cd-wrap">
+
         @if (Loading)
         {
-            <!-- Loading State -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-body text-center py-5">
-                    <div class="spinner-border text-success mb-3" role="status">
-                        <span class="visually-hidden">Загрузка...</span>
-                    </div>
-                    <h5 class="text-muted">Загрузка данных клиента...</h5>
+            <div class="cd-card">
+                <div class="state-box">
+                    <span class="lc-spinner" role="status"></span>
+                    <div class="state-title">Загрузка данных клиента...</div>
                 </div>
             </div>
         }
         else if (!string.IsNullOrEmpty(ErrorMessage))
         {
-            <div class="alert alert-danger">@ErrorMessage</div>
+            <div class="cd-alert cd-alert-danger">@ErrorMessage</div>
         }
         else if (Client == null)
         {
-            <div class="alert alert-warning">Клиент не найден</div>
+            <div class="cd-alert cd-alert-amber">Клиент не найден</div>
         }
         else
         {
-            <!-- Header Card -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white py-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <div class="d-flex align-items-center">
-                                <div class="icon-circle bg-success me-3">
-                                    @if (Client.ClientTypeId == 1)
-                                    {
-                                        <i class="fas fa-user text-white"></i>
-                                    }
-                                    else
-                                    {
-                                        <i class="fas fa-building text-white"></i>
-                                    }
-                                </div>
-                                <div>
-                                    <h1 class="h3 fw-bold text-dark mb-1">
-                                        @if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
-                                        {
-                                            @($"{Client.IndividualClient.LastName} {Client.IndividualClient.FirstName} {Client.IndividualClient.PatronymicName}")
-                                        }
-                                        else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
-                                        {
-                                            @Client.CompanyClient.CompanyName
-                                        }
-                                    </h1>
-                                    <div class="d-flex align-items-center">
-                                        <span class="badge @(Client.ClientTypeId == 1 ? "bg-primary" : "bg-warning") me-3">
-                                            @Client.ClientTypeName
-                                        </span>
-                                        @if (Client.UserId != null)
-                                        {
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check-circle me-1"></i>Доступ к системе
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">
-                                                <i class="fas fa-clock me-1"></i>Без доступа
-                                            </span>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <button class="btn btn-outline-secondary me-2" @onclick="GoBack">
-                                <i class="fas fa-arrow-left me-2"></i>Назад
-                            </button>
-                        </div>
+            <!-- Заголовок -->
+            <div class="hd-card">
+                <div class="hd-left">
+                    <div class="hd-av @(Client.ClientTypeId == 1 ? "hd-av-indiv" : "hd-av-comp")" aria-hidden="true">
+                        @if (Client.ClientTypeId == 1)
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                            </svg>
+                        }
                     </div>
-                </div>
-            </div>
-
-            <div class="row g-4">
-                <!-- Основная информация -->
-                <div class="col-lg-6">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-white">
-                            <div class="d-flex align-items-center">
-                                <div class="icon-circle-sm bg-info me-3">
-                                    <i class="fas fa-info-circle text-white"></i>
-                                </div>
-                                <h5 class="fw-bold text-dark mb-0">Основная информация</h5>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="detail-item mb-3">
-                                <small class="text-muted d-block">Тип клиента</small>
-                                <div class="d-flex align-items-center">
-                                    @if (Client.ClientTypeId == 1)
-                                    {
-                                        <i class="fas fa-user text-primary me-2"></i>
-                                        <strong>Физическое лицо</strong>
-                                    }
-                                    else
-                                    {
-                                        <i class="fas fa-building text-warning me-2"></i>
-                                        <strong>Юридическое лицо</strong>
-                                    }
-                                </div>
-                            </div>
-
+                    <div>
+                        <div class="hd-name">
                             @if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
                             {
-                                <div class="detail-item mb-3">
-                                    <small class="text-muted d-block">Фамилия</small>
-                                    <strong>@Client.IndividualClient.LastName</strong>
-                                </div>
-                                <div class="detail-item mb-3">
-                                    <small class="text-muted d-block">Имя</small>
-                                    <strong>@Client.IndividualClient.FirstName</strong>
-                                </div>
-                                <div class="detail-item mb-3">
-                                    <small class="text-muted d-block">Отчество</small>
-                                    <strong>@Client.IndividualClient.PatronymicName</strong>
-                                </div>
-                                <div class="detail-item mb-3">
-                                    <small class="text-muted d-block">Паспорт</small>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-id-card text-muted me-2"></i>
-                                        <strong>@Client.IndividualClient.PassportNumber</strong>
-                                    </div>
-                                </div>
+                                @($"{Client.IndividualClient.LastName} {Client.IndividualClient.FirstName} {Client.IndividualClient.PatronymicName}")
                             }
                             else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
                             {
-                                <div class="detail-item mb-3">
-                                    <small class="text-muted d-block">Название компании</small>
-                                    <strong>@Client.CompanyClient.CompanyName</strong>
-                                </div>
-                                <div class="detail-item mb-3">
-                                    <small class="text-muted d-block">ИИН/БИН</small>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-hashtag text-muted me-2"></i>
-                                        <strong>@Client.CompanyClient.Inn</strong>
-                                    </div>
-                                </div>
+                                @Client.CompanyClient.CompanyName
                             }
                         </div>
+                        <div class="hd-badges">
+                            <span class="cd-badge @(Client.ClientTypeId == 1 ? "badge-blue" : "badge-amber")">
+                                @Client.ClientTypeName
+                            </span>
+                            @if (Client.UserId != null)
+                            {
+                                <span class="cd-badge badge-green">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                    Доступ к системе
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="cd-badge badge-gray">Без доступа</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <button class="cd-back-btn" @onclick="GoBack">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    Назад
+                </button>
+            </div>
+
+            <!-- Информационные карточки -->
+            <div class="info-grid">
+
+                <!-- Основная информация -->
+                <div class="ic">
+                    <div class="ic-hd">
+                        <div class="ic-hd-ico ico-blue" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <span class="ic-hd-title">Основная информация</span>
+                    </div>
+                    <div class="ic-body">
+                        <div class="ii">
+                            <span class="ii-lbl">Тип клиента</span>
+                            <span class="ii-val">
+                                @if (Client.ClientTypeId == 1)
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color: #1C3A5E;" aria-hidden="true">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    <span>Физическое лицо</span>
+                                }
+                                else
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color: #5A5248;" aria-hidden="true">
+                                        <rect x="2" y="7" width="20" height="14" rx="2"/>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                                    </svg>
+                                    <span>Юридическое лицо</span>
+                                }
+                            </span>
+                        </div>
+
+                        @if (Client.ClientTypeId == 1 && Client.IndividualClient != null)
+                        {
+                            <div class="ii">
+                                <span class="ii-lbl">Фамилия</span>
+                                <span class="ii-val">@Client.IndividualClient.LastName</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Имя</span>
+                                <span class="ii-val">@Client.IndividualClient.FirstName</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Отчество</span>
+                                <span class="ii-val">@(string.IsNullOrEmpty(Client.IndividualClient.PatronymicName) ? "—" : Client.IndividualClient.PatronymicName)</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">Паспорт</span>
+                                <span class="ii-val">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color: #8A8070;" aria-hidden="true">
+                                        <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                        <line x1="2" y1="10" x2="22" y2="10"/>
+                                    </svg>
+                                    @Client.IndividualClient.PassportNumber
+                                </span>
+                            </div>
+                        }
+                        else if (Client.ClientTypeId == 2 && Client.CompanyClient != null)
+                        {
+                            <div class="ii">
+                                <span class="ii-lbl">Название компании</span>
+                                <span class="ii-val">@Client.CompanyClient.CompanyName</span>
+                            </div>
+                            <div class="ii">
+                                <span class="ii-lbl">ИИН / БИН</span>
+                                <span class="ii-val">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         style="color: #8A8070;" aria-hidden="true">
+                                        <line x1="4" y1="9" x2="20" y2="9"/>
+                                        <line x1="4" y1="15" x2="20" y2="15"/>
+                                        <line x1="10" y1="3" x2="8" y2="21"/>
+                                        <line x1="16" y1="3" x2="14" y2="21"/>
+                                    </svg>
+                                    @Client.CompanyClient.Inn
+                                </span>
+                            </div>
+                        }
                     </div>
                 </div>
 
                 <!-- Контактная информация -->
-                <div class="col-lg-6">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-white">
-                            <div class="d-flex align-items-center">
-                                <div class="icon-circle-sm bg-success me-3">
-                                    <i class="fas fa-address-book text-white"></i>
-                                </div>
-                                <h5 class="fw-bold text-dark mb-0">Контактная информация</h5>
-                            </div>
+                <div class="ic">
+                    <div class="ic-hd">
+                        <div class="ic-hd-ico ico-green" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
                         </div>
-                        <div class="card-body">
-                            <div class="detail-item mb-3">
-                                <small class="text-muted d-block">Телефон</small>
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-phone text-success me-2"></i>
-                                    <strong>@Client.Phone</strong>
-                                </div>
-                            </div>
-
-                            <div class="detail-item mb-3">
-                                <small class="text-muted d-block">Email</small>
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-envelope text-primary me-2"></i>
-                                    <strong>@Client.Email</strong>
-                                </div>
-                            </div>
-
-                            <div class="detail-item mb-3">
-                                <small class="text-muted d-block">Статус в системе</small>
-                                <div class="d-flex align-items-center">
-                                    @if (Client.UserId != null)
-                                    {
-                                        <i class="fas fa-check-circle text-success me-2"></i>
-                                        <strong class="text-success">Учетная запись активна</strong>
-                                    }
-                                    else
-                                    {
-                                        <i class="fas fa-clock text-secondary me-2"></i>
-                                        <strong class="text-secondary">Учетная запись не создана</strong>
-                                    }
-                                </div>
-                            </div>
+                        <span class="ic-hd-title">Контактная информация</span>
+                    </div>
+                    <div class="ic-body">
+                        <div class="ii">
+                            <span class="ii-lbl">Телефон</span>
+                            <span class="ii-val">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     style="color: #0F6E56;" aria-hidden="true">
+                                    <path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/>
+                                </svg>
+                                @Client.Phone
+                            </span>
+                        </div>
+                        <div class="ii">
+                            <span class="ii-lbl">Email</span>
+                            <span class="ii-val">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     style="color: #1C3A5E;" aria-hidden="true">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                    <polyline points="22,6 12,13 2,6"/>
+                                </svg>
+                                @Client.Email
+                            </span>
+                        </div>
+                        <div class="ii">
+                            <span class="ii-lbl">Статус в системе</span>
+                            @if (Client.UserId != null)
+                            {
+                                <span class="ii-val" style="color: #0F6E56;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                        <polyline points="22 4 12 14.01 9 11.01"/>
+                                    </svg>
+                                    Учётная запись активна
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="ii-val" style="color: #8A8070;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                    Учётная запись не создана
+                                </span>
+                            }
                         </div>
                     </div>
                 </div>
+
             </div>
 
-            <!-- Action Buttons -->
-            <div class="card border-0 shadow-sm mt-4">
-                <div class="card-body text-center">
-                    <div class="btn-group" role="group">
-                        <button class="btn btn-warning me-2" @onclick="() => EditClient(Client.ClientsId)">
-                            <i class="fas fa-edit me-2"></i>Редактировать
-                        </button>
-                        <button class="btn btn-danger" @onclick="() => DeleteClient(Client.ClientsId)">
-                            <i class="fas fa-trash me-2"></i>Удалить
-                        </button>
-                    </div>
-                </div>
+            <!-- Кнопки действий -->
+            <div class="action-card">
+                <button class="act-btn act-edit" @onclick="() => EditClient(Client.ClientsId)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Редактировать
+                </button>
+                <button class="act-btn act-del" @onclick="() => DeleteClient(Client.ClientsId)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6"/><path d="M14 11v6"/>
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                    Удалить
+                </button>
             </div>
         }
+
     </div>
 </div>
+
+
 
 @code {
     [Parameter] public int clientId { get; set; }
@@ -252,17 +312,9 @@
         Navigation.NavigateTo($"/clients/edit/{clientId}");
     }
 
-    private async Task DeleteClient(int clientId)
+    private void  DeleteClient(int clientId)
     {
-        try
-        {
-            await ClientService.DeleteAsync(clientId);
-            Navigation.NavigateTo("/clients");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-        }
+        Navigation.NavigateTo($"/clients/delete/{clientId}");
     }
 
 
@@ -270,64 +322,225 @@
 
 
 <style>
-    .page-bg {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
+    /* ============================================================
+   ClientDetail.razor.css — тёмно-синий + бежевый + оранжевый
+   Совпадает с палитрой всех страниц проекта
+   ============================================================ */
 
-    .icon-circle {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-    }
+/* ── Полоска ─────────────────────────────────────────────── */
+.lc-stripe       { height: 4px; background: #1C3A5E; }
+.lc-stripe-inner { height: 100%; width: 35%; background: #F5A623; border-radius: 0 3px 3px 0; }
 
-    .icon-circle-sm {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-    }
+/* ── Страница ────────────────────────────────────────────── */
+.cd-page {
+    min-height: 100vh;
+    background: #F5F3EF;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #1C2B3A;
+}
 
-    .detail-item {
-        border-bottom: 1px solid #e9ecef;
-        padding: 1rem 0;
-    }
+.cd-wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3rem;
+}
 
-        .detail-item:last-child {
-            border-bottom: none;
-        }
+/* ── Алерты ──────────────────────────────────────────────── */
+.cd-alert {
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: .85rem;
+}
+.cd-alert-danger { background: #FEF2F2; border: 1px solid #FECACA; color: #B91C1C; }
+.cd-alert-amber  { background: #FEF3E2; border: 1px solid #F5E4B8; color: #92600A; }
 
-    .stat-card {
-        padding: 1.5rem;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        transition: transform 0.3s ease;
-    }
+/* ── Состояние загрузки ──────────────────────────────────── */
+.cd-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 14px;
+    overflow: hidden;
+}
 
-        .stat-card:hover {
-            transform: translateY(-3px);
-        }
+.state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    gap: .5rem;
+    text-align: center;
+}
 
-    .card {
-        border-radius: 15px;
-        overflow: hidden;
-    }
+.state-title { font-size: 14px; color: #8A8070; }
 
-    .btn-group .btn {
-        border-radius: 8px;
-        margin: 0 5px;
-        padding: 0.75rem 1.5rem;
-    }
+/* ── Заголовок ───────────────────────────────────────────── */
+.hd-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
 
-    .card-header {
-        border-bottom: 1px solid #e9ecef;
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    }
+.hd-left { display: flex; align-items: center; gap: 12px; }
 
+.hd-av {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+}
+.hd-av-indiv { background: #1C3A5E; }
+.hd-av-comp  { background: #5A5248; }
+
+.hd-name   { font-size: 17px; font-weight: 500; color: #1C2B3A; margin-bottom: 5px; }
+.hd-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.cd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 100px;
+}
+.badge-blue   { background: #E8F0F9; color: #1C3A5E; }
+.badge-amber  { background: #FEF0D8; color: #D98E10; }
+.badge-green  { background: #EAF7F2; color: #0F6E56; }
+.badge-gray   { background: #EEEBE5; color: #5A5248; }
+
+.cd-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid #D5CCBC;
+    background: #fff;
+    color: #1C2B3A;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.cd-back-btn:hover { background: #F5F3EF; border-color: #B0A898; }
+
+/* ── Сетка карточек ──────────────────────────────────────── */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+@@media (max-width: 600px) {
+    .info-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Карточка ────────────────────────────────────────────── */
+.ic {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.ic-hd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: .65rem .85rem;
+    border-bottom: 1px solid #EDE8E0;
+}
+
+.ic-hd-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.ico-blue  { background: #E8F0F9; color: #1C3A5E; }
+.ico-green { background: #EAF7F2; color: #0F6E56; }
+
+.ic-hd-title { font-size: 12px; font-weight: 500; color: #1C2B3A; }
+
+.ic-body {
+    padding: .75rem .85rem;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+}
+
+/* ── Поле информации ─────────────────────────────────────── */
+.ii            { display: flex; flex-direction: column; gap: 2px; }
+.ii-lbl        { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #8A8070; }
+.ii-val        { font-size: 13px; font-weight: 500; color: #1C2B3A; display: flex; align-items: center; gap: 5px; }
+.ii-val-muted  { font-size: 13px; color: #8A8070; }
+
+/* ── Кнопки действий ─────────────────────────────────────── */
+.action-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    padding: .85rem 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .6rem;
+}
+
+.act-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+}
+
+.act-edit {
+    background: #FEF0D8;
+    color: #D98E10;
+    border: 1px solid #F5E4B8;
+}
+.act-edit:hover { background: #F5E4B8; }
+
+.act-del {
+    background: #FEF2F2;
+    color: #B91C1C;
+    border: 1px solid #FECACA;
+}
+.act-del:hover { background: #FECACA; }
+
+/* ── Спиннер ─────────────────────────────────────────────── */
+.lc-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(28, 58, 94, 0.15);
+    border-top-color: #1C3A5E;
+    border-radius: 50%;
+    animation: cd-spin .7s linear infinite;
+}
+@@keyframes cd-spin { to { transform: rotate(360deg); } }
 </style>

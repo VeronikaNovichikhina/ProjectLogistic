@@ -1,6 +1,6 @@
-﻿using LogisticCompany.Application.Interfaces;
+﻿using LogisticCompany.Application.DTO;
+using LogisticCompany.Application.Interfaces;
 using LogisticCompany.Db;
-using LogisticCompany.DTO;
 using Microsoft.EntityFrameworkCore;
 
 namespace LogisticCompany.Application.Services

@@ -2,7 +2,6 @@
 using LogisticCompany.Application.Interfaces;
 using LogisticCompany.Db;
 using LogisticCompany.Domain.Entities.Employee;
-using LogisticCompany.DTO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using System;
@@ -14,7 +13,13 @@ namespace LogisticCompany.Application.Services
     {
         private readonly AppDbContext _db;
         private readonly IRoleHelper _roleHelper;
-        public EmployeeService(AppDbContext db, IRoleHelper roleHelper) { _db = db; _roleHelper = roleHelper; }
+        private readonly IPasswordService _passwordService;
+        public EmployeeService(AppDbContext db, IRoleHelper roleHelper, IPasswordService passwordService)
+        {
+            _db = db;
+            _roleHelper = roleHelper;
+            _passwordService = passwordService;
+        }
 
         public async Task<Employee?> GetCurrentEmployeeAsync(ClaimsPrincipal user)
         {
@@ -161,14 +166,7 @@ namespace LogisticCompany.Application.Services
 
             await tx.CommitAsync();
         }
-        private string GenerateSecurePassword(int length = 5)
-        {
-
-            var random = new Random();
-            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-            return new string(Enumerable.Repeat(chars, length)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
-        }
+        private string GenerateSecurePassword(int length = 8) => _passwordService.Generate(length);
 
 
         public async Task ToggleEmployeeStatusAsync(int employeeId)

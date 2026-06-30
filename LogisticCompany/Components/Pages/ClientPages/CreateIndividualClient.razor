@@ -1,7 +1,6 @@
 ﻿@page "/clients/create-individual/{ClientId:int}"
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
+@using LogisticCompany.Application.DTO
 @using Presentation.Shared
 @inherits ClientBaseComponent
 @rendermode InteractiveServer
@@ -444,10 +443,7 @@
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IIndividualClientService IndividualClientService { get; set; } = default!;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await Task.CompletedTask;
-    }
+   
 
     private bool ValidatePassport()
     {

@@ -26,6 +26,7 @@ namespace LogisticCompany.Application.Services
                 .Include(o => o.Template)
                 .Include(o => o.Trackings)
                     .ThenInclude(t => t.Status)
+                 .OrderByDescending(o => o.OrdersId)
                 .ToListAsync();
         }
 

@@ -1,5 +1,5 @@
-﻿using LogisticCompany.Domain.Entities.Location;
-using LogisticCompany.DTO;
+﻿using LogisticCompany.Application.DTO;
+using LogisticCompany.Domain.Entities.Location;
 
 namespace LogisticCompany.Application.Interfaces
 {

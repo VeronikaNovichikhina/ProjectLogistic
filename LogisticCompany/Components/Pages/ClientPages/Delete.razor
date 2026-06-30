@@ -2,9 +2,7 @@
 @inject IJSRuntime JS
 @page "/clients/delete/{clientId:int}"
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
-@using Microsoft.EntityFrameworkCore
+@using LogisticCompany.Application.DTO
 @using Presentation.Shared
 @inherits ClientBaseComponent
 
@@ -226,7 +224,7 @@
         try
         {
             await ClientService.DeleteAsync(ClientId);
-            Navigation.NavigateTo("/clients");
+            Navigation.NavigateTo("/clientList");
         }
         catch (Exception ex)
         {

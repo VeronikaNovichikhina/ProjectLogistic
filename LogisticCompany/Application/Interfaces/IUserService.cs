@@ -8,7 +8,6 @@ namespace LogisticCompany.Application.Interfaces
         Task<bool> IsTemporaryPasswordAsync(string email);
         Task ChangePasswordAsync(string email, string currentPassword, string newPassword);
 
-        Task<bool> HasChangedPasswordCookieAsync();
     }
 }
 

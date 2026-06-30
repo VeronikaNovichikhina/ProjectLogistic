@@ -2,19 +2,13 @@
 @using LogisticCompany.Application.DTO
 @using LogisticCompany.Application.Interfaces
 @using LogisticCompany.Application.Services
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
 @using LogisticCompany.Domain.Entities.Employee
 @using LogisticCompany.Domain.Entities.Location
 @using LogisticCompany.Domain.Entities.Orders
-@using LogisticCompany.Domain.Entities.Tracking
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
 @inject NavigationManager NavigationManager
 @using Microsoft.JSInterop
-@using System.Security.Cryptography
 @rendermode InteractiveServer
-@inject IDbContextFactory<AppDbContext> DbContextFactory
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IHttpClientFactory HttpClientFactory
@@ -26,1357 +20,485 @@
 @inject IOrderService OrderService
 @inject IEmployeeService EmployeeService
 
+<div class="co-page">
+    <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
 
+    <div class="co-layout">
 
+        <!-- Основная колонка -->
+        <div class="co-main">
 
-<div class="office-manager-layout bg-light min-vh-100">
-    <div class="container-fluid px-4 py-3">
-        <!-- Шапка процесса -->
-        <div class="process-header mb-4">
-            <div class="d-flex justify-content-between align-items-center">
+            <!-- Шапка -->
+            <div class="co-header">
+                <div class="co-header-ico" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/>
+                        <rect x="9" y="11" width="14" height="10" rx="2"/>
+                        <circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                    </svg>
+                </div>
                 <div>
-                    <h4 class="mb-1 text-dark fw-bold">
-                        <i class="fas fa-truck-fast me-2 text-primary"></i>
-                        Создание заказа
-                    </h4>
-                    <p class="text-muted small mb-0">Заполните все этапы для оформления доставки</p>
+                    <div class="co-header-title">Создание заказа</div>
+                    <div class="co-header-sub">Заполните все этапы для оформления доставки</div>
                 </div>
-                
             </div>
-        </div>
 
-        <div class="row g-4">
-            <!-- Основная колонка с формой -->
-            <div class="col-lg-9">
-                <!-- Процесс-бар (горизонтальный компактный) -->
-                <div class="process-tracker mb-4">
-                    <div class="d-flex align-items-center justify-content-between position-relative">
-                        <div class="progress-line"></div>
-                        @foreach (var stepInfo in steps)
-                        {
-                            <div class="process-step">
-                                <button class="step-button @(step >= stepInfo.Number ? "completed" : "") @(step == stepInfo.Number ? "active" : "")"
-                                        @onclick="() => { if (stepInfo.Number <= step) this.step = stepInfo.Number; }"
-                                        title="@stepInfo.Label">
-                                    <div class="step-icon">
-                                        @if (step > stepInfo.Number)
-                                        {
-                                            <i class="fas fa-check"></i>
-                                        }
-                                        else
-                                        {
-                                            <span class="step-number">@stepInfo.Number</span>
-                                        }
-                                    </div>
-                                    <span class="step-title">@stepInfo.Label</span>
-                                </button>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                @if (step > 1)
+            <!-- Шаги -->
+            <div class="co-steps">
+                @foreach (var s in steps)
                 {
-                    <div class="mb-3">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="GoBack">
-                            <i class="fas fa-arrow-left me-1"></i> Вернуться
+                    <div class="co-step-item">
+                        <button class="co-step-btn @(step > s.Number ? "done" : step == s.Number ? "active" : "")"
+                                @onclick="() => { if (s.Number <= step) this.step = s.Number; }">
+                            <div class="co-step-circle">
+                                @if (step > s.Number)
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                }
+                                else { @s.Number }
+                            </div>
+                            <span class="co-step-lbl">@s.Label</span>
                         </button>
                     </div>
                 }
+            </div>
 
-                <EditForm Model="@order" OnValidSubmit="SaveOrder" FormName="createOrder">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary class="alert alert-danger alert-sm mb-4" />
+            @if (step > 1)
+            {
+                <div style="margin-bottom: .85rem;">
+                    <button class="co-back-btn" @onclick="GoBack">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                        </svg>
+                        Вернуться
+                    </button>
+                </div>
+            }
 
-                    <div class="form-container">
-                        <!-- Шаг 1: Клиенты -->
-                        @if (step == 1)
-                        {
-                            <div class="form-step-card">
-                                <div class="step-header bg-primary-soft">
-                                    <div class="d-flex align-items-center">
-                                        <div class="step-icon-wrapper me-3">
-                                            <i class="fas fa-users"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="mb-0">Клиент</h5>
-                                            <small class="text-muted">Выберите или создайте нового клиента</small>
-                                        </div>
-                                    </div>
-                                </div>
+            <EditForm Model="@order" OnValidSubmit="SaveOrder" FormName="createOrder">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="co-alert co-alert-danger" />
 
-                                <div class="step-body p-4">
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">Тип клиента *</label>
-                                        <InputRadioGroup @bind-Value="selectedClientTypeId">
-                                            <div class="btn-group w-100" role="group">
-                                                <label class="btn @(selectedClientTypeId == 1 ? "btn-primary" : "btn-outline-primary")">
-                                                    <InputRadio Value="1" />
-                                                    <i class="fas fa-user me-2"></i>Физическое лицо
-                                                </label>
-                                                <label class="btn @(selectedClientTypeId == 2 ? "btn-primary" : "btn-outline-primary")">
-                                                    <InputRadio Value="2" />
-                                                    <i class="fas fa-building me-2"></i>Компания
-                                                </label>
-                                            </div>
-                                        </InputRadioGroup>
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">
-                                            Поиск клиента
-                                            <span class="text-muted small">(@(selectedClientTypeId == 1 ? "по паспорту" : "по ИИН"))</span>
+                <!-- ШАГ 1: Клиент -->
+                @if (step == 1)
+                {
+                    <div class="co-card">
+                        <div class="co-card-hd">
+                            <div class="co-card-ico ico-blue" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <div>
+                                <div class="co-card-title">Клиент</div>
+                                <div class="co-card-sub">Выберите или создайте нового клиента</div>
+                            </div>
+                        </div>
+                        <div class="co-card-body">
+                            <div class="field">
+                                <span class="field-lbl">Тип клиента *</span>
+                                <InputRadioGroup @bind-Value="selectedClientTypeId">
+                                    <div class="co-type-row">
+                                        <label class="co-type-opt @(selectedClientTypeId == 1 ? "sel" : "")">
+                                            <InputRadio Value="1" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                            Физическое лицо
                                         </label>
-                                        <div class="position-relative">
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-light">
-                                                    <i class="fas fa-search text-muted"></i>
-                                                </span>
-                                                <InputText @bind-Value="clientSearch" class="form-control"
-                                                           placeholder="Введите данные для поиска..."
-                                                           @oninput="OnClientSearch" />
-                                            </div>
+                                        <label class="co-type-opt @(selectedClientTypeId == 2 ? "sel" : "")">
+                                            <InputRadio Value="2" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                                            Компания
+                                        </label>
+                                    </div>
+                                </InputRadioGroup>
+                            </div>
 
-                                            @if (FilteredClients.Any() && !string.IsNullOrWhiteSpace(clientSearch))
+                            <div class="field">
+                                <span class="field-lbl">
+                                    Поиск клиента
+                                    <span class="co-hint-tag">@(selectedClientTypeId == 1 ? "по паспорту" : "по ИИН")</span>
+                                </span>
+                                <div class="inp-wrap">
+                                    <div class="inp-ico" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    </div>
+                                    <InputText @bind-Value="clientSearch" class="lc-inp"
+                                               placeholder="Введите данные для поиска..."
+                                               @oninput="OnClientSearch" />
+                                </div>
+                                <ValidationMessage For="() => order.ClientsId" class="co-val-msg" />
+
+                                @if (FilteredClients.Any() && !string.IsNullOrWhiteSpace(clientSearch))
+                                {
+                                    <div class="co-search-dropdown">
+                                        @foreach (var ct in FilteredClients)
+                                        {
+                                            if (selectedClientTypeId == 1 && ct.IndividualClients?.Any() == true)
                                             {
-                                                <div class="search-results-dropdown mt-2 border rounded shadow-sm bg-white">
-                                                    <div class="list-group">
-                                                        @foreach (var ct in FilteredClients)
-                                                        {
-                                                            if (selectedClientTypeId == 1 && ct.IndividualClients?.Any() == true)
-                                                            {
-                                                                var indiv = ct.IndividualClients.First();
-                                                                <a class="list-group-item list-group-item-action"
-                                                                   @onclick="() => SelectClient(ct.ClientsId)">
-                                                                    <div class="d-flex justify-content-between align-items-center">
-                                                                        <div>
-                                                                            <h6 class="mb-1">@indiv.LastName @indiv.FirstName @indiv.PatronymicName</h6>
-                                                                            <small class="text-muted">Паспорт: @indiv.PassportNumber</small>
-                                                                        </div>
-                                                                        <i class="fas fa-chevron-right text-muted"></i>
-                                                                    </div>
-                                                                </a>
-                                                            }
-                                                            else if (selectedClientTypeId == 2 && ct.CompanyClients?.Any() == true)
-                                                            {
-                                                                var comp = ct.CompanyClients.First();
-                                                                <a class="list-group-item list-group-item-action"
-                                                                   @onclick="() => SelectClient(ct.ClientsId)">
-                                                                    <div class="d-flex justify-content-between align-items-center">
-                                                                        <div>
-                                                                            <h6 class="mb-1">@comp.CompanyName</h6>
-                                                                            <small class="text-muted">ИИН: @comp.Inn</small>
-                                                                        </div>
-                                                                        <i class="fas fa-chevron-right text-muted"></i>
-                                                                    </div>
-                                                                </a>
-                                                            }
-                                                        }
+                                                var indiv = ct.IndividualClients.First();
+                                                <div class="co-search-item" @onclick="() => SelectClient(ct.ClientsId)">
+                                                    <div>
+                                                        <div class="co-search-name">@indiv.LastName @indiv.FirstName @indiv.PatronymicName</div>
+                                                        <div class="co-search-sub">Паспорт: @indiv.PassportNumber</div>
                                                     </div>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#8A8070" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
                                                 </div>
                                             }
-                                        </div>
-                                        <ValidationMessage For="() => order.ClientsId" class="text-danger small mt-1" />
-                                    </div>
-
-                                    @{
-                                        var selectedClient = clients?.FirstOrDefault(c => c.ClientsId == order.ClientsId);
-                                        var clientHasAccess = selectedClient?.UserId != null;
-                                    }
-
-                                    @if (!clientHasAccess && order.ClientsId != 0)
-                                    {
-                                        <div class="alert alert-info border-0 mb-4">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-key me-3 fs-5"></i>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="alert-heading mb-2">Создать доступ для клиента</h6>
-                                                    <div class="input-group">
-                                                        <span class="input-group-text bg-white">
-                                                            <i class="fas fa-envelope text-muted"></i>
-                                                        </span>
-                                                        <InputText @bind-Value="newClientEmail" class="form-control"
-                                                                   placeholder="email@example.com" />
+                                            else if (selectedClientTypeId == 2 && ct.CompanyClients?.Any() == true)
+                                            {
+                                                var comp = ct.CompanyClients.First();
+                                                <div class="co-search-item" @onclick="() => SelectClient(ct.ClientsId)">
+                                                    <div>
+                                                        <div class="co-search-name">@comp.CompanyName</div>
+                                                        <div class="co-search-sub">ИИН: @comp.Inn</div>
                                                     </div>
-                                                    <small class="text-muted">На этот email будет отправлен пароль для входа в систему</small>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#8A8070" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    }
-                                    else if (clientHasAccess)
-                                    {
-                                        <div class="alert alert-success border-0 mb-4">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-check-circle me-3 fs-5"></i>
-                                                <div>
-                                                    <h6 class="alert-heading mb-1">Доступ к системе активирован</h6>
-                                                    <small class="mb-0">Клиент может отслеживать заказы через личный кабинет</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-
-                                    <div class="d-flex gap-3 mt-4">
-                                        <NavLink href="/clients/create" class="btn btn-outline-primary flex-fill">
-                                            <i class="fas fa-plus-circle me-2"></i>Новый клиент
-                                        </NavLink>
-                                        <button class="btn btn-primary flex-fill"
-                                                @onclick="() => NextStep(1)"
-                                                disabled="@(order.ClientsId == 0 || (!clientHasAccess && string.IsNullOrWhiteSpace(newClientEmail)))">
-                                            Далее <i class="fas fa-arrow-right ms-2"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-
-                        <!-- Шаг 2: Получатель -->
-                        @if (step == 2)
-                        {
-                            <div class="form-step-card">
-                                <div class="step-header bg-info-soft">
-                                    <div class="d-flex align-items-center">
-                                        <div class="step-icon-wrapper me-3">
-                                            <i class="fas fa-user-tag"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="mb-0">Получатель</h5>
-                                            <small class="text-muted">Укажите данные получателя посылки</small>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="step-body p-4">
-                                    <div class="row g-3 mb-4">
-                                        <div class="col-md-4">
-                                            <label class="form-label fw-semibold">Фамилия *</label>
-                                            <div class="input-with-icon">
-                                                <i class="fas fa-user"></i>
-                                                <InputText @bind-Value="order.LastRecepientName" class="form-control"
-                                                           placeholder="Иванов" />
-                                            </div>
-                                            <ValidationMessage For="() => order.LastRecepientName" class="text-danger small mt-1" />
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label fw-semibold">Имя *</label>
-                                            <div class="input-with-icon">
-                                                <i class="fas fa-user"></i>
-                                                <InputText @bind-Value="order.FirstRecepientName" class="form-control"
-                                                           placeholder="Иван" />
-                                            </div>
-                                            <ValidationMessage For="() => order.FirstRecepientName" class="text-danger small mt-1" />
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label fw-semibold">Отчество</label>
-                                            <div class="input-with-icon">
-                                                <i class="fas fa-user"></i>
-                                                <InputText @bind-Value="order.MiddleRecepientName" class="form-control"
-                                                           placeholder="Иванович" />
-                                            </div>
-                                            <ValidationMessage For="() => order.MiddleRecepientName" class="text-danger small mt-1" />
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">Телефон *</label>
-                                        <div class="input-with-icon">
-                                            <i class="fas fa-phone"></i>
-                                            <input @bind="order.PhoneRecepient" @ref="phoneInput"
-                                                   class="form-control" placeholder="+7 (XXX) XXX-XX-XX" />
-                                        </div>
-                                        <ValidationMessage For="() => order.PhoneRecepient" class="text-danger small mt-1" />
-                                    </div>
-
-                                    <div class="text-end">
-                                        <button class="btn btn-primary px-5"
-                                                @onclick="NextStep2"
-                                                disabled="@(string.IsNullOrWhiteSpace(order.FirstRecepientName?.Trim()) ||
-                                                                                                           string.IsNullOrWhiteSpace(order.LastRecepientName?.Trim()) ||
-                                                                                                           string.IsNullOrWhiteSpace(order.PhoneRecepient?.Trim()))">
-                                            Далее <i class="fas fa-arrow-right ms-2"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-
-                        <!-- Шаг 3: Посылка -->
-                        @if (step == 3)
-                        {
-                            <div class="form-step-card">
-                                <div class="step-header bg-warning-soft">
-                                    <div class="d-flex align-items-center">
-                                        <div class="step-icon-wrapper me-3">
-                                            <i class="fas fa-box"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="mb-0">Посылка</h5>
-                                            <small class="text-muted">Укажите параметры отправления</small>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="step-body p-4">
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">Тип посылки *</label>
-                                        <InputRadioGroup @bind-Value="selectedTypeParcel">
-                                            <div class="d-flex gap-3">
-                                                <label class="parcel-type-card @(selectedTypeParcel == 1 ? "active" : "")">
-                                                    <InputRadio Value="1" />
-                                                    <div class="parcel-type-content">
-                                                        <i class="fas fa-cube"></i>
-                                                        <span>Стандартные размеры</span>
-                                                    </div>
-                                                </label>
-                                                <label class="parcel-type-card @(selectedTypeParcel == 2 ? "active" : "")">
-                                                    <InputRadio Value="2" />
-                                                    <div class="parcel-type-content">
-                                                        <i class="fas fa-ruler-combined"></i>
-                                                        <span>Нестандартные размеры</span>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                        </InputRadioGroup>
-                                    </div>
-
-                                    @if (selectedTypeParcel == 1)
-                                    {
-                                        <div class="mb-4">
-                                            <label class="form-label fw-semibold">Шаблон посылки</label>
-                                            <div class="input-with-icon">
-                                                <i class="fas fa-box-open"></i>
-                                                <InputSelect @bind-Value="order.ParcelTemplateId" class="form-select">
-                                                    <option value="0" disabled selected>Выберите шаблон посылки</option>
-                                                    @if (parcelTemplates != null)
-                                                    {
-                                                        @foreach (var template in parcelTemplates)
-                                                        {
-                                                            <option value="@template.TemplateId">
-                                                                @template.TemplateName — @template.LengthCm×@template.WidthCm×@template.HeightCm см
-                                                            </option>
-                                                        }
-                                                    }
-                                                </InputSelect>
-                                            </div>
-                                            <ValidationMessage For="() => order.ParcelTemplateId" class="text-danger small mt-1" />
-                                        </div>
-                                    }
-                                    else if (selectedTypeParcel == 2)
-                                    {
-                                        <div class="row g-3 mb-4">
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Длина (см) *</label>
-                                                <div class="input-with-icon">
-                                                    <i class="fas fa-ruler-vertical"></i>
-                                                    <InputNumber @bind-Value="order.LengthCm" class="form-control"
-                                                                 placeholder="0" />
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Ширина (см) *</label>
-                                                <div class="input-with-icon">
-                                                    <i class="fas fa-ruler-horizontal"></i>
-                                                    <InputNumber @bind-Value="order.WidthCm" class="form-control"
-                                                                 placeholder="0" />
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Высота (см) *</label>
-                                                <div class="input-with-icon">
-                                                    <i class="fas fa-arrows-alt-v"></i>
-                                                    <InputNumber @bind-Value="order.HeightCm" class="form-control"
-                                                                 placeholder="0" />
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Вес (кг) *</label>
-                                                <div class="input-with-icon">
-                                                    <i class="fas fa-weight-hanging"></i>
-                                                    <InputNumber @bind-Value="order.Weight" class="form-control"
-                                                                 placeholder="0" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">Описание посылки</label>
-                                        <div class="input-with-icon">
-                                            <i class="fas fa-file-alt"></i>
-                                            <InputText @bind-Value="order.DescriptionParcel" class="form-control"
-                                                       placeholder="Опишите содержимое посылки..." />
-                                        </div>
-                                        <ValidationMessage For="() => order.DescriptionParcel" class="text-danger small mt-1" />
-                                    </div>
-
-                                    <div class="text-end">
-                                        <button class="btn btn-primary px-5"
-                                                @onclick="() => NextStep(3)"
-                                                disabled="@(!IsParcelValid())">
-                                            Далее <i class="fas fa-arrow-right ms-2"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-
-                        <!-- Шаг 4: Доставка -->
-                        @if (step == 4)
-                        {
-                            <div class="form-step-card">
-                                <div class="step-header bg-primary-soft">
-                                    <div class="d-flex align-items-center">
-                                        <div class="step-icon-wrapper me-3">
-                                            <i class="fas fa-shipping-fast"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="mb-0">Доставка</h5>
-                                            <small class="text-muted">Настройте параметры доставки</small>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="step-body p-4">
-                                    <div class="row g-4">
-                                        <!-- Отправление -->
-                                        <div class="col-md-6">
-                                            <div class="delivery-section">
-                                                <div class="section-header">
-                                                    <h6 class="mb-0">
-                                                        <i class="fas fa-location-arrow me-2"></i>Отправление
-                                                        @if (isManager && managerBranch != null)
-                                                        {
-                                                            <span class="badge bg-success ms-2">Автозаполнено</span>
-                                                        }
-                                                    </h6>
-                                                </div>
-                                                <div class="section-body">
-                                                    @if (isManager && managerBranch != null)
-                                                    {
-                                                        <div class="auto-fill-notice">
-                                                            <i class="fas fa-info-circle"></i>
-                                                            Заполнено из вашего профиля
-                                                        </div>
-                                                    }
-
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Страна отправления</label>
-                                                        <InputSelect @bind-Value="order.OriginCountryId" class="form-control"
-                                                                     disabled="@(isManager && managerCountry != null)">
-                                                            <option value="0" disabled>Выберите страну</option>
-                                                            @if (countries != null)
-                                                            {
-                                                                @foreach (var ct in countries)
-                                                                {
-                                                                    <option value="@ct.CountryId">@ct.CountryName</option>
-                                                                }
-                                                            }
-                                                        </InputSelect>
-                                                    </div>
-
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Город отправления</label>
-                                                        <InputSelect @bind-Value="order.OriginTownId" class="form-control"
-                                                                     disabled="@(isManager && managerTown != null)">
-                                                            <option value="0" disabled>Выберите город</option>
-                                                            @if (towns != null)
-                                                            {
-                                                                foreach (var town in FilteredTowns)
-                                                                {
-                                                                    <option value="@town.TownId">@town.TownName</option>
-                                                                }
-                                                            }
-                                                        </InputSelect>
-                                                    </div>
-
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Филиал забора</label>
-                                                        <InputSelect @bind-Value="order.PickupBranchesId" class="form-control"
-                                                                     disabled="@(isManager && managerBranch != null)">
-                                                            <option value="0" disabled>Выберите филиал</option>
-                                                            @if (branches != null)
-                                                            {
-                                                                foreach (var branch in FilteredBranches)
-                                                                {
-                                                                    <option value="@branch.BranchesId">@branch.NameBranches</option>
-                                                                }
-                                                            }
-                                                        </InputSelect>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Настройки доставки -->
-                                        <div class="col-12">
-                                            <div class="delivery-settings">
-                                                <div class="col-md-6">
-                                                    <div class="col-md-6">
-                                                        <label class="form-label">Тип доставки</label>
-                                                        <InputSelect @bind-Value="order.DeliveryTypeId" class="form-control">
-                                                            <option value="0" disabled>Выберите тип доставки</option>
-                                                            @if (deliveryTypes != null)
-                                                            {
-                                                                @foreach (var dl in deliveryTypes)
-                                                                {
-                                                                    <option value="@dl.DeliveryTypeId">@dl.NameDeliveryType</option>
-                                                                }
-                                                            }
-                                                        </InputSelect>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label">Тип транспорта</label>
-                                                        <InputSelect @bind-Value="order.TransportTypeId" class="form-control">
-                                                            <option value="0" disabled>Выберите транспорт</option>
-                                                            @if (transportTypes != null)
-                                                            {
-                                                                @foreach (var transportType in transportTypes)
-                                                                {
-                                                                    <option value="@transportType.TransportTypeId">@transportType.NameTransportType</option>
-                                                                }
-                                                            }
-                                                        </InputSelect>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Назначение -->
-                                        <div class="col-md-6">
-                                            <div class="delivery-section">
-                                                <div class="section-header">
-                                                    <h6 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Назначение</h6>
-                                                </div>
-                                                <div class="section-body">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Страна назначения</label>
-                                                        <InputSelect @bind-Value="order.DestinationCountryId" class="form-control">
-                                                            <option value="0" disabled>Выберите страну</option>
-                                                            @if (countries != null)
-                                                            {
-                                                                @foreach (var ct in countries)
-                                                                {
-                                                                    <option value="@ct.CountryId">@ct.CountryName</option>
-                                                                }
-                                                            }
-                                                        </InputSelect>
-                                                    </div>
-
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Город назначения</label>
-                                                        <InputSelect @bind-Value="order.DestinationTownId" class="form-control">
-                                                            <option value="0" disabled>Выберите город</option>
-                                                            @if (towns != null)
-                                                            {
-                                                                @foreach (var town in FilteredTownsDes)
-                                                                {
-                                                                    <option value="@town.TownId">@town.TownName</option>
-                                                                }
-                                                            }
-                                                        </InputSelect>
-                                                    </div>
-
-                                                    @if (order.DeliveryTypeId == 2)
-                                                    {
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Филиал назначения</label>
-                                                            <InputSelect @bind-Value="order.DestinationBranchesId" class="form-control">
-                                                                <option value="0" disabled>Выберите филиал</option>
-                                                                @if (branches != null)
-                                                                {
-                                                                    @foreach (var branch in FilteredBranchesDes)
-                                                                    {
-                                                                        <option value="@branch.BranchesId">@branch.NameBranches</option>
-                                                                    }
-                                                                }
-                                                            </InputSelect>
-                                                        </div>
-                                                    }
-
-                                                    @if (order.DeliveryTypeId == 1)
-                                                    {
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Адрес доставки</label>
-                                                            <div class="input-with-icon">
-                                                                <i class="fas fa-home"></i>
-                                                                <input @bind="order.CourierDestAddress" class="form-control"
-                                                                       placeholder="Введите полный адрес доставки" />
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-
-
-                                        <!-- Расчет стоимости -->
-                                        @if (order.OriginTownId > 0 && order.DestinationTownId > 0)
-                                        {
-                                            <div class="col-12">
-                                                <div class="price-calculation">
-                                                    <div class="calculation-header">
-                                                        <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Расчет стоимости</h6>
-                                                    </div>
-                                                    <div class="calculation-body">
-                                                        @if (calculatedPrice == -1)
-                                                        {
-                                                            <div class="text-center py-3">
-                                                                <div class="spinner-border text-primary" role="status"></div>
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="price-breakdown">
-                                                                <div class="price-item">
-                                                                    <span>Расстояние:</span>
-                                                                    <span class="fw-semibold">@distance.ToString("F1") км</span>
-                                                                </div>
-                                                                <div class="price-item">
-                                                                    <span>Тариф:</span>
-                                                                    <span class="fw-semibold">
-                                                                        @(deliveryTariffs.FirstOrDefault(t => t.DeliveryTypeId == order.DeliveryTypeId)?.BasePrice.ToString("F2") ?? "0.00")
-                                                                    </span>
-                                                                </div>
-                                                                <div class="price-total">
-                                                                    <span>Итого:</span>
-                                                                    <span class="fw-bold fs-5 text-primary">@calculatedPrice.ToString("F2")</span>
-                                                                </div>
-                                                            </div>
-                                                        }
-
-                                                        <div class="text-center mt-3">
-                                                            <button type="button" class="btn btn-outline-primary"
-                                                                    @onclick="CalculatePrice"
-                                                                    disabled="@(order.OriginTownId == 0 || order.DestinationTownId == 0)">
-                                                                <i class="fas @(calculatedPrice > 0 ? "fa-sync-alt" : "fa-calculator") me-2"></i>
-                                                                @(calculatedPrice > 0 ? "Пересчитать" : "Рассчитать")
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            }
                                         }
                                     </div>
-
-                                    <div class="text-end mt-4">
-                                        <button class="btn btn-primary px-5"
-                                                @onclick="() => NextStep(4)"
-                                                disabled="@(order.OriginCountryId == 0 || order.OriginTownId == 0 || order.PickupBranchesId == 0 ||
-                                                                                                           order.DestinationCountryId == 0 || order.DestinationTownId == 0 ||
-                                                                                                           (order.DeliveryTypeId == 2 && order.DestinationBranchesId == 0) ||
-                                                                                                           (order.DeliveryTypeId == 1 && string.IsNullOrWhiteSpace(order.CourierDestAddress)))">
-                                            Далее <i class="fas fa-arrow-right ms-2"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                                }
                             </div>
-                        }
 
-                        <!-- Шаг 5: Оплата -->
-                        @if (step == 5)
-                        {
-                            <div class="form-step-card">
-                                <div class="step-header bg-success-soft">
-                                    <div class="d-flex align-items-center">
-                                        <div class="step-icon-wrapper me-3">
-                                            <i class="fas fa-credit-card"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="mb-0">Оплата</h5>
-                                            <small class="text-muted">Завершите оформление заказа</small>
-                                        </div>
-                                    </div>
-                                </div>
+                            @{
+                                var selectedClient = clients?.FirstOrDefault(c => c.ClientsId == order.ClientsId);
+                                var clientHasAccess = selectedClient?.UserId != null;
+                            }
 
-                                <div class="step-body p-4">
-                                    <div class="row g-4">
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-semibold">Способ оплаты</label>
-                                            <InputSelect @bind-Value="order.PaymentMethodId" class="form-control">
-                                                <option value="0" disabled>Выберите способ оплаты</option>
-                                                @if (paymentMethods != null)
-                                                {
-                                                    @foreach (var pay in paymentMethods)
-                                                    {
-                                                        <option value="@pay.PaymentMethodId">@pay.MethodName</option>
-                                                    }
-                                                }
-                                            </InputSelect>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-semibold">Сумма к оплате</label>
-                                            <div class="input-with-icon">
-                                                <i class="fas fa-dollar-sign"></i>
-                                                <InputText @bind-Value="order.Amount" class="form-control"
-                                                           placeholder="0.00"
-                                                           readonly="@(calculatedPrice > 0)" />
-                                            </div>
-                                            @if (calculatedPrice > 0)
-                                            {
-                                                <small class="text-success">
-                                                    <i class="fas fa-check-circle me-1"></i>
-                                                    Рассчитано автоматически
-                                                </small>
-                                            }
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-semibold">Дата оплаты</label>
-                                            <InputDate @bind-Value="order.PaymentDate" class="form-control" />
-                                        </div>
-                                    </div>
-
-                                    <div class="d-flex gap-3 mt-4">
-                                        <button type="button" class="btn btn-outline-primary flex-fill" @onclick="PreviewPdf">
-                                            <i class="fas fa-eye me-2"></i>Предпросмотр PDF
-                                        </button>
-                                        <button type="submit" class="btn btn-success flex-fill">
-                                            <i class="fas fa-check-circle me-2"></i>Создать заказ
-                                        </button>
-                                    </div>
-
-                                    <div class="text-center mt-3">
-                                        <NavLink href="/ordersList" class="text-decoration-none">
-                                            <i class="fas fa-arrow-left me-1"></i> Вернуться к списку заказов
-                                        </NavLink>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </EditForm>
-            </div>
-
-            <div class="col-lg-3">
-                <!-- Информация менеджера -->
-                <div class="sidebar-card">
-                    <div class="sidebar-card-header">
-                        <i class="fas fa-user-tie me-2"></i> Ваш профиль
-                    </div>
-                    <div class="sidebar-card-body">
-                        <div class="manager-info">
-                            <div class="manager-avatar">
-                                @currentManager?.FirstName?.FirstOrDefault()@currentManager?.LastName?.FirstOrDefault()
-                            </div>
-                            <div class="manager-details">
-                                <div class="manager-name">@currentManager?.FirstName @currentManager?.LastName</div>
-                                <div class="manager-role">Менеджер</div>
-                            </div>
-                        </div>
-                        <div class="manager-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">Филиал:</span>
-                                <span class="stat-value">@managerBranch?.NameBranches</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="sidebar-card">
-                    <div class="sidebar-card-header">
-                        <i class="fas fa-chart-bar me-2"></i> Статистика
-                    </div>
-                    <div class="sidebar-card-body">
-                        <div class="order-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">Текущий шаг:</span>
-                                <span class="stat-value">@step из 5</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Клиент:</span>
-                                <span class="stat-value">@(order.ClientsId > 0 ? "Выбран" : "Не выбран")</span>
-                            </div>
-                            @if (calculatedPrice > 0)
+                            @if (!clientHasAccess && order.ClientsId != 0)
                             {
-                                <div class="stat-item">
-                                    <span class="stat-label">Стоимость:</span>
-                                    <span class="stat-value text-success">@calculatedPrice.ToString("F2") ₸</span>
+                                <div class="co-alert co-alert-blue" style="margin-bottom: .85rem;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                                    <div style="flex:1">
+                                        <div class="co-alert-title">Создать доступ для клиента</div>
+                                        <div class="inp-wrap" style="margin-top: .4rem;">
+                                            <div class="inp-ico" aria-hidden="true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                            </div>
+                                            <InputText @bind-Value="newClientEmail" class="lc-inp" placeholder="email@example.com" />
+                                        </div>
+                                        <div class="field-hint" style="margin-top:.3rem">На этот email будет отправлен пароль для входа</div>
+                                    </div>
                                 </div>
                             }
+                            else if (clientHasAccess)
+                            {
+                                <div class="co-alert co-alert-green" style="margin-bottom: .85rem;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    <div>
+                                        <div class="co-alert-title">Доступ к системе активирован</div>
+                                        <span>Клиент может отслеживать заказы через личный кабинет</span>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="co-btn-row-split">
+                                <NavLink href="/clients/create" class="co-btn co-btn-outline" style="flex:1;justify-content:center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                                    Новый клиент
+                                </NavLink>
+                                <button type="button" class="co-btn co-btn-blue" style="flex:1;justify-content:center"
+                                        @onclick="() => NextStep(1)"
+                                        disabled="@(order.ClientsId == 0 || (!clientHasAccess && string.IsNullOrWhiteSpace(newClientEmail)))">
+                                    Далее
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
+                }
+
+                <!-- ШАГ 2: Получатель -->
+                @if (step == 2)
+                {
+                    <div class="co-card">
+                        <div class="co-card-hd">
+                            <div class="co-card-ico ico-blue" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+                            </div>
+                            <div>
+                                <div class="co-card-title">Получатель</div>
+                                <div class="co-card-sub">Укажите данные получателя посылки</div>
+                            </div>
+                        </div>
+                        <div class="co-card-body">
+                            <div class="form-row-3">
+                                <div class="field">
+                                    <span class="field-lbl">Фамилия *</span>
+                                    <div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                                    <InputText @bind-Value="order.LastRecepientName" class="lc-inp" placeholder="Иванов" /></div>
+                                    <ValidationMessage For="() => order.LastRecepientName" class="co-val-msg" />
+                                </div>
+                                <div class="field">
+                                    <span class="field-lbl">Имя *</span>
+                                    <div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                                    <InputText @bind-Value="order.FirstRecepientName" class="lc-inp" placeholder="Иван" /></div>
+                                    <ValidationMessage For="() => order.FirstRecepientName" class="co-val-msg" />
+                                </div>
+                                <div class="field">
+                                    <span class="field-lbl">Отчество</span>
+                                    <div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                                    <InputText @bind-Value="order.MiddleRecepientName" class="lc-inp" placeholder="Иванович" /></div>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <span class="field-lbl">Телефон *</span>
+                                <div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/></svg></div>
+                                <input @bind="order.PhoneRecepient" @ref="phoneInput" class="lc-inp" placeholder="+7 (XXX) XXX-XX-XX" /></div>
+                                <ValidationMessage For="() => order.PhoneRecepient" class="co-val-msg" />
+                            </div>
+                            <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
+                                <button type="button" class="co-btn co-btn-blue" @onclick="NextStep2"
+                                        disabled="@(string.IsNullOrWhiteSpace(order.FirstRecepientName?.Trim()) || string.IsNullOrWhiteSpace(order.LastRecepientName?.Trim()) || string.IsNullOrWhiteSpace(order.PhoneRecepient?.Trim()))">
+                                    Далее <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- ШАГ 3: Посылка -->
+                @if (step == 3)
+                {
+                    <div class="co-card">
+                        <div class="co-card-hd">
+                            <div class="co-card-ico ico-orange" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                            </div>
+                            <div>
+                                <div class="co-card-title">Посылка</div>
+                                <div class="co-card-sub">Укажите параметры отправления</div>
+                            </div>
+                        </div>
+                        <div class="co-card-body">
+                            <div class="field">
+                                <span class="field-lbl">Тип посылки *</span>
+                                <InputRadioGroup @bind-Value="selectedTypeParcel">
+                                    <div class="co-type-row">
+                                        <label class="co-type-opt @(selectedTypeParcel == 1 ? "sel" : "")">
+                                            <InputRadio Value="1" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                            Стандартные размеры
+                                        </label>
+                                        <label class="co-type-opt @(selectedTypeParcel == 2 ? "sel" : "")">
+                                            <InputRadio Value="2" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="4"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+                                            Нестандартные размеры
+                                        </label>
+                                    </div>
+                                </InputRadioGroup>
+                            </div>
+                            @if (selectedTypeParcel == 1)
+                            {
+                                <div class="field">
+                                    <span class="field-lbl">Шаблон посылки</span>
+                                    <div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+                                    <InputSelect @bind-Value="order.ParcelTemplateId" class="lc-sel"><option value="0" disabled selected>Выберите шаблон посылки</option>@if (parcelTemplates != null) { @foreach (var t in parcelTemplates) { <option value="@t.TemplateId">@t.TemplateName — @t.LengthCm×@t.WidthCm×@t.HeightCm см</option> } }</InputSelect></div>
+                                    <ValidationMessage For="() => order.ParcelTemplateId" class="co-val-msg" />
+                                </div>
+                            }
+                            else if (selectedTypeParcel == 2)
+                            {
+                                <div class="form-row-2">
+                                    <div class="field"><span class="field-lbl">Длина (см) *</span><div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><line x1="4" y1="12" x2="20" y2="12"/></svg></div><InputNumber @bind-Value="order.LengthCm" class="lc-inp" placeholder="0" /></div></div>
+                                    <div class="field"><span class="field-lbl">Ширина (см) *</span><div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><line x1="4" y1="12" x2="20" y2="12"/></svg></div><InputNumber @bind-Value="order.WidthCm" class="lc-inp" placeholder="0" /></div></div>
+                                    <div class="field"><span class="field-lbl">Высота (см) *</span><div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><line x1="4" y1="12" x2="20" y2="12"/></svg></div><InputNumber @bind-Value="order.HeightCm" class="lc-inp" placeholder="0" /></div></div>
+                                    <div class="field"><span class="field-lbl">Вес (кг) *</span><div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.46A2 2 0 0 0 17.48 8Z"/></svg></div><InputNumber @bind-Value="order.Weight" class="lc-inp" placeholder="0" /></div></div>
+                                </div>
+                            }
+                            <div class="field">
+                                <span class="field-lbl">Описание посылки</span>
+                                <div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                                <InputText @bind-Value="order.DescriptionParcel" class="lc-inp" placeholder="Опишите содержимое посылки..." /></div>
+                            </div>
+                            <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
+                                <button type="button" class="co-btn co-btn-blue" @onclick="() => NextStep(3)" disabled="@(!IsParcelValid())">
+                                    Далее <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- ШАГ 4: Доставка -->
+                @if (step == 4)
+                {
+                    <div class="co-card">
+                        <div class="co-card-hd">
+                            <div class="co-card-ico ico-blue" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
+                            </div>
+                            <div>
+                                <div class="co-card-title">Доставка</div>
+                                <div class="co-card-sub">Настройте параметры доставки</div>
+                            </div>
+                        </div>
+                        <div class="co-card-body">
+                            <div class="co-sec-divider">
+                                Место отправления
+                                @if (isManager && managerBranch != null)
+                                {
+                                    <span class="co-auto-tag">Автозаполнено</span>
+                                }
+                            </div>
+                            <div class="form-row-3">
+                                <div class="field"><span class="field-lbl">Страна</span><div class="inp-wrap"><InputSelect @bind-Value="order.OriginCountryId" class="lc-sel" disabled="@(isManager && managerCountry != null)"><option value="0" disabled>Страна</option>@if (countries != null) { @foreach (var c in countries) { <option value="@c.CountryId">@c.CountryName</option> } }</InputSelect></div><ValidationMessage For="() => order.OriginCountryId" class="co-val-msg" /></div>
+                                <div class="field"><span class="field-lbl">Город</span><div class="inp-wrap"><InputSelect @bind-Value="order.OriginTownId" class="lc-sel" disabled="@(isManager && managerTown != null)"><option value="0" disabled>Город</option>@foreach (var t in FilteredTowns) { <option value="@t.TownId">@t.TownName</option> }</InputSelect></div><ValidationMessage For="() => order.OriginTownId" class="co-val-msg" /></div>
+                                <div class="field"><span class="field-lbl">Филиал забора</span><div class="inp-wrap"><InputSelect @bind-Value="order.PickupBranchesId" class="lc-sel" disabled="@(isManager && managerBranch != null)"><option value="0" disabled>Филиал</option>@foreach (var b in FilteredBranches) { <option value="@b.BranchesId">@b.NameBranches</option> }</InputSelect></div><ValidationMessage For="() => order.PickupBranchesId" class="co-val-msg" /></div>
+                            </div>
+                            <div class="co-sec-divider">Настройки доставки</div>
+                            <div class="form-row-2">
+                                <div class="field"><span class="field-lbl">Тип доставки</span><div class="inp-wrap"><InputSelect @bind-Value="order.DeliveryTypeId" class="lc-sel"><option value="0" disabled>Выберите тип</option>@if (deliveryTypes != null) { @foreach (var d in deliveryTypes) { <option value="@d.DeliveryTypeId">@d.NameDeliveryType</option> } }</InputSelect></div></div>
+                                <div class="field"><span class="field-lbl">Тип транспорта</span><div class="inp-wrap"><InputSelect @bind-Value="order.TransportTypeId" class="lc-sel"><option value="0" disabled>Выберите транспорт</option>@if (transportTypes != null) { @foreach (var t in transportTypes) { <option value="@t.TransportTypeId">@t.NameTransportType</option> } }</InputSelect></div></div>
+                            </div>
+                            <div class="co-sec-divider">Место назначения</div>
+                            <div class="form-row-2">
+                                <div class="field"><span class="field-lbl">Страна</span><div class="inp-wrap"><InputSelect @bind-Value="order.DestinationCountryId" class="lc-sel"><option value="0" disabled>Страна</option>@if (countries != null) { @foreach (var c in countries) { <option value="@c.CountryId">@c.CountryName</option> } }</InputSelect></div><ValidationMessage For="() => order.DestinationCountryId" class="co-val-msg" /></div>
+                                <div class="field"><span class="field-lbl">Город</span><div class="inp-wrap"><InputSelect @bind-Value="order.DestinationTownId" class="lc-sel"><option value="0" disabled>Город</option>@foreach (var t in FilteredTownsDes) { <option value="@t.TownId">@t.TownName</option> }</InputSelect></div><ValidationMessage For="() => order.DestinationTownId" class="co-val-msg" /></div>
+                            </div>
+                            @if (order.DeliveryTypeId == 2)
+                            {
+                                <div class="field"><span class="field-lbl">Филиал назначения</span><div class="inp-wrap"><InputSelect @bind-Value="order.DestinationBranchesId" class="lc-sel"><option value="0" disabled>Филиал</option>@foreach (var b in FilteredBranchesDes) { <option value="@b.BranchesId">@b.NameBranches</option> }</InputSelect></div><ValidationMessage For="() => order.DestinationBranchesId" class="co-val-msg" /></div>
+                            }
+                            @if (order.DeliveryTypeId == 1)
+                            {
+                                <div class="field"><span class="field-lbl">Адрес доставки</span><div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><input @bind="order.CourierDestAddress" class="lc-inp" placeholder="Введите полный адрес доставки" /></div><ValidationMessage For="() => order.CourierDestAddress" class="co-val-msg" /></div>
+                            }
+                            @if (order.OriginTownId > 0 && order.DestinationTownId > 0)
+                            {
+                                <div class="co-price-box">
+                                    <div class="co-price-hd"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>Расчёт стоимости</div>
+                                    @if (calculatedPrice == -1) { <div class="co-price-loading"><span class="lc-spinner" role="status"></span>Рассчитываем...</div> }
+                                    else if (calculatedPrice > 0) {
+                                        <div class="co-price-grid">
+                                            <div class="co-price-cell"><div class="co-price-lbl">Расстояние</div><div class="co-price-val">@distance.ToString("F1") км</div></div>
+                                            <div class="co-price-cell"><div class="co-price-lbl">Тариф</div><div class="co-price-val">@(deliveryTariffs.FirstOrDefault(t => t.DeliveryTypeId == order.DeliveryTypeId)?.BasePrice.ToString("F2") ?? "0.00")</div></div>
+                                            <div class="co-price-cell co-price-hl"><div class="co-price-lbl-lt">Итого</div><div class="co-price-val-lt">@calculatedPrice.ToString("F2")</div></div>
+                                        </div>
+                                    }
+                                    <div style="text-align:center;margin-top:.65rem">
+                                        <button type="button" class="co-btn co-btn-orange" style="width:auto;padding:7px 16px" @onclick="CalculatePrice" disabled="@(order.OriginTownId == 0 || order.DestinationTownId == 0)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+                                            @(calculatedPrice > 0 ? "Пересчитать" : "Рассчитать стоимость")
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            <div style="display:flex;justify-content:flex-end;margin-top:.85rem">
+                                <button type="button" class="co-btn co-btn-blue" @onclick="() => NextStep(4)"
+                                        disabled="@(order.OriginCountryId == 0 || order.OriginTownId == 0 || order.PickupBranchesId == 0 || order.DestinationCountryId == 0 || order.DestinationTownId == 0 || (order.DeliveryTypeId == 2 && order.DestinationBranchesId == 0) || (order.DeliveryTypeId == 1 && string.IsNullOrWhiteSpace(order.CourierDestAddress)))">
+                                    Далее <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- ШАГ 5: Оплата -->
+                @if (step == 5)
+                {
+                    <div class="co-card">
+                        <div class="co-card-hd">
+                            <div class="co-card-ico ico-green" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                            </div>
+                            <div>
+                                <div class="co-card-title">Оплата</div>
+                                <div class="co-card-sub">Завершите оформление заказа</div>
+                            </div>
+                        </div>
+                        <div class="co-card-body">
+                            <div class="form-row-2">
+                                <div class="field">
+                                    <span class="field-lbl">Способ оплаты</span>
+                                    <div class="inp-wrap"><InputSelect @bind-Value="order.PaymentMethodId" class="lc-sel"><option value="0" disabled>Выберите способ</option>@if (paymentMethods != null) { @foreach (var p in paymentMethods) { <option value="@p.PaymentMethodId">@p.MethodName</option> } }</InputSelect></div>
+                                </div>
+                                <div class="field">
+                                    <span class="field-lbl">Сумма к оплате</span>
+                                    <div class="inp-wrap"><div class="inp-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><InputText @bind-Value="order.Amount" class="lc-inp" placeholder="0.00" /></div>
+                                    @if (calculatedPrice > 0) { <div class="field-hint" style="color:#0F6E56"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Рассчитано автоматически</div> }
+                                </div>
+                                <div class="field">
+                                    <span class="field-lbl">Дата оплаты</span>
+                                    <div class="inp-wrap" style="border-radius:8px"><InputDate @bind-Value="order.PaymentDate" class="lc-inp" /></div>
+                                </div>
+                            </div>
+                            <div class="co-btn-row-split" style="margin-top:.85rem">
+                                <button type="button" class="co-btn co-btn-outline" style="flex:1;justify-content:center" @onclick="PreviewPdf">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    Предпросмотр PDF
+                                </button>
+                                <button type="submit" class="co-btn co-btn-green" style="flex:1;justify-content:center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    Создать заказ
+                                </button>
+                            </div>
+                            <div style="text-align:center;margin-top:.75rem">
+                                <NavLink href="/ordersList" class="co-back-link">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                                    Вернуться к списку заказов
+                                </NavLink>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </EditForm>
+        </div>
+
+        <!-- Боковая панель -->
+        <div class="co-sidebar">
+
+            <div class="sb-card">
+                <div class="sb-card-hd">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="16" y1="3.13" x2="16" y2="7.75"/><path d="M19 5.5h2M21 8h-2"/></svg>
+                    Ваш профиль
                 </div>
-                
+                <div class="sb-card-body">
+                    <div class="manager-row">
+                        <div class="manager-av">@currentManager?.FirstName?.FirstOrDefault()@currentManager?.LastName?.FirstOrDefault()</div>
+                        <div>
+                            <div class="manager-name">@currentManager?.FirstName @currentManager?.LastName</div>
+                            <div class="manager-role">Менеджер</div>
+                        </div>
+                    </div>
+                    <div class="sb-stat-item">
+                        <span class="sb-stat-lbl">Филиал</span>
+                        <span class="sb-stat-val">@managerBranch?.NameBranches</span>
+                    </div>
+                </div>
             </div>
+
+            <div class="sb-card">
+                <div class="sb-card-hd">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Статистика
+                </div>
+                <div class="sb-card-body">
+                    <div class="sb-stat-item">
+                        <span class="sb-stat-lbl">Текущий шаг</span>
+                        <span class="sb-stat-val">@step из 5</span>
+                    </div>
+                    <div class="sb-stat-item">
+                        <span class="sb-stat-lbl">Клиент</span>
+                        <span class="sb-stat-val @(order.ClientsId > 0 ? "val-green" : "val-muted")">@(order.ClientsId > 0 ? "Выбран" : "Не выбран")</span>
+                    </div>
+                    @if (calculatedPrice > 0)
+                    {
+                        <div class="sb-stat-item">
+                            <span class="sb-stat-lbl">Стоимость</span>
+                            <span class="sb-stat-val val-green">@calculatedPrice.ToString("F2") ₸</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
 
-<style>
-    /* Основные стили для менеджера */
-    .office-manager-layout {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    }
-
-    .process-header {
-        background: white;
-        padding: 1rem 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-
-    /* Процесс-бар */
-    .process-tracker {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-
-    .progress-line {
-        position: absolute;
-        top: 25px;
-        left: 50px;
-        right: 50px;
-        height: 3px;
-        background: #e9ecef;
-        z-index: 1;
-    }
-
-    .process-step {
-        position: relative;
-        z-index: 2;
-        flex: 1;
-        text-align: center;
-    }
-
-    .step-button {
-        background: none;
-        border: none;
-        padding: 0;
-        cursor: pointer;
-        text-align: center;
-        width: 100%;
-    }
-
-    .step-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: white;
-        border: 3px solid #e9ecef;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 10px;
-        transition: all 0.3s ease;
-    }
-
-    .step-button.active .step-icon {
-        border-color: #0d6efd;
-        background: #0d6efd;
-        color: white;
-        transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
-    }
-
-    .step-button.completed .step-icon {
-        border-color: #198754;
-        background: #198754;
-        color: white;
-    }
-
-    .step-number {
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    .step-title {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: #6c757d;
-        display: block;
-    }
-
-    .step-button.active .step-title {
-        color: #0d6efd;
-        font-weight: 600;
-    }
-
-    /* Карточки шагов */
-    .form-step-card {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-        margin-bottom: 1.5rem;
-    }
-
-    .step-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-    }
-
-    .step-icon-wrapper {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: rgba(13, 110, 253, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #0d6efd;
-        font-size: 1.25rem;
-    }
-
-    .bg-primary-soft {
-        background: rgba(13, 110, 253, 0.05);
-    }
-
-    .bg-info-soft {
-        background: rgba(13, 202, 240, 0.05);
-    }
-
-    .bg-warning-soft {
-        background: rgba(255, 193, 7, 0.05);
-    }
-
-    .bg-success-soft {
-        background: rgba(25, 135, 84, 0.05);
-    }
-
-    /* Карточки выбора */
-    .client-type-card,
-    .parcel-type-card {
-        flex: 1;
-        border: 2px solid #e9ecef;
-        border-radius: 10px;
-        padding: 1.5rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: white;
-    }
-
-        .client-type-card.active,
-        .parcel-type-card.active {
-            border-color: #0d6efd;
-            background: rgba(13, 110, 253, 0.05);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.1);
-        }
-
-    .client-type-content,
-    .parcel-type-content {
-        text-align: center;
-    }
-
-        .client-type-content i,
-        .parcel-type-content i {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: #6c757d;
-        }
-
-    .client-type-card.active i,
-    .parcel-type-card.active i {
-        color: #0d6efd;
-    }
-
-    /* Поля ввода с иконками */
-    .input-with-icon {
-        position: relative;
-    }
-
-        .input-with-icon i {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6c757d;
-            z-index: 2;
-        }
-
-        .input-with-icon .form-control,
-        .input-with-icon input,
-        .input-with-icon select {
-            padding-left: 45px;
-        }
-
-    /* Поиск */
-    .search-box {
-        position: relative;
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6c757d;
-        z-index: 2;
-    }
-
-    .search-input {
-        padding-left: 45px;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-        transition: all 0.3s ease;
-    }
-
-        .search-input:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-
-    /* Стили для выпадающего списка результатов поиска */
-    .search-results-dropdown {
-        position: absolute;
-        top: calc(100% + 2px); /* Добавляем небольшой отступ от поля ввода */
-        left: 0;
-        right: 0;
-        z-index: 1050; /* Увеличиваем z-index чтобы было поверх других элементов */
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid rgba(0,0,0,.15);
-        border-radius: 0.375rem;
-        background-color: white;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15); /* Добавляем тень для лучшей видимости */
-    }
-
-        .search-results-dropdown .list-group {
-            border-radius: 0;
-            border: none;
-        }
-
-        .search-results-dropdown .list-group-item {
-            border: none;
-            border-bottom: 1px solid rgba(0,0,0,.125);
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-            .search-results-dropdown .list-group-item:last-child {
-                border-bottom: none;
-            }
-
-            .search-results-dropdown .list-group-item:hover {
-                background-color: #f8f9fa;
-            }
-
-            .search-results-dropdown .list-group-item h6 {
-                font-size: 0.95rem;
-                margin-bottom: 0.25rem;
-                color: #212529;
-            }
-
-            .search-results-dropdown .list-group-item small {
-                font-size: 0.8rem;
-                color: #6c757d;
-            }
-
-    /* Убедитесь, что контейнер поиска имеет правильное позиционирование */
-    .position-relative {
-        position: relative;
-        z-index: 100; /* Добавляем z-index для контейнера */
-    }
-
-    /* Улучшаем стили для input-group чтобы выпадающий список хорошо сочетался */
-    .input-group .form-control {
-        border-left: 0;
-        position: relative;
-        z-index: 2;
-    }
-
-    .input-group .input-group-text {
-        background-color: #f8f9fa;
-        border-right: 0;
-        position: relative;
-        z-index: 2;
-    }
-
-    /* Улучшаем focus состояние */
-    .input-group:focus-within .form-control,
-    .input-group:focus-within .input-group-text {
-        border-color: #86b7fe;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        z-index: 3; /* Увеличиваем при фокусе */
-    }
-
-    /* Убираем стандартный стиль list-group для этих элементов */
-    .list-group {
-        margin-bottom: 0;
-    }
-
-    /* Адаптивность для мобильных устройств */
-    @@media (max-width: 768px) {
-        .search-results-dropdown {
-            position: static;
-            margin-top: 0.5rem;
-            max-height: 250px;
-            box-shadow: none; /* Убираем тень на мобильных */
-            border: 1px solid #dee2e6;
-        }
-
-        .position-relative {
-            z-index: auto; /* Сбрасываем z-index на мобильных */
-        }
-    }
-
-    /* Дополнительно: стили для предотвращения перекрытия других элементов */
-    .step-body {
-        position: relative;
-        z-index: 1;
-    }
-
-    /* Увеличиваем z-index для всего контейнера формы на шаге 1 */
-    .form-step-card {
-        position: relative;
-        z-index: 1;
-    }
-
-   
-    
-    
-
-    /* Адаптивность для мобильных устройств */
-    @@media (max-width: 768px) {
-        .search-results-dropdown {
-            position: static;
-            margin-top: 0.5rem;
-            max-height: 250px;
-        }
-
-        .btn-group.w-100 {
-            flex-direction: column;
-        }
-
-            .btn-group.w-100 .btn {
-                border-radius: 0.375rem !important;
-                margin-bottom: 0.5rem;
-                width: 100%;
-            }
-    }
-
-    /* Информационные блоки */
-    .info-box {
-        background: #e7f5ff;
-        border: 1px solid #a5d8ff;
-        border-radius: 8px;
-        padding: 1rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-
-    .info-box-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        background: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #339af0;
-        flex-shrink: 0;
-    }
-
-    .success-box {
-        background: #d1f7c4;
-        border: 1px solid #94d82d;
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        color: #2b8a3e;
-    }
-
-    /* Секции доставки */
-    .delivery-section {
-        background: #f8f9fa;
-        border-radius: 10px;
-        overflow: hidden;
-        height: 100%;
-    }
-
-    .section-header {
-        background: white;
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    .section-body {
-        padding: 1.25rem;
-    }
-
-    .auto-fill-notice {
-        background: #d1f7c4;
-        color: #2b8a3e;
-        padding: 0.5rem 0.75rem;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-    }
-
-    /* Расчет стоимости */
-    .price-calculation {
-        background: white;
-        border: 2px solid #e7f5ff;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-
-    .calculation-header {
-        background: #e7f5ff;
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid #a5d8ff;
-    }
-
-    .calculation-body {
-        padding: 1.5rem;
-    }
-
-    .price-breakdown {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .price-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px dashed #dee2e6;
-    }
-
-    .price-total {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-top: 0.75rem;
-        margin-top: 0.5rem;
-        border-top: 2px solid #dee2e6;
-    }
-
-    /* Боковая панель */
-    .sidebar-card {
-        background: white;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        margin-bottom: 1rem;
-    }
-
-    .sidebar-card-header {
-        background: #f8f9fa;
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid #e9ecef;
-        font-weight: 600;
-        color: #495057;
-    }
-
-    .sidebar-card-body {
-        padding: 1.25rem;
-    }
-
-    .manager-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-    }
-
-    .manager-avatar {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-
-    .manager-details {
-        flex: 1;
-    }
-
-    .manager-name {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
-
-    .manager-role {
-        color: #6c757d;
-        font-size: 0.875rem;
-    }
-
-    .manager-stats,
-    .order-stats {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .stat-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #f8f9fa;
-    }
-
-        .stat-item:last-child {
-            border-bottom: none;
-        }
-
-    .stat-label {
-        color: #6c757d;
-        font-size: 0.875rem;
-    }
-
-    .stat-value {
-        font-weight: 500;
-        color: #495057;
-    }
-
-    .quick-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    /* Адаптивность */
-    @@media (max-width: 992px) {
-        .process-step {
-            flex: none;
-            width: 20%;
-        }
-
-        .progress-line {
-            display: none;
-        }
-
-        .step-title {
-            font-size: 0.75rem;
-        }
-    }
-
-    @@media (max-width: 768px) {
-        .step-icon {
-            width: 40px;
-            height: 40px;
-        }
-
-        .step-title {
-            display: none;
-        }
-
-        .form-step-card {
-            margin-bottom: 1rem;
-        }
-
-        .step-body {
-            padding: 1rem !important;
-        }
-    }
-</style>
 
 @code {
     [SupplyParameterFromForm]
@@ -1385,8 +507,6 @@
     private int selectedTypeParcel = 1;
     private string clientSearch = "";
     private string newClientEmail = "";
-    private string generatedPassword = "";
-    private bool isNewClientRegistered = false;
     // Списки для справочников
     private List<Client> clients = new();
     private List<Town> towns = new();
@@ -1555,7 +675,6 @@
     //Загрузка списков
     protected override async Task OnInitializedAsync()
     {
-        using var db = await DbContextFactory.CreateDbContextAsync();
 
         clients = await ClientService.GetAllClientAsync();
         towns = await LocationService.GetAllTownAsync();
@@ -1705,5 +824,441 @@
 }
 
 
+
+<style>
+    /* ============================================================
+   CreateOrderManager.razor.css — тёмно-синий + бежевый + оранжевый
+   ============================================================ */
+
+.lc-stripe       { height: 4px; background: #1C3A5E; }
+.lc-stripe-inner { height: 100%; width: 35%; background: #F5A623; border-radius: 0 3px 3px 0; }
+
+.co-page {
+    min-height: 100vh;
+    background: #F5F3EF;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #1C2B3A;
+}
+
+/* ── Макет ───────────────────────────────────────────────── */
+.co-layout {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 1rem;
+    padding: 1.25rem 1rem 3rem;
+    max-width: 1050px;
+    margin: 0 auto;
+}
+
+@@media (max-width: 860px) {
+    .co-layout { grid-template-columns: 1fr; }
+    .co-sidebar { display: none; }
+}
+
+/* ── Шапка ───────────────────────────────────────────────── */
+.co-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.co-header-ico {
+    width: 36px; height: 36px;
+    background: #1C3A5E;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    color: #F5A623;
+    flex-shrink: 0;
+}
+
+.co-header-title { font-size: 16px; font-weight: 500; color: #1C2B3A; }
+.co-header-sub   { font-size: 12px; color: #8A8070; margin-top: 1px; }
+
+/* ── Шаги ────────────────────────────────────────────────── */
+.co-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    padding: .75rem 1.25rem;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.co-steps::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 2rem; right: 2rem;
+    height: 1px;
+    background: #EDE8E0;
+    z-index: 0;
+    transform: translateY(4px);
+}
+
+.co-step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+
+.co-step-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.co-step-circle {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid #D5CCBC;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500;
+    color: #8A8070;
+    transition: all 0.2s;
+}
+
+.co-step-btn.done   .co-step-circle { background: #1C3A5E; border-color: #1C3A5E; color: #fff; }
+.co-step-btn.active .co-step-circle { background: #F5A623; border-color: #F5A623; color: #fff; }
+
+.co-step-lbl { font-size: 10px; color: #8A8070; white-space: nowrap; }
+.co-step-btn.active .co-step-lbl { color: #1C2B3A; font-weight: 500; }
+
+/* ── Кнопка назад ────────────────────────────────────────── */
+.co-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid #D5CCBC;
+    background: #fff;
+    color: #1C2B3A;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.co-back-btn:hover { background: #F5F3EF; border-color: #B0A898; }
+
+/* ── Карточка ────────────────────────────────────────────── */
+.co-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: .75rem;
+}
+
+.co-card-hd {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: .85rem 1.1rem;
+    background: #1C3A5E;
+}
+
+.co-card-ico {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.ico-blue   { background: rgba(245,166,35,0.2); color: #F5A623; }
+.ico-orange { background: rgba(245,166,35,0.2); color: #F5A623; }
+.ico-green  { background: rgba(245,166,35,0.2); color: #F5A623; }
+
+.co-card-title { font-size: 14px; font-weight: 500; color: #fff; }
+.co-card-sub   { font-size: 12px; color: #A8C4DE; margin-top: 1px; }
+.co-card-body  { padding: 1.1rem; }
+
+/* ── Поля ────────────────────────────────────────────────── */
+.field      { margin-bottom: .85rem; }
+.field-lbl  { font-size: 12px; font-weight: 500; color: #1C2B3A; margin-bottom: .3rem; display: flex; align-items: center; gap: 5px; }
+.field-hint { font-size: 11px; color: #8A8070; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; }
+
+@@media (max-width: 600px) {
+    .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+}
+
+.inp-wrap {
+    display: flex;
+    border: 1px solid #D5CCBC;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.inp-wrap:focus-within { border-color: #1C3A5E; box-shadow: 0 0 0 3px rgba(28,58,94,0.1); }
+
+.inp-ico {
+    width: 34px;
+    display: flex; align-items: center; justify-content: center;
+    background: #FAF8F4;
+    color: #8A8070;
+    border-right: 1px solid #E2DBCF;
+    flex-shrink: 0;
+}
+
+.lc-inp {
+    flex: 1;
+    font-size: 13px;
+    padding: 8px 10px;
+    border: none;
+    background: #FAF8F4;
+    color: #1C2B3A;
+    outline: none;
+    width: 100%;
+}
+.lc-inp::placeholder { color: #B0A898; }
+
+.lc-sel {
+    flex: 1;
+    font-size: 13px;
+    padding: 8px 10px;
+    border: none;
+    background: #FAF8F4;
+    color: #1C2B3A;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+.co-val-msg { font-size: 12px; color: #b91c1c; margin-top: 3px; display: block; }
+
+/* ── Алерты ──────────────────────────────────────────────── */
+.co-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: .75rem .85rem;
+    border-radius: 8px;
+    margin-bottom: .85rem;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.co-alert-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.co-alert-danger { background: #FEF2F2; border: 1px solid #FECACA; color: #B91C1C; }
+.co-alert-blue   { background: #E8F0F9; border: 1px solid #C2D9EE; color: #1C3A5E; }
+.co-alert-green  { background: #EAF7F2; border: 1px solid #B8E8D8; color: #0F6E56; }
+
+/* ── Тип клиента / посылки ───────────────────────────────── */
+.co-type-row { display: flex; gap: .6rem; margin-top: .35rem; }
+
+.co-type-opt {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    gap: 7px;
+    padding: .7rem;
+    border: 1px solid #D5CCBC;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    background: #FAF8F4;
+    color: #1C2B3A;
+    transition: all 0.15s;
+}
+.co-type-opt input[type="radio"] { display: none; }
+.co-type-opt.sel             { border-color: #1C3A5E; background: #E8F0F9; color: #1C3A5E; font-weight: 500; }
+.co-type-opt:hover:not(.sel) { background: #F5F0E8; border-color: #B0A898; }
+
+/* ── Подсказка тип клиента ───────────────────────────────── */
+.co-hint-tag { font-size: 11px; color: #8A8070; font-weight: 400; }
+
+/* ── Дропдаун поиска ─────────────────────────────────────── */
+.co-search-dropdown {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: .4rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.co-search-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: .65rem .85rem;
+    cursor: pointer;
+    border-bottom: 1px solid #F0EDE8;
+    transition: background 0.12s;
+}
+.co-search-item:last-child { border-bottom: none; }
+.co-search-item:hover { background: #F5F3EF; }
+
+.co-search-name { font-size: 13px; font-weight: 500; color: #1C2B3A; }
+.co-search-sub  { font-size: 11px; color: #8A8070; margin-top: 1px; }
+
+/* ── Разделитель ─────────────────────────────────────────── */
+.co-sec-divider {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8A8070;
+    margin: .85rem 0 .5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.co-sec-divider::after { content: ''; flex: 1; height: 1px; background: #EDE8E0; }
+
+.co-auto-tag {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: #EAF7F2;
+    color: #0F6E56;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* ── Расчёт стоимости ────────────────────────────────────── */
+.co-price-box {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 10px;
+    padding: .85rem;
+    margin-top: .75rem;
+}
+
+.co-price-hd {
+    font-size: 12px; font-weight: 500;
+    color: #1C2B3A;
+    margin-bottom: .6rem;
+    display: flex; align-items: center; gap: 6px;
+}
+
+.co-price-loading {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; font-size: 12px; color: #8A8070; padding: .5rem 0;
+}
+
+.co-price-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .6rem;
+    margin-bottom: .65rem;
+}
+
+.co-price-cell {
+    background: #F5F3EF; border: 1px solid #E2DBCF;
+    border-radius: 8px; padding: .6rem .75rem; text-align: center;
+}
+.co-price-hl { background: #1C3A5E; border-color: #1C3A5E; }
+
+.co-price-lbl    { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8A8070; margin-bottom: 2px; }
+.co-price-lbl-lt { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #A8C4DE; margin-bottom: 2px; }
+.co-price-val    { font-size: 15px; font-weight: 500; color: #1C2B3A; }
+.co-price-val-lt { font-size: 15px; font-weight: 500; color: #fff; }
+
+/* ── Кнопки ──────────────────────────────────────────────── */
+.co-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: 8px; border: none;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.15s; text-decoration: none; white-space: nowrap;
+}
+
+.co-btn-blue   { background: #1C3A5E; color: #fff; }
+.co-btn-blue:hover:not(:disabled) { background: #154E8C; }
+
+.co-btn-orange { background: #F5A623; color: #fff; }
+.co-btn-orange:hover:not(:disabled) { background: #D98E10; }
+
+.co-btn-green  { background: #0F7B6C; color: #fff; }
+.co-btn-green:hover:not(:disabled) { background: #0A5E52; }
+
+.co-btn-outline { border: 1px solid #D5CCBC; background: #fff; color: #1C2B3A; }
+.co-btn-outline:hover:not(:disabled) { background: #F5F3EF; }
+
+.co-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.co-btn-row-split { display: flex; gap: .6rem; }
+
+.co-back-link {
+    font-size: 12px; color: #1C3A5E; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 5px;
+}
+.co-back-link:hover { text-decoration: underline; }
+
+/* ── Боковая панель ──────────────────────────────────────── */
+.co-sidebar { display: flex; flex-direction: column; gap: .75rem; }
+
+.sb-card {
+    background: #fff;
+    border: 1px solid #E2DBCF;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.sb-card-hd {
+    display: flex; align-items: center; gap: 7px;
+    padding: .65rem .85rem;
+    border-bottom: 1px solid #EDE8E0;
+    background: #FDFCF9;
+    font-size: 12px; font-weight: 500; color: #1C2B3A;
+}
+
+.sb-card-body { padding: .85rem; }
+
+.manager-row {
+    display: flex; align-items: center; gap: 9px;
+    margin-bottom: .75rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid #EDE8E0;
+}
+
+.manager-av {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    background: #1C3A5E;
+    color: #F5A623;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    flex-shrink: 0;
+}
+
+.manager-name { font-size: 13px; font-weight: 500; color: #1C2B3A; }
+.manager-role { font-size: 11px; color: #8A8070; margin-top: 1px; }
+
+.sb-stat-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .4rem 0;
+    border-bottom: 1px solid #F0EDE8;
+    font-size: 12px;
+}
+.sb-stat-item:last-child { border-bottom: none; }
+
+.sb-stat-lbl { color: #8A8070; }
+.sb-stat-val { font-weight: 500; color: #1C2B3A; }
+.val-green   { color: #0F6E56; }
+.val-muted   { color: #B0A898; }
+
+/* ── Спиннер ─────────────────────────────────────────────── */
+.lc-spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid rgba(28,58,94,0.15);
+    border-top-color: #1C3A5E;
+    border-radius: 50%;
+    animation: co-spin .7s linear infinite;
+}
+@@keyframes co-spin { to { transform: rotate(360deg); } }
+</style>
 
 

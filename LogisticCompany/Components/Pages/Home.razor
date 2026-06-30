@@ -1,16 +1,8 @@
 ﻿@page "/"
 @using LogisticCompany.Application.DTO
 @using LogisticCompany.Application.Interfaces
-@using LogisticCompany.Application.Services
-@using LogisticCompany.DTO
-@using LogisticCompany.Db
-@using LogisticCompany.Domain.Entities.Location
-@using LogisticCompany.Domain.Entities.Orders
-@using LogisticCompany.Domain.Entities.Tracking
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
+@using LogisticCompany.Application.model
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
 @rendermode InteractiveServer
@@ -26,312 +18,299 @@
 @inject IOrderService OrderService
 @inject IEmployeeService EmployeeService
 
-<div class="main-container">
+<div class="lc-wrap">
+
+    <!-- Декоративная полоска -->
+    <div class="lc-stripe">
+        <div class="lc-stripe-inner"></div>
+    </div>
+
     <!-- Хедер -->
-    <header class="d-flex justify-content-between align-items-center mb-5 p-4 rounded-4 shadow-lg header-main">
-        <div class="d-flex align-items-center">
-            <i class="fas fa-shipping-fast fa-2x text-white me-3"></i>
+    <header class="lc-header">
+        <div class="lc-brand">
+            <div class="lc-brand-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3" />
+                    <rect x="9" y="11" width="14" height="10" rx="2" />
+                    <circle cx="12" cy="21" r="1" />
+                    <circle cx="20" cy="21" r="1" />
+                </svg>
+            </div>
             <div>
-                <h2 class="fw-bold text-white mb-0">Logistic Company</h2>
-                <small class="text-white-50">Быстро. Надежно. Безопасно</small>
+                <div class="lc-brand-name">Logistic Company</div>
+                <div class="lc-brand-sub">Быстро. Надёжно. Безопасно</div>
             </div>
         </div>
-        <div>
+        <div class="lc-nav-btns">
             @if (isLoggedIn)
             {
-                <NavLink class="btn btn-light btn-gradient fw-semibold" href="/profile">
-                    <i class="fas fa-user-circle me-2"></i>Мой аккаунт
+                <NavLink class="lc-btn lc-btn-orange" href="/profile">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    Мой аккаунт
                 </NavLink>
             }
             else
             {
-                <NavLink class="btn btn-outline-light me-2 fw-semibold" href="/login">
-                    <i class="fas fa-sign-in-alt me-2"></i>Вход
-                </NavLink>
-                <NavLink class="btn btn-light btn-gradient fw-semibold" href="/register">
-                    <i class="fas fa-user-plus me-2"></i>Регистрация
+                <NavLink class="lc-btn lc-btn-ghost" href="/login">Вход</NavLink>
+                <NavLink class="lc-btn lc-btn-orange" href="/register">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <line x1="19" y1="8" x2="19" y2="14" />
+                        <line x1="22" y1="11" x2="16" y2="11" />
+                    </svg>
+                    Регистрация
                 </NavLink>
             }
         </div>
     </header>
 
-    <!-- Основной контент -->
-    <div class="row g-4">
-        <!-- Поиск трекера -->
-        <div class="col-lg-8">
-            <div class="card tracker-card shadow-lg rounded-4 border-0">
-                <div class="card-header bg-transparent border-0 pb-0">
-                    <div class="d-flex align-items-center">
-                        <div class="tracker-icon me-3">
-                            <i class="fas fa-search-location"></i>
-                        </div>
+    <!-- Основная сетка: трекер + новости -->
+    <div class="lc-grid">
+
+        <!-- Трекер посылки -->
+        <div class="lc-card">
+            <div class="lc-card-hd">
+                <div class="lc-card-icon lc-icon-blue" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        <path d="M11 8v3l2 2" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="lc-card-title">Отследить посылку</div>
+                    <div class="lc-card-sub">Введите номер заказа для получения информации</div>
+                </div>
+            </div>
+
+            <EditForm Model="@trackingModel" OnValidSubmit="SearchTracking">
+                <DataAnnotationsValidator />
+                <div class="lc-inp-row">
+                    <InputText @bind-Value="trackingModel.OrderNumber"
+                               class="lc-input"
+                               placeholder="Например: 12345" />
+                    <button type="submit" class="lc-search-btn" disabled="@isSearching">
+                        @if (isSearching)
+                        {
+                            <span class="lc-spinner" role="status"></span>
+                            <span>Поиск...</span>
+                        }
+                        else
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <span>Найти</span>
+                        }
+                    </button>
+                </div>
+                <ValidationMessage For="@(() => trackingModel.OrderNumber)" class="lc-validation-msg" />
+            </EditForm>
+
+            @if (!string.IsNullOrEmpty(searchMessage))
+            {
+                <div class="lc-alert @(isSearchSuccess ? "lc-alert-success" : "lc-alert-danger")">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        @if (isSearchSuccess)
+                        {
+                            <polyline points="20 6 9 17 4 12" />
+                        }
+                        else
+                        {
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        }
+                    </svg>
+                    <span>@searchMessage</span>
+                </div>
+            }
+
+            @if (searchResult != null)
+            {
+                <div class="lc-result-box">
+                    <div class="lc-result-top">
                         <div>
-                            <h4 class="card-title fw-bold text-dark mb-1">Отследить посылку</h4>
-                            <p class="text-muted mb-0">Введите номер заказа для получения актуальной информации</p>
+                            <div class="lc-lbl">Номер заказа</div>
+                            <div class="lc-val">#@searchResult.Order.OrderNumber</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="lc-lbl">Статус</div>
+                            @if (searchResult?.TrackingHistory != null && searchResult.TrackingHistory.Any())
+                            {
+                                var latest = searchResult.TrackingHistory.OrderByDescending(t => t.UpdateDate).FirstOrDefault();
+                                @if (latest?.Status != null)
+                                {
+                                    <div class="lc-pill">
+                                        <span class="lc-dot"></span>
+                                        <span>@latest.Status.StatusName</span>
+                                    </div>
+                                    <div class="lc-result-date">@latest.UpdateDate.ToString("dd.MM.yyyy HH:mm")</div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="lc-pill lc-pill-gray">Нет данных</div>
+                            }
                         </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <EditForm Model="@trackingModel" OnValidSubmit="SearchTracking">
-                        <DataAnnotationsValidator />
 
-                        <div class="input-group input-group-lg mb-3">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="fas fa-barcode text-muted"></i>
-                            </span>
-                            <InputText @bind-Value="trackingModel.OrderNumber"
-                                       class="form-control border-start-0 py-3"
-                                       placeholder="Например: 12345" />
-                            <button type="submit" class="btn btn-success px-4 fw-bold" disabled="@isSearching">
-                                @if (isSearching)
-                                {
-                                    <span>
-                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                        Поиск...
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span>
-                                        <i class="fas fa-search me-2"></i>Найти
-                                    </span>
-                                }
+                    <div class="lc-rsec">
+                        <div class="lc-lbl">Получатель</div>
+                        <div class="lc-val">
+                            @searchResult.Order.LastRecepientName @searchResult.Order.FirstRecepientName @searchResult.Order.MiddleRecepientName
+                        </div>
+                        <div class="lc-phone">@searchResult.Order.PhoneRecepient</div>
+                    </div>
+
+                    <div class="lc-lbl" style="margin-bottom: 0.5rem;">История перемещений</div>
+                    <div class="lc-timeline">
+                        @foreach (var tracking in searchResult.TrackingHistory.OrderByDescending(t => t.UpdateDate))
+                        {
+                            <div class="lc-tl-item">
+                                <div class="lc-tl-dot lc-tl-done"></div>
+                                <div>
+                                    <div class="lc-tl-loc">@tracking.LocationTrackings</div>
+                                    <div class="lc-tl-meta">
+                                        @tracking.Status?.StatusName
+                                        @if (tracking.Branches != null)
+                                        {
+                                            <span class="lc-tl-branch">· @tracking.Branches.NameBranches</span>
+                                        }
+                                        · @tracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="lc-result-actions">
+                        @if (isLoggedIn)
+                        {
+                            <NavLink href="/profile" class="lc-btn lc-btn-outline-blue">Подробнее о заказе</NavLink>
+                        }
+                        else
+                        {
+                            <button class="lc-btn lc-btn-outline-blue" @onclick="RedirectToLogin">
+                                Войдите для просмотра деталей
                             </button>
-                        </div>
-                        <ValidationMessage For="@(() => trackingModel.OrderNumber)" class="text-danger small" />
-                    </EditForm>
-
-                    <!-- Сообщения об ошибках/результатах -->
-                    @if (!string.IsNullOrEmpty(searchMessage))
-                    {
-                        <div class="alert @(isSearchSuccess ? "alert-success" : "alert-danger") mt-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas @(isSearchSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
-                                <span>@searchMessage</span>
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Результаты поиска -->
-                    @if (searchResult != null)
-                    {
-                        <div class="search-results mt-4">
-                            <div class="card border-0 bg-light">
-                                <div class="card-body">
-                                    <h6 class="fw-bold text-dark mb-3">Результаты отслеживания:</h6>
-
-                                    <!-- Информация о заказе -->
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <small class="text-muted">Номер заказа:</small>
-                                            <p class="fw-semibold mb-1">#@searchResult.Order.OrderNumber</p>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <small class="text-muted">Текущий статус:</small>
-                                            <p class="mb-0">
-                                                @if (searchResult?.TrackingHistory != null && searchResult.TrackingHistory.Any())
-                                                {
-
-                                                    var latestTracking = searchResult.TrackingHistory
-                                                    .OrderByDescending(t => t.UpdateDate)
-                                                    .FirstOrDefault();
-
-
-                                                    @if (latestTracking?.Status != null)
-                                                    {
-                                                        <span class="">
-                                                            @latestTracking.Status.StatusName
-                                                        </span>
-
-                                                        <small class="text-muted d-block mt-1">
-                                                            <i class="fas fa-clock me-1"></i>
-                                                            @latestTracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
-                                                        </small>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-secondary">Статус не указан</span>
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">Нет данных отслеживания</span>
-                                                }
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <!-- Получатель -->
-                                    <div class="row mb-3">
-                                        <div class="col-12">
-                                            <small class="text-muted">Получатель:</small>
-                                            <p class="fw-semibold mb-1">
-                                                @searchResult.Order.LastRecepientName @searchResult.Order.FirstRecepientName @searchResult.Order.MiddleRecepientName
-                                            </p>
-                                            <small class="text-muted">Телефон: @searchResult.Order.PhoneRecepient</small>
-                                        </div>
-                                    </div>
-
-                                    <!-- История трекинга -->
-                                    <div class="tracking-history">
-                                        <h6 class="fw-bold text-dark mb-3">История перемещений:</h6>
-                                        <div class="timeline">
-                                            @foreach (var tracking in searchResult.TrackingHistory.OrderByDescending(t => t.UpdateDate))
-                                            {
-                                                <div class="timeline-item">
-                                                    <div class="timeline-marker @tracking.StatusId"></div>
-                                                    <div class="timeline-content">
-                                                        <div class="d-flex justify-content-between align-items-start">
-                                                            <div class="flex-grow-1">
-                                                                <strong class="d-block">@tracking.LocationTrackings</strong>
-                                                                <p class="mb-1 text-muted small">
-                                                                    <span class="badge @tracking.StatusId me-2">
-                                                                        @tracking.Status.StatusName
-                                                                    </span>
-                                                                </p>
-                                                                @if (tracking.Branches != null)
-                                                                {
-                                                                    <small class="text-primary">
-                                                                        <i class="fas fa-building me-1"></i>@tracking.Branches.NameBranches
-                                                                    </small>
-                                                                }
-                                                            </div>
-                                                            <small class="text-muted text-nowrap ms-2">
-                                                                @tracking.UpdateDate.ToString("dd.MM.yyyy HH:mm")
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-
-                                    <!-- Кнопка для просмотра деталей -->
-                                    <div class="text-center mt-3">
-                                        @if (isLoggedIn)
-                                        {
-                                            <NavLink href="/profile" class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-eye me-2"></i>Подробнее о заказе
-                                            </NavLink>
-                                        }
-                                        else
-                                        {
-                                            <button class="btn btn-outline-primary btn-sm" @onclick="RedirectToLogin">
-                                                <i class="fas fa-sign-in-alt me-2"></i>Войдите для просмотра деталей
-                                            </button>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Лента новостей -->
-        <div class="col-lg-4">
-            <div class="card news-card shadow-lg rounded-4 border-0 h-100">
-                <div class="card-header bg-transparent border-0 pb-0">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <div class="news-icon me-3">
-                                <i class="fas fa-newspaper"></i>
-                            </div>
-                            <h4 class="card-title fw-bold text-dark mb-0">Новости компании</h4>
-                        </div>
-                        <span class="badge bg-success">Обновлено</span>
+                        }
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="news-list">
-                        <div class="news-item p-3 rounded-3 mb-3">
-                            <div class="d-flex align-items-start">
-                                <div class="news-date bg-light rounded-2 text-center me-3 p-2">
-                                    <div class="fw-bold text-primary">15</div>
-                                    <small class="text-muted">Дек</small>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Запуск экспресс-доставки</h6>
-                                    <p class="text-muted small mb-2">Теперь доставляем заказы в течение 24 часов</p>
-                                    <span class="badge bg-primary bg-opacity-10 text-primary small">Новое</span>
-                                </div>
-                            </div>
-                        </div>
+            }
+        </div>
 
-                        <div class="news-item p-3 rounded-3 mb-3">
-                            <div class="d-flex align-items-start">
-                                <div class="news-date bg-light rounded-2 text-center me-3 p-2">
-                                    <div class="fw-bold text-primary">10</div>
-                                    <small class="text-muted">Дек</small>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Новый складской комплекс</h6>
-                                    <p class="text-muted small mb-2">Открыли современный склад площадью 5000м²</p>
-                                    <span class="badge bg-success bg-opacity-10 text-success small">Развитие</span>
-                                </div>
-                            </div>
-                        </div>
+        <!-- Новости -->
+        <div class="lc-card">
+            <div class="lc-card-hd">
+                <div class="lc-card-icon lc-icon-orange" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z" />
+                        <path d="M16 2v20M8 6h4M8 10h4M8 14h4" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="lc-card-title">Новости компании</div>
+                    <div class="lc-card-sub">Последние обновления</div>
+                </div>
+            </div>
 
-                        <div class="news-item p-3 rounded-3">
-                            <div class="d-flex align-items-start">
-                                <div class="news-date bg-light rounded-2 text-center me-3 p-2">
-                                    <div class="fw-bold text-primary">05</div>
-                                    <small class="text-muted">Дек</small>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Экологичная упаковка</h6>
-                                    <p class="text-muted small mb-2">Переходим на биоразлагаемые материалы</p>
-                                    <span class="badge bg-warning bg-opacity-10 text-warning small">Экология</span>
-                                </div>
-                            </div>
-                        </div>
+            <div class="lc-news-list">
+                <div class="lc-news-item">
+                    <div class="lc-news-date">
+                        <span class="lc-news-day">15</span>
+                        <span class="lc-news-mo">Дек</span>
+                    </div>
+                    <div>
+                        <div class="lc-news-title">Запуск экспресс-доставки</div>
+                        <div class="lc-news-desc">Доставляем заказы в течение 24 часов</div>
+                        <span class="lc-tag lc-tag-blue">Новое</span>
+                    </div>
+                </div>
+                <div class="lc-news-item">
+                    <div class="lc-news-date">
+                        <span class="lc-news-day">10</span>
+                        <span class="lc-news-mo">Дек</span>
+                    </div>
+                    <div>
+                        <div class="lc-news-title">Новый складской комплекс</div>
+                        <div class="lc-news-desc">Открыли склад площадью 5&nbsp;000 м²</div>
+                        <span class="lc-tag lc-tag-gray">Развитие</span>
+                    </div>
+                </div>
+                <div class="lc-news-item">
+                    <div class="lc-news-date">
+                        <span class="lc-news-day">05</span>
+                        <span class="lc-news-mo">Дек</span>
+                    </div>
+                    <div>
+                        <div class="lc-news-title">Экологичная упаковка</div>
+                        <div class="lc-news-desc">Переходим на биоразлагаемые материалы</div>
+                        <span class="lc-tag lc-tag-orange">Экология</span>
                     </div>
                 </div>
             </div>
         </div>
+
     </div>
 
     <!-- Быстрые действия -->
-    <div class="row g-3 mt-4">
-        <div class="col-md-3">
-            <div class="quick-action-card text-center p-4 rounded-3">
-                <div class="action-icon mb-3">
-                    <i class="fas fa-calculator fa-2x text-primary"></i>
-                </div>
-                <h6 class="fw-bold text-dark">Рассчитать стоимость</h6>
-                <small class="text-muted">Узнайте цену доставки</small>
+    <div class="lc-sec-lbl">Быстрые действия</div>
+    <div class="lc-actions">
+
+        <div class="lc-action">
+            <div class="lc-action-icon lc-icon-blue" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2" />
+                    <line x1="8" y1="6" x2="16" y2="6" />
+                    <line x1="8" y1="10" x2="16" y2="10" />
+                    <line x1="8" y1="14" x2="12" y2="14" />
+                </svg>
             </div>
+            <div class="lc-action-title">Рассчитать стоимость</div>
+            <div class="lc-action-sub">Узнайте цену доставки</div>
         </div>
-        @* <div class="col-md-3">
-            <div class="quick-action-card text-center p-4 rounded-3">
-                <div class="action-icon mb-3">
-                    <i class="fas fa-map-marked-alt"></i>
-                </div>
-                <h6 class="fw-bold">Найти отделение</h6>
-                <small class="text-muted">Ближайшие пункты выдачи</small>
+
+        <div class="lc-action">
+            <div class="lc-action-icon lc-icon-orange" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z" />
+                </svg>
             </div>
-        </div> *@
-        <div class="col-md-3">
-            <div class="quick-action-card text-center p-4 rounded-3">
-                <div class="action-icon mb-3">
-                    <i class="fas fa-headset"></i>
-                </div>
-                <h6 class="fw-bold">Поддержка 24/7</h6>
-                <small class="text-muted">Помощь и консультации</small>
-            </div>
+            <div class="lc-action-title">Поддержка 24/7</div>
+            <div class="lc-action-sub">Помощь и консультации</div>
         </div>
-        <div class="col-md-3">
-            <div class="quick-action-card text-center p-4 rounded-3">
-                <div class="action-icon mb-3">
-                    <i class="fas fa-mobile-alt"></i>
-                </div>
-                <h6 class="fw-bold">Мобильное приложение</h6>
-                <small class="text-muted">Управление на ходу</small>
+
+        <div class="lc-action">
+            <div class="lc-action-icon lc-icon-gray" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                    <line x1="12" y1="18" x2="12.01" y2="18" />
+                </svg>
             </div>
+            <div class="lc-action-title">Мобильное приложение</div>
+            <div class="lc-action-sub">Управление на ходу</div>
         </div>
+
     </div>
 </div>
+
+
 
 @code {
     [SupplyParameterFromForm]
@@ -421,157 +400,598 @@
 }
 
 
-
 <style>
-    body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* ============================================================
+       Home.razor.css — тёмно-синий + бежевый + оранжевый
+       ============================================================ */
+
+    /* ── Переменные ──────────────────────────────────────────── */
+    :root {
+        --blue-dark: #1C3A5E;
+        --blue-mid: #154E8C;
+        --blue-light: #E8F0F9;
+        --orange: #F5A623;
+        --orange-dark: #D98E10;
+        --orange-light: #FEF0D8;
+        --beige-bg: #F5F3EF;
+        --beige-card: #FAF8F4;
+        --beige-border: #E2DBCF;
+        --beige-line: #EDE8E0;
+        --gray-text: #8A8070;
+        --gray-light: #EEEBE5;
+        --gray-mid: #5A5248;
+        --text-dark: #1C2B3A;
+        --white: #ffffff;
     }
 
-    .main-container {
+    /* ── Фон страницы ────────────────────────────────────────── */
+    body {
+        background: var(--beige-bg) !important;
+        min-height: 100vh;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── Обёртка ─────────────────────────────────────────────── */
+    .lc-wrap {
         max-width: 1200px;
         margin: 0 auto;
-        padding: 40px 20px;
+        padding: 0 0 2.5rem;
+        color: var(--text-dark);
     }
 
-    .header-main {
-        background: linear-gradient(135deg, #2e7d32, #4caf50);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(255,255,255,0.2);
+    /* ── Декоративная полоска ────────────────────────────────── */
+    .lc-stripe {
+        height: 4px;
+        background: var(--blue-dark);
+        border-radius: 0 0 3px 3px;
     }
 
-    .tracker-card, .news-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.3);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    .lc-stripe-inner {
+        height: 100%;
+        width: 35%;
+        background: var(--orange);
+        border-radius: 0 3px 3px 0;
     }
 
-        .tracker-card:hover, .news-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-        }
+    /* ── Хедер ───────────────────────────────────────────────── */
+    .lc-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        background: var(--blue-dark);
+        margin-bottom: 1.25rem;
+    }
 
-    .tracker-icon, .news-icon {
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, #4caf50, #2e7d32);
-        border-radius: 12px;
+    .lc-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .lc-brand-icon {
+        width: 38px;
+        height: 38px;
+        background: var(--orange);
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
+        color: #fff;
+        flex-shrink: 0;
     }
 
-        .tracker-icon i, .news-icon i {
-            font-size: 1.2rem;
+    .lc-brand-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .lc-brand-sub {
+        font-size: 12px;
+        color: #A8C4DE;
+        margin-top: 1px;
+    }
+
+    .lc-nav-btns {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    /* ── Кнопки ──────────────────────────────────────────────── */
+    .lc-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 7px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+        text-decoration: none;
+        border: none;
+    }
+
+    .lc-btn-ghost {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: transparent;
+        color: #D8E8F5;
+    }
+
+        .lc-btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
-    .timeline-marker {
-        position: absolute;
-        left: -8px;
-        top: 15px;
+    .lc-btn-orange {
+        background: var(--orange);
+        border: none;
+        color: #fff;
+    }
+
+        .lc-btn-orange:hover {
+            background: var(--orange-dark);
+        }
+
+    .lc-btn-outline-blue {
+        border: 1px solid var(--blue-dark);
+        background: var(--white);
+        color: var(--blue-dark);
+    }
+
+        .lc-btn-outline-blue:hover {
+            background: var(--blue-light);
+        }
+
+    /* ── Основная сетка ──────────────────────────────────────── */
+    .lc-grid {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 1rem;
+        padding: 0 1rem;
+        margin-bottom: 1rem;
+    }
+
+    @@media (max-width: 768px) {
+        .lc-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .lc-actions {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    /* ── Карточка ────────────────────────────────────────────── */
+    .lc-card {
+        background: var(--white);
+        border: 1px solid var(--beige-border);
+        border-radius: 14px;
+        padding: 1.25rem;
+    }
+
+    .lc-card-hd {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 1rem;
+        padding-bottom: .85rem;
+        border-bottom: 1px solid var(--beige-line);
+    }
+
+    .lc-card-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        flex-shrink: 0;
+    }
+
+    .lc-icon-blue {
+        background: var(--blue-light);
+        color: var(--blue-dark);
+    }
+
+    .lc-icon-orange {
+        background: var(--orange-light);
+        color: var(--orange-dark);
+    }
+
+    .lc-icon-gray {
+        background: var(--gray-light);
+        color: var(--gray-mid);
+    }
+
+    .lc-card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .lc-card-sub {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 2px;
+    }
+
+    /* ── Форма поиска ────────────────────────────────────────── */
+    .lc-inp-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: .5rem;
+    }
+
+    .lc-input {
+        flex: 1;
+        font-size: 13px;
+        padding: 9px 12px;
+        border-radius: 8px;
+        border: 1px solid #D5CCBC;
+        background: var(--beige-card);
+        color: var(--text-dark);
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+        .lc-input::placeholder {
+            color: #B0A898;
+        }
+
+        .lc-input:focus {
+            border-color: var(--blue-dark);
+            box-shadow: 0 0 0 3px rgba(28, 58, 94, 0.1);
+            background: var(--white);
+        }
+
+    .lc-search-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 9px 18px;
+        border-radius: 8px;
+        border: none;
+        background: var(--blue-dark);
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s;
+    }
+
+        .lc-search-btn:hover:not(:disabled) {
+            background: var(--blue-mid);
+        }
+
+        .lc-search-btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+    .lc-spinner {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: lc-spin 0.7s linear infinite;
+    }
+
+    @@keyframes lc-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .lc-validation-msg {
+        font-size: 12px;
+        color: #b91c1c;
+        margin-top: 4px;
+        display: block;
+    }
+
+    /* ── Алерты ──────────────────────────────────────────────── */
+    .lc-alert {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        padding: 9px 12px;
+        border-radius: 8px;
+        margin-top: .75rem;
+    }
+
+    .lc-alert-success {
+        background: #EAF7F2;
+        color: #0F6E56;
+        border: 1px solid #B8E8D8;
+    }
+
+    .lc-alert-danger {
+        background: #FEF2F2;
+        color: #B91C1C;
+        border: 1px solid #FECACA;
+    }
+
+    /* ── Результаты поиска ───────────────────────────────────── */
+    .lc-result-box {
+        background: var(--beige-card);
+        border: 1px solid #D5CCBC;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: .85rem;
+    }
+
+    .lc-result-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: .75rem;
+        padding-bottom: .75rem;
+        border-bottom: 1px solid var(--beige-line);
+    }
+
+    .lc-lbl {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: var(--gray-text);
+        margin-bottom: 3px;
+    }
+
+    .lc-val {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .lc-result-date {
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-top: 3px;
+    }
+
+    .lc-rsec {
+        margin-bottom: .75rem;
+        padding-bottom: .75rem;
+        border-bottom: 1px solid var(--beige-line);
+    }
+
+    .lc-phone {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 3px;
+    }
+
+    .lc-result-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: .85rem;
+    }
+
+    /* ── Статус-пилюля ───────────────────────────────────────── */
+    .lc-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 3px 11px;
+        border-radius: 100px;
+        background: var(--orange-light);
+        color: #C47B00;
+    }
+
+    .lc-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--orange);
+    }
+
+    .lc-pill-gray {
+        background: var(--gray-light);
+        color: var(--gray-mid);
+    }
+
+    /* ── Таймлайн ────────────────────────────────────────────── */
+    .lc-timeline {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .lc-tl-item {
+        display: flex;
+        gap: 10px;
+        position: relative;
+        padding-bottom: .7rem;
+    }
+
+        .lc-tl-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 14px;
+            bottom: 0;
+            width: 1px;
+            background: #D5CCBC;
+        }
+
+    .lc-tl-dot {
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        background: #28a745;
-        border: 2px solid white;
+        border: 2px solid var(--blue-dark);
+        background: var(--white);
+        flex-shrink: 0;
+        margin-top: 3px;
+        z-index: 1;
     }
 
-    .timeline-content {
-        margin-left: 20px;
-        padding: 10px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    .lc-tl-done {
+        background: var(--blue-dark);
     }
 
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffffff, #f8f9fa);
-        border: none;
-        transition: all 0.3s ease;
+    .lc-tl-loc {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-dark);
     }
 
-        .btn-gradient:hover {
+    .lc-tl-meta {
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-top: 2px;
+    }
+
+    .lc-tl-branch {
+        color: var(--blue-dark);
+    }
+
+    /* ── Новости ─────────────────────────────────────────────── */
+    .lc-news-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .lc-news-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: .7rem .85rem;
+        border-radius: 10px;
+        border: 1px solid var(--beige-line);
+        background: #FDFCF9;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+    }
+
+        .lc-news-item:hover {
+            background: #F5F0E8;
+            border-color: #C8BFB0;
+        }
+
+    .lc-news-date {
+        flex-shrink: 0;
+        text-align: center;
+        min-width: 28px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .lc-news-day {
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--blue-dark);
+        line-height: 1;
+    }
+
+    .lc-news-mo {
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-top: 1px;
+    }
+
+    .lc-news-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-dark);
+        line-height: 1.3;
+    }
+
+    .lc-news-desc {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 3px;
+    }
+
+    /* ── Теги ────────────────────────────────────────────────── */
+    .lc-tag {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 2px 9px;
+        border-radius: 100px;
+        margin-top: 5px;
+    }
+
+    .lc-tag-blue {
+        background: var(--blue-light);
+        color: var(--blue-dark);
+    }
+
+    .lc-tag-gray {
+        background: var(--gray-light);
+        color: var(--gray-mid);
+    }
+
+    .lc-tag-orange {
+        background: var(--orange-light);
+        color: var(--orange-dark);
+    }
+
+    /* ── Быстрые действия ────────────────────────────────────── */
+    .lc-sec-lbl {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        color: var(--gray-text);
+        padding: 0 1rem;
+        margin-bottom: .6rem;
+    }
+
+    .lc-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: .75rem;
+        padding: 0 1rem;
+    }
+
+    .lc-action {
+        background: var(--white);
+        border: 1px solid var(--beige-border);
+        border-radius: 12px;
+        padding: 1.1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+        .lc-action:hover {
+            background: var(--beige-card);
+            border-color: #B0A898;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
-    .stat-card {
-        transition: transform 0.3s ease;
-        border: 1px solid rgba(255,255,255,0.2);
-    }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-        }
-
-    .news-item {
-        background: rgba(248, 249, 250, 0.8);
-        border: 1px solid rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-        .news-item:hover {
-            background: rgba(255, 255, 255, 1);
-            transform: translateX(5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-    .news-date {
-        min-width: 50px;
-        border: 1px solid rgba(0,0,0,0.1);
-    }
-
-    .quick-action-card {
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(255,255,255,0.3);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-        .quick-action-card:hover {
-            background: rgba(255, 255, 255, 1);
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        }
-
-    .action-icon {
-        width: 60px;
-        height: 60px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border-radius: 15px;
+    .lc-action-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto;
-        color: white;
-        font-size: 1.5rem;
+        margin: 0 auto .6rem;
     }
 
-    .input-group-text {
-        background: rgba(248, 249, 250, 0.8);
-        border: 1px solid #ced4da;
-    }
-
-    .form-control {
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid #ced4da;
-    }
-
-        .form-control:focus {
-            background: rgba(255, 255, 255, 1);
-            box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
-        }
-
-    h2, h4, h5, h6 {
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }
-
-    .badge {
+    .lc-action-title {
+        font-size: 13px;
         font-weight: 500;
+        color: var(--text-dark);
+    }
+
+    .lc-action-sub {
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-top: 2px;
     }
 
 </style>
