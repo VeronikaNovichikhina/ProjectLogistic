@@ -1,168 +1,136 @@
-﻿namespace LogisticCompany.Application.Services
+﻿using LogisticCompany.Application.Interfaces;
+using LogisticCompany.Application.DTO;
+using LogisticCompany.Db;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+
+namespace LogisticCompany.Application.Services
 {
-    using System.Globalization;
-    using System.Text.Json;
-
-    using System.Globalization;
-    using System.Text.Json;
-    using LogisticCompany.Application.Interfaces;
-
-    public class OpenStreetMapService: IMapService
+    public class OpenStreetMapService : IMapService
     {
         private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
+        private readonly AppDbContext _db;
 
-        public OpenStreetMapService(HttpClient httpClient)
+        // Страны где нет наземного маршрута между собой
+        private static readonly HashSet<(int, int)> AirOnlyRoutes = new()
+        {
+            (1, 3), (3, 1),  // Казахстан  Китай
+            (2, 3), (3, 2),  // Россия  Китай
+        };
+
+        public OpenStreetMapService(
+            HttpClient httpClient,
+            IConfiguration configuration,
+            AppDbContext db)
         {
             _httpClient = httpClient;
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "DeliveryApp/1.0");
-            _httpClient.Timeout = TimeSpan.FromSeconds(10);
+            _configuration = configuration;
+            _db = db;
         }
 
-        public async Task<decimal> GetDistanceAsync(string fromCity,
-            string toCity, int isAirTransport)
+        // Проверка — только ли авиа для этого маршрута
+        public bool IsAirOnlyRoute(int originCountryId, int destinationCountryId)
         {
+            if (originCountryId == destinationCountryId) return false;
+            return AirOnlyRoutes.Contains((originCountryId, destinationCountryId));
+        }
+
+        // Основной метод расчёта расстояния
+        public async Task<decimal> GetDistanceAsync(
+            int originTownId,
+            int destinationTownId,
+            int transportTypeId)
+        {
+            var originTown = await _db.Towns
+                .FirstOrDefaultAsync(t => t.TownId == originTownId);
+            var destinationTown = await _db.Towns
+                .FirstOrDefaultAsync(t => t.TownId == destinationTownId);
+
+            if (originTown == null || destinationTown == null)
+                throw new Exception("Город не найден");
+
+            if (originTown.Latitude == null || originTown.Longitude == null ||
+                destinationTown.Latitude == null || destinationTown.Longitude == null)
+                throw new Exception("Координаты города не указаны");
+
+            // Авиа транспорт — всегда Гаверсинус
+            if (transportTypeId == 2)
+            {
+                return CalculateHaversine(
+                    originTown.Latitude.Value,
+                    originTown.Longitude.Value,
+                    destinationTown.Latitude.Value,
+                    destinationTown.Longitude.Value);
+            }
+
+            // Наземный транспорт — OpenRouteService
             try
             {
-                Console.WriteLine($"Расчет расстояния: {fromCity} -> {toCity}");
-              
-                if (IsAirTransport(isAirTransport))
-                    return await GetAirDistanceAsync(fromCity, toCity);
-
-                return await GetRoadDistanceAsync(fromCity, toCity);
+                return await GetRouteDistanceAsync(
+                    originTown.Latitude.Value,
+                    originTown.Longitude.Value,
+                    destinationTown.Latitude.Value,
+                    destinationTown.Longitude.Value);
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($" Ошибка: {ex.Message}");
-                return 500;
+                // Fallback на Гаверсинус с коэффициентом
+                var haversine = CalculateHaversine(
+                    originTown.Latitude.Value,
+                    originTown.Longitude.Value,
+                    destinationTown.Latitude.Value,
+                    destinationTown.Longitude.Value);
+                return haversine * 1.25m;
             }
         }
 
-        private async Task<decimal> GetAirDistanceAsync(string fromCity, string toCity)
+        // Запрос к OpenRouteService API
+        private async Task<decimal> GetRouteDistanceAsync(
+            double originLat, double originLon,
+            double destLat, double destLon)
         {
-            try
-            {
-                var fromCoords = await GetCoordinatesAsync(fromCity);
-                var toCoords = await GetCoordinatesAsync(toCity);
+            var apiKey = _configuration["OpenRouteService:ApiKey"];
+            var url = $"https://api.openrouteservice.org/v2/directions/driving-car" +
+                      $"?api_key={apiKey}" +
+                      $"&start={originLon},{originLat}" +
+                      $"&end={destLon},{destLat}";
 
-                if (!fromCoords.HasValue || !toCoords.HasValue)
-                {
-                    Console.WriteLine($" Не удалось получить координаты для авиа расчета");
-                    return 500;
-                }
+            await Task.Delay(500); // rate limiting
 
-                // Для авиа считаем расстояние по прямой БЕЗ коэффициента дорог
-                var straightDistance = CalculateStraightDistance(fromCoords.Value, toCoords.Value);
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
 
-                Console.WriteLine($" Авиа расстояние по прямой: {straightDistance} км");
-                return straightDistance;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($" Ошибка авиа расчета: {ex.Message}");
-                return 500;
-            }
+            var json = await response.Content.ReadAsStringAsync();
+            var doc = JsonDocument.Parse(json);
+
+            var distanceMeters = doc.RootElement
+                .GetProperty("features")[0]
+                .GetProperty("properties")
+                .GetProperty("segments")[0]
+                .GetProperty("distance")
+                .GetDecimal();
+
+            return Math.Round(distanceMeters / 1000, 2); // в километры
         }
 
-        private async Task<decimal> GetRoadDistanceAsync(string fromCity, string toCity)
+        // Формула Гаверсинуса
+        private static decimal CalculateHaversine(
+            double lat1, double lon1,
+            double lat2, double lon2)
         {
-            try
-            {
-                var fromCoords = await GetCoordinatesAsync(fromCity);
-                var toCoords = await GetCoordinatesAsync(toCity);
-
-                if (!fromCoords.HasValue || !toCoords.HasValue)
-                {
-                    Console.WriteLine($"Не удалось получить координаты для наземного расчета");
-                    return 500;
-                }
-
-                // Для наземного считаем расстояние по прямой и добавляем коэффициент дорог
-                var straightDistance = CalculateStraightDistance(fromCoords.Value, toCoords.Value);
-                var roadDistance = straightDistance * 1.1m; // коэффициент дорог
-
-                Console.WriteLine($"Наземное расстояние: {roadDistance} км (по прямой: {straightDistance} км)");
-                return roadDistance;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка наземного расчета: {ex.Message}");
-                return 500;
-            }
-        }
-
-        private async Task<(double lat, double lon)?> GetCoordinatesAsync(string cityName)
-        {
-            try
-            {
-                await Task.Delay(1000); 
-
-                var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(cityName)}&format=json&limit=1";
-
-                Console.WriteLine($" Запрос координат для: {cityName}");
-
-                var response = await _httpClient.GetStringAsync(url);
-                var data = JsonSerializer.Deserialize<List<NominatimResponse>>(response);
-
-                if (data?.Count > 0)
-                {
-                    var result = data[0];
-                    Console.WriteLine($"Найден: {result.display_name}");
-                    Console.WriteLine($" Координаты: lat={result.lat}, lon={result.lon}");
-
-                    if (double.TryParse(result.lat, NumberStyles.Any, CultureInfo.InvariantCulture, out double lat) &&
-                        double.TryParse(result.lon, NumberStyles.Any, CultureInfo.InvariantCulture, out double lon))
-                    {
-                        return (lat, lon);
-                    }
-                    else
-                    {
-                        Console.WriteLine($" Ошибка парсинга координат");
-                        return null;
-                    }
-                }
-
-                Console.WriteLine($" Город не найден: {cityName}");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($" Ошибка геокодинга {cityName}: {ex.Message}");
-                return null;
-            }
-        }
-
-        private decimal CalculateStraightDistance((double lat, double lon) from, (double lat, double lon) to)
-        {
-            const double R = 6371; // Радиус Земли в км
-
-            var dLat = ToRadians(to.lat - from.lat);
-            var dLon = ToRadians(to.lon - from.lon);
+            const double R = 6371; // радиус земли в км
+            var dLat = ToRad(lat2 - lat1);
+            var dLon = ToRad(lon2 - lon1);
 
             var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(ToRadians(from.lat)) * Math.Cos(ToRadians(to.lat)) *
+                    Math.Cos(ToRad(lat1)) * Math.Cos(ToRad(lat2)) *
                     Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
 
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            var distance = R * c;
-
-            return Math.Round((decimal)distance, 1);
+            return (decimal)Math.Round(R * c, 2);
         }
 
-        private double ToRadians(double degrees) => degrees * Math.PI / 180;
-
-        private bool IsAirTransport(int transportTypeId)
-        {
-           
-            return transportTypeId == 2;
-        }
-
-        
-    }
-
-    public class NominatimResponse
-    {
-        public string lat { get; set; }
-        public string lon { get; set; }
-        public string display_name { get; set; }
+        private static double ToRad(double deg) => deg * Math.PI / 180;
     }
 }

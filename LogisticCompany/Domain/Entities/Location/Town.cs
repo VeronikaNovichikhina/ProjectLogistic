@@ -12,6 +12,9 @@ public partial class Town
 
     public string TownName { get; set; } = null!;
 
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+
     public virtual ICollection<Branch> Branches { get; set; } = new List<Branch>();
 
     public virtual Country Country { get; set; } = null!;

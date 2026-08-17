@@ -232,6 +232,11 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => e.OrdersId).HasName("PRIMARY");
 
             entity.ToTable("orders");
+            entity.HasOne(d => d.DestinationBranch)
+            .WithMany()
+            .HasForeignKey(d => d.DestinationBranchId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_orders_destination_branch");
 
             entity.HasIndex(e => e.PickupBranchesId, "FK_orders_branches");
 

@@ -15,7 +15,7 @@
 @inject IPriceCalculatorService PriceCalculator
 @inject IOrderService OrderService
 @inject IEmployeeService EmployeeService
-
+@inject IMapService MapService
 
 
 <div class="co-page">
@@ -423,12 +423,22 @@
                                         <option value="0" disabled>Выберите транспорт</option>
                                         @if (transportTypes != null)
                                         {
-                                            @foreach(var t in transportTypes) {
-                                                <option value="@t.TransportTypeId">@t.NameTransportType</option>
+                                            @foreach (var t in transportTypes)
+                                            {
+                                                @if (!IsAirOnly || t.TransportTypeId != 1)
+                                                {
+                                                    <option value="@t.TransportTypeId">@t.NameTransportType</option>
+                                                }
                                             }
                                         }
                                     </InputSelect>
                                 </div>
+                                @if (IsAirOnly)
+                                {
+                                    <div style="margin-top:6px;padding:8px 12px;background:#FFF8E1;border-radius:8px;border:1px solid #F5A623;font-size:13px;color:#8A6000">
+                                        ⚠️ Для данного маршрута доступен только авиатранспорт
+                                    </div>
+                                }
                                 <ValidationMessage For="() => order.TransportTypeId" class="co-val-msg" />
                             </div>
                         </div>
@@ -438,7 +448,9 @@
                             <div class="field">
                                 <span class="field-lbl">Страна</span>
                                 <div class="inp-wrap">
-                                    <InputSelect @bind-Value="order.DestinationCountryId" class="lc-sel">
+                                    <InputSelect @bind-Value="order.DestinationCountryId"
+                                                 class="lc-sel"
+                                                 @onchange="OnDestinationCountryChanged">
                                         <option value="0" disabled>Выберите страну</option>
                                         @if (countries != null)
                                         {
@@ -845,7 +857,23 @@
         }
     }
     
+    private bool IsAirOnly =>
+        order.OriginCountryId > 0 &&
+        order.DestinationCountryId > 0 &&
+        MapService.IsAirOnlyRoute(order.OriginCountryId, order.DestinationCountryId);
 
+    private void OnDestinationCountryChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int countryId))
+        {
+            order.DestinationCountryId = countryId;
+            if (IsAirOnly)
+            {
+                order.TransportTypeId = 2;
+            }
+            StateHasChanged();
+        }
+    }
     protected void GoBack()
     {
         if (step > 1)

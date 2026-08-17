@@ -19,6 +19,7 @@
 @inject IPriceCalculatorService PriceCalculator
 @inject IOrderService OrderService
 @inject IEmployeeService EmployeeService
+@inject IMapService MapService
 
 <div class="co-page">
     <div class="lc-stripe"><div class="lc-stripe-inner"></div></div>
@@ -352,11 +353,33 @@
                             <div class="co-sec-divider">Настройки доставки</div>
                             <div class="form-row-2">
                                 <div class="field"><span class="field-lbl">Тип доставки</span><div class="inp-wrap"><InputSelect @bind-Value="order.DeliveryTypeId" class="lc-sel"><option value="0" disabled>Выберите тип</option>@if (deliveryTypes != null) { @foreach (var d in deliveryTypes) { <option value="@d.DeliveryTypeId">@d.NameDeliveryType</option> } }</InputSelect></div></div>
-                                <div class="field"><span class="field-lbl">Тип транспорта</span><div class="inp-wrap"><InputSelect @bind-Value="order.TransportTypeId" class="lc-sel"><option value="0" disabled>Выберите транспорт</option>@if (transportTypes != null) { @foreach (var t in transportTypes) { <option value="@t.TransportTypeId">@t.NameTransportType</option> } }</InputSelect></div></div>
+                                <div class="field"><span class="field-lbl">Тип транспорта</span>
+                                    <div class="inp-wrap">
+                                        <InputSelect @bind-Value="order.TransportTypeId" class="lc-sel">
+                                            <option value="0" disabled>Выберите транспорт</option>
+                                            @if (transportTypes != null)
+                                            {
+                                                @foreach (var t in transportTypes)
+                                                {
+                                                    @if(!IsAirOnly || t.TransportTypeId !=1)
+                                                    {
+                                                        <option value="@t.TransportTypeId">@t.NameTransportType</option>
+                                                    }
+                                                }
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                     @if (IsAirOnly)
+                                     {
+                                         <div style="margin-top:6px;padding:8px 12px;background:#FFF8E1;border-radius:8px;border:1px solid #F5A623;font-size:13px;color:#8A6000">
+                                             Для данного маршрута доступен только авиатранспорт
+                                         </div>
+                                     }
+                                </div>
                             </div>
                             <div class="co-sec-divider">Место назначения</div>
                             <div class="form-row-2">
-                                <div class="field"><span class="field-lbl">Страна</span><div class="inp-wrap"><InputSelect @bind-Value="order.DestinationCountryId" class="lc-sel"><option value="0" disabled>Страна</option>@if (countries != null) { @foreach (var c in countries) { <option value="@c.CountryId">@c.CountryName</option> } }</InputSelect></div><ValidationMessage For="() => order.DestinationCountryId" class="co-val-msg" /></div>
+                                <div class="field"><span class="field-lbl">Страна</span><div class="inp-wrap"><InputSelect @bind-Value="order.DestinationCountryId" class="lc-sel" @onchange="OnDestinationCountryChanged"><option value="0" disabled>Страна</option>@if (countries != null) { @foreach (var c in countries) { <option value="@c.CountryId">@c.CountryName</option> } }</InputSelect></div><ValidationMessage For="() => order.DestinationCountryId" class="co-val-msg" /></div>
                                 <div class="field"><span class="field-lbl">Город</span><div class="inp-wrap"><InputSelect @bind-Value="order.DestinationTownId" class="lc-sel"><option value="0" disabled>Город</option>@foreach (var t in FilteredTownsDes) { <option value="@t.TownId">@t.TownName</option> }</InputSelect></div><ValidationMessage For="() => order.DestinationTownId" class="co-val-msg" /></div>
                             </div>
                             @if (order.DeliveryTypeId == 2)
@@ -526,6 +549,12 @@
     private Country managerCountry = null;
     private int selectedClientTypeId = 1;
     private ElementReference phoneInput;
+
+    // Свойство - только авиа для этого маршрута
+   private bool IsAirOnly => 
+    order.OriginCountryId > 0 && 
+    order.DestinationCountryId > 0 &&
+    MapService.IsAirOnlyRoute(order.OriginCountryId, order.DestinationCountryId);
     //Шаги навигации
     private void NextStep(int s)
     {
@@ -791,7 +820,20 @@
         }
     }
 
-    
+    private void OnDestinationCountryChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int countryId))
+        {
+            order.DestinationCountryId = countryId;
+
+            // Если маршрут только авиа — автоматически выбираем авиа
+            if (IsAirOnly)
+            {
+                order.TransportTypeId = 2; // авиа
+            }
+            StateHasChanged();
+        }
+    }
     private List<StepInfo> steps = new()
     {
         new StepInfo(1, "Клиент"),

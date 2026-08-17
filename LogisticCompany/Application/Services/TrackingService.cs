@@ -15,6 +15,24 @@ namespace LogisticCompany.Application.Services
             _context = context;
         }
 
+        public async Task<List<TrackingDto>> GetOrderTrackingsAsync(int orderId)
+        {
+            return await _context.Trackings
+                .Include(t => t.Status)
+                .Include(t => t.Branches)
+                .Where(t => t.OrdersId == orderId)
+                .OrderByDescending(t => t.UpdateDate)
+                .Select(t => new TrackingDto
+                {
+                    TrackingId = t.TrackingsId,
+                    Status = t.Status != null ? t.Status.StatusName : null,
+                    Location = t.LocationTrackings,
+                    UpdateDate = t.UpdateDate,
+                    Branch = t.Branches != null ? t.Branches.NameBranches : null
+                })
+                .ToListAsync();
+        }
+
         public async Task<TrackingSearchResult?> SearchByOrderNumberAsync(string orderNumber)
         {
             if (string.IsNullOrWhiteSpace(orderNumber))

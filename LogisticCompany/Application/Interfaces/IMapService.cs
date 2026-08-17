@@ -2,7 +2,8 @@
 {
     public interface IMapService
     {
-        Task<decimal> GetDistanceAsync(
-            string fromCity, string toCity, int isAirTransport);
+        Task<decimal> GetDistanceAsync(int originTownId,int destinationTownId,int transportTypeId);
+
+        bool IsAirOnlyRoute(int originCountryId,int destinationCountryId);
     }
 }

@@ -35,7 +35,7 @@ public partial class Order
 
     public int TransportTypeId { get; set; }
 
-    public int DestinationBranchId { get; set; }
+    public int? DestinationBranchId { get; set; }
 
     public int? TemplateId { get; set; }
 
@@ -57,6 +57,7 @@ public partial class Order
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual Branch PickupBranches { get; set; } = null!;
+    public virtual Branch? DestinationBranch { get; set; }
 
     public virtual ParcelTemplate? Template { get; set; }
 

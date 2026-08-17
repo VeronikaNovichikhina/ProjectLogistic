@@ -25,5 +25,8 @@ namespace LogisticCompany.Application.Interfaces
         Task<OrderEditModel?> GetOrderForEditAsync(int orderId);
 
         Task<bool> SaveOrderAsync(int orderId, OrderEditModel editModel);
+
+        Task<List<OrderSummaryDto>> GetOrderSummariesForClientAsync(int clientId);
+        Task<OrderDetailsDto?> GetOrderDetailsDtoAsync(int orderId);
     }
 }

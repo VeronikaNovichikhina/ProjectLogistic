@@ -4,6 +4,7 @@ using LogisticCompany.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LogisticCompany.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724084535_AddCoordinatesToTowns")]
+    partial class AddCoordinatesToTowns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -631,7 +634,7 @@ namespace LogisticCompany.Migrations
 
                     MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("DescriptionParcel"), "utf8mb3");
 
-                    b.Property<int?>("DestinationBranchId")
+                    b.Property<int>("DestinationBranchId")
                         .HasColumnType("int")
                         .HasColumnName("destination_branch_ID");
 
@@ -717,8 +720,6 @@ namespace LogisticCompany.Migrations
 
                     b.HasKey("OrdersId")
                         .HasName("PRIMARY");
-
-                    b.HasIndex("DestinationBranchId");
 
                     b.HasIndex(new[] { "PickupBranchesId" }, "FK_orders_branches");
 
@@ -949,11 +950,6 @@ namespace LogisticCompany.Migrations
                         .HasForeignKey("DeliveryTypeId")
                         .HasConstraintName("FK_orders_deliveryType");
 
-                    b.HasOne("Branch", "DestinationBranch")
-                        .WithMany()
-                        .HasForeignKey("DestinationBranchId")
-                        .HasConstraintName("FK_orders_destination_branch");
-
                     b.HasOne("LogisticCompany.Domain.Entities.Location.Town", "DestinationTown")
                         .WithMany("OrderDestinationTowns")
                         .HasForeignKey("DestinationTownId")
@@ -986,8 +982,6 @@ namespace LogisticCompany.Migrations
                     b.Navigation("Clients");
 
                     b.Navigation("DeliveryType");
-
-                    b.Navigation("DestinationBranch");
 
                     b.Navigation("DestinationTown");
 

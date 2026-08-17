@@ -23,6 +23,69 @@ namespace LogisticCompany.Application.Services
             _passwordService = passwordService;
         }
 
+        public async Task<List<OrderSummaryDto>> GetOrderSummariesForClientAsync(int clientId)
+        {
+            return await _db.Orders
+                .Where(o => o.ClientsId == clientId)
+                .OrderByDescending(o => o.OrdersId)
+                .Select(o => new OrderSummaryDto
+                {
+                    OrdersId = o.OrdersId,
+                    OrderNumber = o.OrderNumber,
+                    FirstRecepientName = o.FirstRecepientName,
+                    LastRecepientName = o.LastRecepientName,
+                    PhoneRecepient = o.PhoneRecepient,
+                    DescriptionParcel = o.DescriptionParcel
+                })
+                .ToListAsync();
+        }
+
+        public async Task<OrderDetailsDto?> GetOrderDetailsDtoAsync(int orderId)
+        {
+            return await _db.Orders
+                .Where(o => o.OrdersId == orderId)
+                .Select(o => new OrderDetailsDto
+                {
+                    OrdersId = o.OrdersId,
+                    OrderNumber = o.OrderNumber,
+                    FirstRecepientName = o.FirstRecepientName,
+                    LastRecepientName = o.LastRecepientName,
+                    MiddleRecepientName = o.MiddleRecepientName,
+                    PhoneRecepient = o.PhoneRecepient,
+                    DescriptionParcel = o.DescriptionParcel,
+                    LengthCm = o.LengthCm,
+                    WidthCm = o.WidthCm,
+                    HeightCm = o.HeightCm,
+                    Weight = o.Weight,
+                    CourierDestAddress = o.CourierDestAddress,
+                    OriginTown = o.OriginTown != null ? o.OriginTown.TownName : null,
+                    OriginCountry = o.OriginTown != null
+                        ? o.OriginTown.Country.CountryName : null,
+                    DestinationTown = o.DestinationTown != null
+                        ? o.DestinationTown.TownName : null,
+                    DestinationCountry = o.DestinationTown != null
+                        ? o.DestinationTown.Country.CountryName : null,
+                    DeliveryType = o.DeliveryType != null
+                        ? o.DeliveryType.NameDeliveryType : null,
+                    TransportType = o.TransportType != null
+                        ? o.TransportType.NameTransportType : null,
+                    PickupBranch = o.PickupBranches != null
+                        ? o.PickupBranches.NameBranches : null,
+                    CurrentStatus = o.Trackings
+                        .OrderByDescending(t => t.UpdateDate)
+                        .Select(t => t.Status != null ? t.Status.StatusName : null)
+                        .FirstOrDefault(),
+                    LastLocation = o.Trackings
+                        .OrderByDescending(t => t.UpdateDate)
+                        .Select(t => t.LocationTrackings)
+                        .FirstOrDefault(),
+                    Amount = o.Payments
+                        .Select(p => p.Amount)
+                        .FirstOrDefault()
+                })
+                .FirstOrDefaultAsync();
+        }
+
         private async Task<string> GetTownNameAsync(int townId)
         {
             var town = await _db.Towns.FirstOrDefaultAsync(t => t.TownId == townId);
@@ -76,6 +139,7 @@ namespace LogisticCompany.Application.Services
 
                 // Generate order number using DB id - single save after number assignment
                 order.OrderNumber = $"ORD-{DateTime.Now:yyMMdd}-{order.OrdersId:D6}";
+                Console.WriteLine($"PaymentMethodId: {r.PaymentMethodId}, Amount: {r.Amount}");
 
                 if (r.PaymentMethodId <= 0)
                     throw new Exception("Выберите способ оплаты");
@@ -188,6 +252,7 @@ namespace LogisticCompany.Application.Services
               .Include(o => o.OriginTown).ThenInclude(t => t.Country)
               .Include(o => o.DestinationTown).ThenInclude(t => t.Country)
               .Include(o => o.PickupBranches)
+              .Include(o => o.DestinationBranch)
               .Include(o => o.Clients)
               .Include(o => o.Trackings).ThenInclude(t => t.Status)
               .FirstOrDefaultAsync(o => o.OrdersId == orderId);
