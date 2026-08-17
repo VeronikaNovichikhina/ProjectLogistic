@@ -96,44 +96,35 @@ Infrastructure Layer (EF Core, DbContext, External APIs)
 ## 📸 Screenshots web service
 
 Main screen
-<img width="1502" height="836" alt="image" src="https://github.com/user-attachments/assets/22d8d721-843a-42f0-a30d-df666b189918" />
-
+<img width="750" height="418" alt="image" src="https://github.com/user-attachments/assets/22d8d721-843a-42f0-a30d-df666b189918" />
 Login Screen
-<img width="1520" height="852" alt="image" src="https://github.com/user-attachments/assets/85131886-7a46-4724-b0bb-b1148d814b37" />
-
+<img width="760" height="426" alt="image" src="https://github.com/user-attachments/assets/85131886-7a46-4724-b0bb-b1148d814b37" />
 Register screen
-<img width="1596" height="833" alt="image" src="https://github.com/user-attachments/assets/c2d1f09a-6c4d-4a8f-ad3a-2af320a9777f" />
-
-Add cleint in system
-<img width="1155" height="577" alt="image" src="https://github.com/user-attachments/assets/f25cd6a0-bd56-41db-8ae5-41d00b8b6ead" />
-
+<img width="798" height="417" alt="image" src="https://github.com/user-attachments/assets/c2d1f09a-6c4d-4a8f-ad3a-2af320a9777f" />
+Add client in system
+<img width="578" height="289" alt="image" src="https://github.com/user-attachments/assets/f25cd6a0-bd56-41db-8ae5-41d00b8b6ead" />
 List client
-<img width="1413" height="842" alt="image" src="https://github.com/user-attachments/assets/baed1178-e3a9-4f4d-9092-86a16fa09b18" />
-
+<img width="707" height="421" alt="image" src="https://github.com/user-attachments/assets/baed1178-e3a9-4f4d-9092-86a16fa09b18" />
 List order
-<img width="1512" height="812" alt="image" src="https://github.com/user-attachments/assets/42341548-27b4-4582-a518-33033a06d113" />
-
+<img width="756" height="406" alt="image" src="https://github.com/user-attachments/assets/42341548-27b4-4582-a518-33033a06d113" />
 Create order
-<img width="1342" height="617" alt="image" src="https://github.com/user-attachments/assets/e269a9ba-a03f-4237-8415-632c431d9917" />
-
+<img width="671" height="309" alt="image" src="https://github.com/user-attachments/assets/e269a9ba-a03f-4237-8415-632c431d9917" />
 Manager account
-<img width="1893" height="662" alt="image" src="https://github.com/user-attachments/assets/091b8e20-3132-4ce3-adc3-5658d5070328" />
-
+<img width="947" height="331" alt="image" src="https://github.com/user-attachments/assets/091b8e20-3132-4ce3-adc3-5658d5070328" />
 Client account
-<img width="1885" height="785" alt="image" src="https://github.com/user-attachments/assets/54e5d3e4-0067-4a87-8420-b50374309a2f" />
-<img width="1868" height="716" alt="image" src="https://github.com/user-attachments/assets/b16608bb-5496-42f5-be24-14372319c548" />
-<img width="1877" height="772" alt="image" src="https://github.com/user-attachments/assets/ee73aa80-3210-4f7c-b0ef-e4da31650a3e" />
-<img width="1058" height="836" alt="image" src="https://github.com/user-attachments/assets/85827256-dd19-4793-abd0-9b21a132cde0" />
-<img width="1022" height="787" alt="image" src="https://github.com/user-attachments/assets/03145773-d503-47e8-9a2b-5f1893496304" />
+<img width="943" height="393" alt="image" src="https://github.com/user-attachments/assets/54e5d3e4-0067-4a87-8420-b50374309a2f" />
+<img width="934" height="358" alt="image" src="https://github.com/user-attachments/assets/b16608bb-5496-42f5-be24-14372319c548" />
+<img width="939" height="386" alt="image" src="https://github.com/user-attachments/assets/ee73aa80-3210-4f7c-b0ef-e4da31650a3e" />
+<img width="529" height="418" alt="image" src="https://github.com/user-attachments/assets/85827256-dd19-4793-abd0-9b21a132cde0" />
+<img width="511" height="394" alt="image" src="https://github.com/user-attachments/assets/03145773-d503-47e8-9a2b-5f1893496304" />
 
 ## 📸 Screenshots mobile
-<img width="1080" height="2400" alt="image" src="https://github.com/user-attachments/assets/6cbd6bb2-65bb-4e2e-977a-7695396b1e1f" />
-<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/90dce557-bc87-4097-8d4d-7c95d2dd4dfa" />
-<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/49169aca-1e7f-4176-b1e8-c930eef9ef41" />
-<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/c92e9b9d-07c1-4895-b138-4b5aa93c5a98" />
-<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/98606558-a1d1-4643-b88e-b79656b7afe5" />
-<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/c7cdc7ff-e087-41e0-84fc-afc0a4c8f40a" />
-
+<img width="240" height="533" alt="image" src="https://github.com/user-attachments/assets/6cbd6bb2-65bb-4e2e-977a-7695396b1e1f" />
+<img width="240" height="533" alt="image" src="https://github.com/user-attachments/assets/90dce557-bc87-4097-8d4d-7c95d2dd4dfa" />
+<img width="240" height="533" alt="image" src="https://github.com/user-attachments/assets/49169aca-1e7f-4176-b1e8-c930eef9ef41" />
+<img width="240" height="533" alt="image" src="https://github.com/user-attachments/assets/c92e9b9d-07c1-4895-b138-4b5aa93c5a98" />
+<img width="240" height="533" alt="image" src="https://github.com/user-attachments/assets/98606558-a1d1-4643-b88e-b79656b7afe5" />
+<img width="240" height="533" alt="image" src="https://github.com/user-attachments/assets/c7cdc7ff-e087-41e0-84fc-afc0a4c8f40a" />
 ## 👩‍💻 Author
 
 Built with ❤️ as a pet project to explore full-stack development with .NET and Flutter.
